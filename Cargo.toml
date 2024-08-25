@@ -1,0 +1,3 @@
+[workspace]
+members = ["rbca_core", "terminal"]
+resolver = "2"
