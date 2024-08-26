@@ -6,3 +6,6 @@ authors = ["Max Gilmour"]
 repository = "https://github.com/maxgmr/rbca"
 
 [dependencies]
+
+[dev-dependencies]
+pretty_assertions = "1.4"
