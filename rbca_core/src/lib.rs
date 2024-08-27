@@ -2,6 +2,7 @@
 #![warn(missing_docs)]
 
 mod cpu;
+mod instructions;
 mod registers;
 
 // Re-exports
