@@ -7,6 +7,6 @@ mod instructions;
 mod registers;
 
 // Re-exports
-pub use boot::BOOT;
+pub use boot::{DMG_BOOT, DMG_BOOT_SIZE};
 pub use cpu::Cpu;
 pub use registers::Registers;

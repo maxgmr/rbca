@@ -2,7 +2,7 @@
 use std::default::Default;
 
 use crate::{
-    boot::{BOOT, BOOT_CODE_SIZE},
+    boot::{DMG_BOOT, DMG_BOOT_SIZE},
     instructions::execute_opcode,
     Registers,
 };
@@ -12,7 +12,8 @@ const MEM_SIZE: usize = 0xFFFF;
 /// The emulated CPU of the Game Boy.
 #[derive(Debug)]
 pub struct Cpu {
-    regs: Registers,
+    /// Registers
+    pub regs: Registers,
     /// Program counter
     pub pc: u16,
     /// Stack pointer
@@ -28,19 +29,16 @@ impl Cpu {
     }
 
     // TODO temp test function
-    /// Execute a ROM.
-    pub fn execute(&mut self, buffer: &[u8]) {
-        while (self.pc as usize) < buffer.len() {
-            let opcode = self.step(buffer);
-            execute_opcode(self, opcode);
-        }
+    /// Perform one cycle.
+    pub fn cycle(&mut self) {
+        let opcode = self.memory[self.pc as usize];
+        execute_opcode(self, opcode);
     }
 
-    // TODO
-    fn step(&mut self, buffer: &[u8]) -> u8 {
-        let opcode = buffer[self.pc as usize];
-        self.pc += 1;
-        opcode
+    /// Load something into memory.
+    pub fn load(&mut self, start_index: u16, data: &[u8]) {
+        let end_index = (start_index as usize) + data.len();
+        self.memory[(start_index as usize)..end_index].copy_from_slice(data);
     }
 }
 impl Default for Cpu {
