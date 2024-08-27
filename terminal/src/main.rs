@@ -16,5 +16,7 @@ fn main() {
     let mut buffer = Vec::new();
     rom.read_to_end(&mut buffer).unwrap();
 
+    cpu.execute(&BOOT);
+
     cpu.execute(&buffer);
 }

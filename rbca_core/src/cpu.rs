@@ -1,14 +1,25 @@
 //! All functionality related to the emulated CPU of the Game Boy.
-use crate::{instructions::execute_opcode, Registers};
+use std::default::Default;
+
+use crate::{
+    boot::{BOOT, BOOT_CODE_SIZE},
+    instructions::execute_opcode,
+    Registers,
+};
+
+const MEM_SIZE: usize = 0xFFFF;
 
 /// The emulated CPU of the Game Boy.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Cpu {
     regs: Registers,
     /// Program counter
     pub pc: u16,
     /// Stack pointer
     pub sp: u16,
+    /// Memory
+    // TODO temporary
+    pub memory: [u8; MEM_SIZE],
 }
 impl Cpu {
     /// Create a new [Cpu].
@@ -30,5 +41,15 @@ impl Cpu {
         let opcode = buffer[self.pc as usize];
         self.pc += 1;
         opcode
+    }
+}
+impl Default for Cpu {
+    fn default() -> Self {
+        Self {
+            regs: Registers::default(),
+            pc: u16::default(),
+            sp: u16::default(),
+            memory: [0; MEM_SIZE],
+        }
     }
 }
