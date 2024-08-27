@@ -2,8 +2,6 @@
 #![warn(missing_docs)]
 
 mod cpu;
-mod emulator;
-mod instructions;
 mod memory;
 mod registers;
 
