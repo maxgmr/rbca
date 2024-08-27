@@ -1,10 +1,49 @@
 //! All functionality related to the registers of the CPU.
 use std::default::Default;
 
+use super::Cpu;
+
 pub const ZERO_FLAG_BYTE_POS: usize = 7;
 pub const ADD_SUB_FLAG_BYTE_POS: usize = 6;
 pub const HALF_CARRY_FLAG_BYTE_POS: usize = 5;
 pub const CARRY_FLAG_BYTE_POS: usize = 4;
+
+/// All the standard (i.e., non-flag) CPU registers. Used for restricting instruction parameters.
+#[derive(Debug, Copy, Clone)]
+pub enum StandardRegister {
+    A,
+    B,
+    C,
+    D,
+    E,
+    H,
+    L,
+}
+impl StandardRegister {
+    pub fn get_reg(&self, cpu: &Cpu) -> u8 {
+        match self {
+            StandardRegister::A => cpu.reg.a,
+            StandardRegister::B => cpu.reg.b,
+            StandardRegister::C => cpu.reg.c,
+            StandardRegister::D => cpu.reg.d,
+            StandardRegister::E => cpu.reg.e,
+            StandardRegister::H => cpu.reg.h,
+            StandardRegister::L => cpu.reg.l,
+        }
+    }
+
+    pub fn set_reg(&self, cpu: &mut Cpu, value: u8) {
+        match self {
+            StandardRegister::A => cpu.reg.a = value,
+            StandardRegister::B => cpu.reg.b = value,
+            StandardRegister::C => cpu.reg.c = value,
+            StandardRegister::D => cpu.reg.d = value,
+            StandardRegister::E => cpu.reg.e = value,
+            StandardRegister::H => cpu.reg.h = value,
+            StandardRegister::L => cpu.reg.l = value,
+        }
+    }
+}
 
 /// All the CPU registers.
 #[derive(Debug, Default)]
