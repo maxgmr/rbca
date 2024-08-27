@@ -78,4 +78,38 @@ mod tests {
         assert_eq!(cpu.reg.b, 0xBF);
         assert_eq!(cpu.reg.c, 0xBF);
     }
+
+    #[test]
+    fn test_add_a() {
+        let mut cpu = Cpu::default();
+        assert_eq!(cpu.reg.a, 0x0);
+
+        cpu.reg.b = 0x01;
+        add_a(&mut cpu, StandardRegister::B);
+        assert_eq!(cpu.reg.a, 0x01);
+        assert_eq!(cpu.reg.b, 0x01);
+        assert_eq!(cpu.reg.f, 0b0000_0000);
+
+        // Test half carry
+        cpu.reg.a = 0x0E;
+        cpu.reg.b = 0x02;
+        add_a(&mut cpu, StandardRegister::B);
+        assert_eq!(cpu.reg.a, 0x10);
+        assert_eq!(cpu.reg.b, 0x02);
+        assert_eq!(cpu.reg.f, 0b0010_0000);
+
+        // Test zero
+        cpu.reg.a = 0x00;
+        cpu.reg.c = 0x00;
+        add_a(&mut cpu, StandardRegister::C);
+        assert_eq!(cpu.reg.a, 0x00);
+        assert_eq!(cpu.reg.f, 0b1000_0000);
+
+        // Test carry
+        cpu.reg.a = 0xF0;
+        cpu.reg.e = 0x11;
+        add_a(&mut cpu, StandardRegister::E);
+        assert_eq!(cpu.reg.a, 0x01);
+        assert_eq!(cpu.reg.f, 0b0001_0000);
+    }
 }

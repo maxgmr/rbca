@@ -218,7 +218,7 @@ mod tests {
     }
 
     #[test]
-    fn test_carry_flags() {
+    fn test_flags() {
         let mut rs = Registers::new();
         assert!(!rs.get_zero_flag());
         assert!(!rs.get_add_sub_flag());
@@ -226,6 +226,11 @@ mod tests {
         assert!(!rs.get_carry_flag());
         assert_eq!(rs.f, 0x00);
         assert_eq!(rs.get_af(), 0x0000);
+
+        rs.set_carry_flag(true);
+        assert!(rs.get_carry_flag());
+        assert_eq!(rs.f, 0b0001_0000);
+        rs.set_carry_flag(false);
 
         rs.set_zero_flag(true);
         assert!(rs.get_zero_flag());
