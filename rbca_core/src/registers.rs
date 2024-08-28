@@ -104,6 +104,11 @@ impl Registers {
         let pos = (flag as u8).trailing_zeros();
         self.f = (self.f & !(0b1 << pos)) | ((if value { 1 } else { 0 }) << pos)
     }
+
+    /// Reset flags.
+    pub fn reset_flags(&mut self) {
+        self.f = 0b0000_0000;
+    }
 }
 
 #[cfg(test)]
@@ -181,5 +186,12 @@ mod tests {
 
         rs.set_flag(RegFlag::Z, true);
         assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x00F0);
+
+        rs.reset_flags();
+        assert!(!rs.get_flag(RegFlag::Z));
+        assert!(!rs.get_flag(RegFlag::N));
+        assert!(!rs.get_flag(RegFlag::H));
+        assert!(!rs.get_flag(RegFlag::C));
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x0000);
     }
 }
