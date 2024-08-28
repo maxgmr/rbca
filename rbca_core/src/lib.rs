@@ -11,4 +11,4 @@ mod registers;
 pub use boot::{DMG_BOOT, DMG_BOOT_SIZE};
 pub use cpu::Cpu;
 pub use memory::MemoryBus;
-pub use registers::{Registers, Target, VirtTarget};
+pub use registers::{RegFlag, Registers, Target, VirtTarget};

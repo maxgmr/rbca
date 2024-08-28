@@ -35,6 +35,7 @@ impl Cpu {
     }
 
     /// Get next two bytes.
+    // TODO might be little endian!!!
     pub fn get_next_2_bytes(&mut self) -> u16 {
         ((self.mem_bus.memory[(self.pc as usize) + 1] as u16) << 8)
             | (self.mem_bus.memory[(self.pc as usize) + 2] as u16)

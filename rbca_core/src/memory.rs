@@ -12,6 +12,11 @@ impl MemoryBus {
     pub fn new() -> Self {
         Self::default()
     }
+
+    /// Read the byte at the given address.
+    pub fn read_byte(&self, address: u16) -> u8 {
+        self.memory[address as usize]
+    }
 }
 impl Default for MemoryBus {
     fn default() -> Self {
