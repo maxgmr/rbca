@@ -395,6 +395,7 @@ fn xor_n(cpu: &mut Cpu, target: Target) {
     let result = cpu.regs.get_reg(Target::A) ^ cpu.regs.get_reg(target);
     cpu.regs.set_flag(RegFlag::Z, result == 0);
     cpu.regs.set_reg(Target::A, result);
+    cpu.pc += 1;
 }
 
 #[cfg(test)]
@@ -428,5 +429,44 @@ mod tests {
         cpu.cycle();
         assert_eq!(cpu.pc, 0x000C);
         assert_eq!(cpu.sp, 0xDEF0);
+    }
+
+    #[test]
+    fn test_xor_n() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.regs.set_reg(Target::A, 0b1010_1010);
+        cpu.regs.set_reg(Target::B, 0b0011_1100);
+        execute_opcode(&mut cpu, 0xA8);
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1001_0110);
+        assert_eq!(cpu.regs.get_reg(Target::B), 0b0011_1100);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.regs.set_reg(Target::C, 0b1001_0110);
+        execute_opcode(&mut cpu, 0xA9);
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b0000_0000);
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.regs.set_reg(Target::D, 0b1111_0000);
+        execute_opcode(&mut cpu, 0xAA);
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1111_0000);
+        cpu.regs.set_reg(Target::E, 0b0000_1111);
+        execute_opcode(&mut cpu, 0xAB);
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1111_1111);
+        cpu.regs.set_reg(Target::H, 0b0100_0010);
+        execute_opcode(&mut cpu, 0xAC);
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1011_1101);
+        cpu.regs.set_reg(Target::L, 0b0011_1100);
+        execute_opcode(&mut cpu, 0xAD);
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1000_0001);
     }
 }
