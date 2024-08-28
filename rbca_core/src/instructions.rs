@@ -1,6 +1,4 @@
 //! All functionality related to the CPU instructions.
-use strum::IntoEnumIterator;
-
 use crate::{Cpu, RegFlag, Target, VirtTarget};
 
 /// Execute a given opcode.
@@ -320,25 +318,25 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         // 0x1F =>
 
         // JP nn
-        // 0xC3 =>
+        0xC3 => jp_nn(cpu),
 
         // JP cc,nn
-        // 0xC2 =>
-        // 0xCA =>
-        // 0xD2 =>
-        // 0xDA =>
+        0xC2 => jp_cc_nn(cpu, RegFlag::Z, false),
+        0xCA => jp_cc_nn(cpu, RegFlag::Z, true),
+        0xD2 => jp_cc_nn(cpu, RegFlag::C, false),
+        0xDA => jp_cc_nn(cpu, RegFlag::C, true),
 
         // JP (HL)
-        // 0xE9 =>
+        0xE9 => jp_hl(cpu),
 
         // JR n
-        // 0x18 =>
+        0x18 => jr_n(cpu),
 
         // JR cc,n
-        // 0x20 =>
-        // 0x28 =>
-        // 0x30 =>
-        // 0x38 =>
+        0x20 => jr_cc_n(cpu, RegFlag::Z, false),
+        0x28 => jr_cc_n(cpu, RegFlag::Z, true),
+        0x30 => jr_cc_n(cpu, RegFlag::C, false),
+        0x38 => jr_cc_n(cpu, RegFlag::C, true),
 
         // CALL nn
         // 0xCD =>
@@ -759,9 +757,56 @@ fn bit_b_r_helper(cpu: &mut Cpu, b: usize, byte: u8) {
     cpu.pc += 2;
 }
 
+// JP nn: Jump to address nn.
+fn jp_nn(cpu: &mut Cpu) {
+    let nn = cpu.get_next_2_bytes();
+    jp_helper(cpu, nn);
+}
+
+// JP cc,nn: Iff C/Z flag == true/false, jump to address n.
+fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) {
+    jp_cc_helper(cpu, flag, expected_value, false);
+}
+
+// JP (HL): Jump to address contained in (HL).
+fn jp_hl(cpu: &mut Cpu) {
+    jp_helper(cpu, cpu.regs.get_virt_reg(VirtTarget::HL));
+}
+
+// JR n: Add n to current address & jump to it.
+fn jr_n(cpu: &mut Cpu) {
+    let n = cpu.get_next_byte();
+    jp_helper(cpu, cpu.pc + (n as u16));
+}
+
+// JR cc,n: Iff C/Z flag == true/false, add n to current address & jump to it.
+fn jr_cc_n(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) {
+    jp_cc_helper(cpu, flag, expected_value, true);
+}
+
+// Helper function for conditional jumps
+fn jp_cc_helper(cpu: &mut Cpu, flag: RegFlag, expected_value: bool, is_jr: bool) {
+    let test_val = match flag {
+        RegFlag::Z | RegFlag::C => cpu.regs.get_flag(flag),
+        _ => panic!("jr_cc_n: Cannot use flag {:?}. C or Z flags only.", flag),
+    };
+    match (is_jr, test_val == expected_value) {
+        (true, true) => jr_n(cpu),
+        (true, false) => cpu.pc += 2,
+        (false, true) => jp_nn(cpu),
+        (false, false) => cpu.pc += 3,
+    }
+}
+
+// Helper function for jumps
+fn jp_helper(cpu: &mut Cpu, address: u16) {
+    cpu.pc = address;
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
+    use strum::IntoEnumIterator;
 
     use super::*;
 
@@ -877,5 +922,132 @@ mod tests {
             assert!(cpu.regs.get_flag(RegFlag::H));
             assert_eq!(cpu.regs.get_flag(RegFlag::C), !is_bit_pos_even);
         }
+    }
+
+    #[test]
+    fn test_jumps() {
+        let mut cpu = Cpu::new();
+        // (Testing JP nn) Jump to address 0x1234.
+        let data_1 = [0xC3, 0x12, 0x34];
+        cpu.load(0x0000, &data_1);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x1234);
+
+        // (Testing JP ~cc,nn) Don't do these jumps; conditions not met. Then, jump to address
+        // 0x2000.
+        let data_2 = [
+            0xC2, 0xFF, 0xFF, 0xCA, 0xFF, 0xFF, 0xD2, 0xFF, 0xFF, 0xDA, 0xFF, 0xFF, 0xC3, 0x20,
+            0x00,
+        ];
+        cpu.load(0x1234, &data_2);
+
+        cpu.regs.reset_flags();
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x1234 + 0x3);
+
+        cpu.regs.set_flag(RegFlag::Z, false);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x1234 + 0x6);
+
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x1234 + 0x9);
+
+        cpu.regs.set_flag(RegFlag::C, false);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x1234 + 0xC);
+
+        cpu.regs.reset_flags();
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x2000);
+
+        // (Testing JP cc,nn) Do all these jumps; the conditions are met.
+        let data_3 = [0xC2, 0x20, 0x10];
+        cpu.load(0x2000, &data_3);
+        let data_4 = [0xCA, 0x20, 0x20];
+        cpu.load(0x2010, &data_4);
+        let data_5 = [0xD2, 0x20, 0x30];
+        cpu.load(0x2020, &data_5);
+        let data_6 = [0xDA, 0x20, 0x40];
+        cpu.load(0x2030, &data_6);
+
+        cpu.regs.reset_flags();
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x2010);
+
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x2020);
+
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x2030);
+
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x2040);
+
+        // (Testing JP (HL)) Jump to address 0x2050.
+        cpu.regs.set_virt_reg(VirtTarget::HL, 0x2050);
+        cpu.mem_bus.write_byte(0x2040, 0xE9);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x2050);
+
+        // (Testing JR n) Add 0x28 to address and jump to 0x2078.
+        let data_7 = [0x18, 0x28];
+        cpu.load(0x2050, &data_7);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x2078);
+
+        // (Testing JR ~cc,n) Don't do these jumps; conditions not met. Then, jump to 0x3000.
+        let data_8 = [
+            0x20, 0xFF, 0x28, 0xFF, 0x30, 0xFF, 0x38, 0xFF, 0xC3, 0x30, 0x00,
+        ];
+        cpu.load(0x2078, &data_8);
+        cpu.regs.reset_flags();
+
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x2078 + 2);
+
+        cpu.regs.set_flag(RegFlag::Z, false);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x2078 + 4);
+
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x2078 + 6);
+
+        cpu.regs.set_flag(RegFlag::C, false);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x2078 + 8);
+
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x3000);
+
+        // (Testing JR cc,n) Conditions met; do all of these jumps.
+        let data_9 = [0x20, 0x10];
+        cpu.load(0x3000, &data_9);
+        let data_10 = [0x28, 0x10];
+        cpu.load(0x3010, &data_10);
+        let data_11 = [0x30, 0x10];
+        cpu.load(0x3020, &data_11);
+        let data_12 = [0x38, 0x10];
+        cpu.load(0x3030, &data_12);
+        cpu.regs.reset_flags();
+
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x3010);
+
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x3020);
+
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x3030);
+
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x3040);
     }
 }

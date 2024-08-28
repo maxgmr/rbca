@@ -34,6 +34,11 @@ impl Cpu {
         self.mem_bus.memory[(start_index as usize)..end_index].copy_from_slice(data);
     }
 
+    /// Get next byte.
+    pub fn get_next_byte(&mut self) -> u8 {
+        self.mem_bus.memory[(self.pc as usize) + 1]
+    }
+
     /// Get next two bytes.
     // TODO might be little endian!!!
     pub fn get_next_2_bytes(&mut self) -> u16 {
