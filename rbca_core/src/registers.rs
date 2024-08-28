@@ -50,25 +50,52 @@ pub enum RegFlag {
 #[derive(Debug, Default, Clone)]
 pub struct Registers {
     /// Register `A` (accumulator)
-    pub a: u8,
+    a: u8,
     /// Register `B`
-    pub b: u8,
+    b: u8,
     /// Register `C`
-    pub c: u8,
+    c: u8,
     /// Register `D`
-    pub d: u8,
+    d: u8,
     /// Register `E`
-    pub e: u8,
+    e: u8,
     f: u8,
     /// Register `H`
-    pub h: u8,
+    h: u8,
     /// Register `L`
-    pub l: u8,
+    l: u8,
 }
 impl Registers {
     /// Create new [Registers], all initialised to zero.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Get the value of a register.
+    pub fn get_reg(&self, target: Target) -> u8 {
+        match target {
+            Target::A => self.a,
+            Target::B => self.b,
+            Target::C => self.c,
+            Target::D => self.d,
+            Target::E => self.e,
+            Target::H => self.h,
+            Target::L => self.l,
+        }
+    }
+
+    /// Set the value of a register.
+    pub fn set_reg(&mut self, target: Target, value: u8) {
+        let register = match target {
+            Target::A => &mut self.a,
+            Target::B => &mut self.b,
+            Target::C => &mut self.c,
+            Target::D => &mut self.d,
+            Target::E => &mut self.e,
+            Target::H => &mut self.h,
+            Target::L => &mut self.l,
+        };
+        *register = value;
     }
 
     /// Get the value of a given virtual register.
@@ -116,6 +143,37 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
+
+    #[test]
+    fn test_registers() {
+        let mut rs = Registers::new();
+        assert_eq!(rs.get_reg(Target::A), 0x00);
+        assert_eq!(rs.get_reg(Target::B), 0x00);
+        assert_eq!(rs.get_reg(Target::C), 0x00);
+        assert_eq!(rs.get_reg(Target::D), 0x00);
+        assert_eq!(rs.get_reg(Target::E), 0x00);
+        assert_eq!(rs.get_reg(Target::H), 0x00);
+        assert_eq!(rs.get_reg(Target::L), 0x00);
+
+        rs.set_reg(Target::A, 0x12);
+        rs.set_reg(Target::B, 0x34);
+        rs.set_reg(Target::C, 0x56);
+        rs.set_reg(Target::D, 0x78);
+        rs.set_reg(Target::E, 0x9A);
+        rs.set_reg(Target::H, 0xBC);
+        rs.set_reg(Target::L, 0xDE);
+        assert_eq!(rs.get_reg(Target::A), 0x12);
+        assert_eq!(rs.get_reg(Target::B), 0x34);
+        assert_eq!(rs.get_reg(Target::C), 0x56);
+        assert_eq!(rs.get_reg(Target::D), 0x78);
+        assert_eq!(rs.get_reg(Target::E), 0x9A);
+        assert_eq!(rs.get_reg(Target::H), 0xBC);
+        assert_eq!(rs.get_reg(Target::L), 0xDE);
+
+        rs.set_reg(Target::A, rs.get_reg(Target::H));
+        assert_eq!(rs.get_reg(Target::A), 0xBC);
+        assert_eq!(rs.get_reg(Target::H), 0xBC);
+    }
 
     #[test]
     fn test_virtual_registers() {
