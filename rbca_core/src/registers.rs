@@ -65,7 +65,7 @@ impl Registers {
     pub fn get_virt_reg(&self, target: VirtTarget) -> u16 {
         let (first_register, second_register) = match target {
             VirtTarget::AF => (self.a, self.f),
-            VirtTarget::BC => (self.a, self.f),
+            VirtTarget::BC => (self.b, self.c),
             VirtTarget::DE => (self.d, self.e),
             VirtTarget::HL => (self.h, self.l),
         };
@@ -76,7 +76,7 @@ impl Registers {
     pub fn set_virt_reg(&mut self, target: VirtTarget, value: u16) {
         let (first_register, second_register) = match target {
             VirtTarget::AF => (&mut self.a, &mut self.f),
-            VirtTarget::BC => (&mut self.a, &mut self.f),
+            VirtTarget::BC => (&mut self.b, &mut self.c),
             VirtTarget::DE => (&mut self.d, &mut self.e),
             VirtTarget::HL => (&mut self.h, &mut self.l),
         };
