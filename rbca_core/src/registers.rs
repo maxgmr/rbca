@@ -4,22 +4,32 @@ use std::default::Default;
 /// Enum to define the register target of a function.
 #[derive(Debug, Copy, Clone)]
 pub enum Target {
+    /// Register `A` (accumulator)
     A,
+    /// Register `B`
     B,
+    /// Register `C`
     C,
+    /// Register `D`
     D,
+    /// Register `E`
     E,
-    F,
+    /// Register `H`
     H,
+    /// Register `L`
     L,
 }
 
 /// Enum to define the virtual register target of a function.
 #[derive(Debug, Copy, Clone)]
 pub enum VirtTarget {
+    /// Virtual register `AF`
     AF,
+    /// Virtual register `BC`
     BC,
+    /// Virtual register `DE`
     DE,
+    /// Virtual register `HL`
     HL,
 }
 

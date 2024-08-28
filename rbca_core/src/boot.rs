@@ -1,3 +1,4 @@
+/// Size of the original Game Boy boot screen.
 pub const DMG_BOOT_SIZE: usize = 0x100;
 
 /// Code for the original Game Boy boot screen.
