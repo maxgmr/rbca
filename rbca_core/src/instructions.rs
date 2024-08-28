@@ -1,4 +1,6 @@
 //! All functionality related to the CPU instructions.
+use strum::IntoEnumIterator;
+
 use crate::{Cpu, RegFlag, Target, VirtTarget};
 
 /// Execute a given opcode.
@@ -454,84 +456,84 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
                 // 0x3E =>
 
                 // BIT 0,r
-                // 0x47 =>
-                // 0x40 =>
-                // 0x41 =>
-                // 0x42 =>
-                // 0x43 =>
-                // 0x44 =>
-                // 0x45 =>
-                // 0x46 =>
+                0x47 => bit_b_r(cpu, 0, Target::A),
+                0x40 => bit_b_r(cpu, 0, Target::B),
+                0x41 => bit_b_r(cpu, 0, Target::C),
+                0x42 => bit_b_r(cpu, 0, Target::D),
+                0x43 => bit_b_r(cpu, 0, Target::E),
+                0x44 => bit_b_r(cpu, 0, Target::H),
+                0x45 => bit_b_r(cpu, 0, Target::L),
+                0x46 => bit_b_r_hl(cpu, 0),
 
                 // BIT 1,r
-                // 0x4F =>
-                // 0x48 =>
-                // 0x49 =>
-                // 0x4A =>
-                // 0x4B =>
-                // 0x4C =>
-                // 0x4D =>
-                // 0x4E =>
+                0x4F => bit_b_r(cpu, 1, Target::A),
+                0x48 => bit_b_r(cpu, 1, Target::B),
+                0x49 => bit_b_r(cpu, 1, Target::C),
+                0x4A => bit_b_r(cpu, 1, Target::D),
+                0x4B => bit_b_r(cpu, 1, Target::E),
+                0x4C => bit_b_r(cpu, 1, Target::H),
+                0x4D => bit_b_r(cpu, 1, Target::L),
+                0x4E => bit_b_r_hl(cpu, 1),
 
                 // BIT 2,r
-                // 0x57 =>
-                // 0x50 =>
-                // 0x51 =>
-                // 0x52 =>
-                // 0x53 =>
-                // 0x54 =>
-                // 0x55 =>
-                // 0x56 =>
+                0x57 => bit_b_r(cpu, 2, Target::A),
+                0x50 => bit_b_r(cpu, 2, Target::B),
+                0x51 => bit_b_r(cpu, 2, Target::C),
+                0x52 => bit_b_r(cpu, 2, Target::D),
+                0x53 => bit_b_r(cpu, 2, Target::E),
+                0x54 => bit_b_r(cpu, 2, Target::H),
+                0x55 => bit_b_r(cpu, 2, Target::L),
+                0x56 => bit_b_r_hl(cpu, 2),
 
                 // BIT 3,r
-                // 0x5F =>
-                // 0x58 =>
-                // 0x59 =>
-                // 0x5A =>
-                // 0x5B =>
-                // 0x5C =>
-                // 0x5D =>
-                // 0x5E =>
+                0x5F => bit_b_r(cpu, 3, Target::A),
+                0x58 => bit_b_r(cpu, 3, Target::B),
+                0x59 => bit_b_r(cpu, 3, Target::C),
+                0x5A => bit_b_r(cpu, 3, Target::D),
+                0x5B => bit_b_r(cpu, 3, Target::E),
+                0x5C => bit_b_r(cpu, 3, Target::H),
+                0x5D => bit_b_r(cpu, 3, Target::L),
+                0x5E => bit_b_r_hl(cpu, 3),
 
                 // BIT 4,r
-                // 0x67 =>
-                // 0x60 =>
-                // 0x61 =>
-                // 0x62 =>
-                // 0x63 =>
-                // 0x64 =>
-                // 0x65 =>
-                // 0x66 =>
+                0x67 => bit_b_r(cpu, 4, Target::A),
+                0x60 => bit_b_r(cpu, 4, Target::B),
+                0x61 => bit_b_r(cpu, 4, Target::C),
+                0x62 => bit_b_r(cpu, 4, Target::D),
+                0x63 => bit_b_r(cpu, 4, Target::E),
+                0x64 => bit_b_r(cpu, 4, Target::H),
+                0x65 => bit_b_r(cpu, 4, Target::L),
+                0x66 => bit_b_r_hl(cpu, 4),
 
                 // BIT 5,r
-                // 0x6F =>
-                // 0x68 =>
-                // 0x69 =>
-                // 0x6A =>
-                // 0x6B =>
-                // 0x6C =>
-                // 0x6D =>
-                // 0x6E =>
+                0x6F => bit_b_r(cpu, 5, Target::A),
+                0x68 => bit_b_r(cpu, 5, Target::B),
+                0x69 => bit_b_r(cpu, 5, Target::C),
+                0x6A => bit_b_r(cpu, 5, Target::D),
+                0x6B => bit_b_r(cpu, 5, Target::E),
+                0x6C => bit_b_r(cpu, 5, Target::H),
+                0x6D => bit_b_r(cpu, 5, Target::L),
+                0x6E => bit_b_r_hl(cpu, 5),
 
                 // BIT 6,r
-                // 0x77 =>
-                // 0x70 =>
-                // 0x71 =>
-                // 0x72 =>
-                // 0x73 =>
-                // 0x74 =>
-                // 0x75 =>
-                // 0x76 =>
+                0x77 => bit_b_r(cpu, 6, Target::A),
+                0x70 => bit_b_r(cpu, 6, Target::B),
+                0x71 => bit_b_r(cpu, 6, Target::C),
+                0x72 => bit_b_r(cpu, 6, Target::D),
+                0x73 => bit_b_r(cpu, 6, Target::E),
+                0x74 => bit_b_r(cpu, 6, Target::H),
+                0x75 => bit_b_r(cpu, 6, Target::L),
+                0x76 => bit_b_r_hl(cpu, 6),
 
                 // BIT 7,r
-                // 0x7F =>
-                // 0x78 =>
-                // 0x79 =>
-                // 0x7A =>
-                // 0x7B =>
-                // 0x7C =>
-                // 0x7D =>
-                // 0x7E =>
+                0x7F => bit_b_r(cpu, 7, Target::A),
+                0x78 => bit_b_r(cpu, 7, Target::B),
+                0x79 => bit_b_r(cpu, 7, Target::C),
+                0x7A => bit_b_r(cpu, 7, Target::D),
+                0x7B => bit_b_r(cpu, 7, Target::E),
+                0x7C => bit_b_r(cpu, 7, Target::H),
+                0x7D => bit_b_r(cpu, 7, Target::L),
+                0x7E => bit_b_r_hl(cpu, 7),
 
                 // SET 0,r
                 // 0xC7 =>
@@ -741,6 +743,22 @@ fn ld_hld_a(cpu: &mut Cpu) {
     cpu.pc += 1;
 }
 
+// BIT b,r: Iff bit b in register r == 0, set Z flag = 1. Else, set Z flag = 0.
+fn bit_b_r(cpu: &mut Cpu, b: usize, target: Target) {
+    bit_b_r_helper(cpu, b, cpu.regs.get_reg(target));
+}
+fn bit_b_r_hl(cpu: &mut Cpu, b: usize) {
+    let target_byte = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(VirtTarget::HL));
+    bit_b_r_helper(cpu, b, target_byte)
+}
+fn bit_b_r_helper(cpu: &mut Cpu, b: usize, byte: u8) {
+    let is_bit_zero = (byte & (0b1 << b)) == 0;
+    cpu.regs.set_flag(RegFlag::Z, is_bit_zero);
+    cpu.regs.set_flag(RegFlag::N, false);
+    cpu.regs.set_flag(RegFlag::H, true);
+    cpu.pc += 2;
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
@@ -820,5 +838,44 @@ mod tests {
         cpu.regs.set_reg(Target::A, 0xDC);
         execute_opcode(&mut cpu, 0x32);
         assert_eq!(cpu.mem_bus.read_byte(0x1234), 0xDC);
+    }
+
+    #[test]
+    fn test_bit_b_r() {
+        let mut cpu = Cpu::default();
+        cpu.mem_bus.write_byte(0b0101_0101_0101_0101, 0b1010_1010);
+
+        for target in Target::iter() {
+            cpu.regs.reset_flags();
+            cpu.regs.set_reg(target, 0b0101_0101);
+            for bit_pos in 0..8 {
+                // For testing purposes, the bits alternate between 1 & 0.
+                // odd-indexed bits = 0, so Z-flag should be set to 1.
+                let is_bit_pos_odd = (bit_pos % 2) == 1;
+                // Alternate between setting C flag to 1 or 0 to test if it's unaffected.
+                cpu.regs.set_flag(RegFlag::C, is_bit_pos_odd);
+
+                bit_b_r(&mut cpu, bit_pos, target);
+                assert_eq!(cpu.regs.get_flag(RegFlag::Z), is_bit_pos_odd);
+                assert!(!cpu.regs.get_flag(RegFlag::N));
+                assert!(cpu.regs.get_flag(RegFlag::H));
+                assert_eq!(cpu.regs.get_flag(RegFlag::C), is_bit_pos_odd);
+            }
+        }
+
+        // Test (HL) version.
+        for bit_pos in 0..8 {
+            cpu.regs.reset_flags();
+            // even-indexed bits = 0, so Z-flag should be set to 1.
+            let is_bit_pos_even = (bit_pos % 2) == 0;
+            // Alternate between setting C flag to 1 or 0 to test if it's unaffected.
+            cpu.regs.set_flag(RegFlag::C, !is_bit_pos_even);
+
+            bit_b_r_hl(&mut cpu, bit_pos);
+            assert_eq!(cpu.regs.get_flag(RegFlag::Z), is_bit_pos_even);
+            assert!(!cpu.regs.get_flag(RegFlag::N));
+            assert!(cpu.regs.get_flag(RegFlag::H));
+            assert_eq!(cpu.regs.get_flag(RegFlag::C), !is_bit_pos_even);
+        }
     }
 }
