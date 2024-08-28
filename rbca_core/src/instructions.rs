@@ -368,6 +368,131 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
 
         // RETI
         // 0xD9 =>
+
+        // CB-Opcodes
+        0xCB => {
+            let ext_opcode = cpu.mem_bus.read_byte(cpu.pc + 1);
+            match ext_opcode {
+                // SWAP n
+                // 0xCB37 =>
+                // 0xCB30 =>
+                // 0xCB31 =>
+                // 0xCB32 =>
+                // 0xCB33 =>
+                // 0xCB34 =>
+                // 0xCB35 =>
+                // 0xCB36 =>
+
+                // RLC n
+                // 0xCB07 =>
+                // 0xCB00 =>
+                // 0xCB01 =>
+                // 0xCB02 =>
+                // 0xCB03 =>
+                // 0xCB04 =>
+                // 0xCB05 =>
+                // 0xCB06 =>
+
+                // RL n
+                // 0xCB17 =>
+                // 0xCB10 =>
+                // 0xCB11 =>
+                // 0xCB12 =>
+                // 0xCB13 =>
+                // 0xCB14 =>
+                // 0xCB15 =>
+                // 0xCB16 =>
+
+                // RRC n
+                // 0xCB0F =>
+                // 0xCB08 =>
+                // 0xCB09 =>
+                // 0xCB0A =>
+                // 0xCB0B =>
+                // 0xCB0C =>
+                // 0xCB0D =>
+                // 0xCB0E =>
+
+                // RR n
+                // 0xCB1F =>
+                // 0xCB18 =>
+                // 0xCB19 =>
+                // 0xCB1A =>
+                // 0xCB1B =>
+                // 0xCB1C =>
+                // 0xCB1D =>
+                // 0xCB1E =>
+
+                // SLA n
+                // 0xCB27 =>
+                // 0xCB20 =>
+                // 0xCB21 =>
+                // 0xCB22 =>
+                // 0xCB23 =>
+                // 0xCB24 =>
+                // 0xCB25 =>
+                // 0xCB26 =>
+
+                // SRA n
+                // 0xCB2F =>
+                // 0xCB28 =>
+                // 0xCB29 =>
+                // 0xCB2A =>
+                // 0xCB2B =>
+                // 0xCB2C =>
+                // 0xCB2D =>
+                // 0xCB2E =>
+
+                // SRL n
+                // 0xCB3F =>
+                // 0xCB38 =>
+                // 0xCB39 =>
+                // 0xCB3A =>
+                // 0xCB3B =>
+                // 0xCB3C =>
+                // 0xCB3D =>
+                // 0xCB3E =>
+
+                // BIT b,r
+                // 0xCB47 =>
+                // 0xCB40 =>
+                // 0xCB41 =>
+                // 0xCB42 =>
+                // 0xCB43 =>
+                // 0xCB44 =>
+                // 0xCB45 =>
+                // 0xCB46 =>
+
+                // SET b,r
+                // 0xCBC7 =>
+                // 0xCBC0 =>
+                // 0xCBC1 =>
+                // 0xCBC2 =>
+                // 0xCBC3 =>
+                // 0xCBC4 =>
+                // 0xCBC5 =>
+                // 0xCBC6 =>
+
+                // RES b,r
+                // 0xCB87 =>
+                // 0xCB80 =>
+                // 0xCB81 =>
+                // 0xCB82 =>
+                // 0xCB83 =>
+                // 0xCB84 =>
+                // 0xCB85 =>
+                // 0xCB86 =>
+
+                // Unimplemented instruction
+                _ => panic!(
+                    "Unimplemented extended opcode {:#04X} at {:#04X}",
+                    ((opcode as u16) << 8) | (ext_opcode as u16),
+                    cpu.pc
+                ),
+            }
+        }
+
+        // Unimplemented instruction
         _ => panic!("Unimplemented opcode {:#02X} at {:#04X}", opcode, cpu.pc,),
     }
 }
