@@ -26,6 +26,7 @@ impl Cpu {
     pub fn cycle(&mut self) {
         let opcode = self.mem_bus.memory[self.pc as usize];
         execute_opcode(self, opcode);
+        println!("{:#04X}", self.pc);
     }
 
     /// Load something into memory.

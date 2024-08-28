@@ -707,6 +707,8 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
     }
 }
 
+// LD nn,n:
+
 // NOP: Do nothing.
 fn nop(cpu: &mut Cpu) {
     cpu.pc += 1;

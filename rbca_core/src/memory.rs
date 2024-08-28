@@ -5,7 +5,7 @@ use std::default::Default;
 #[derive(Debug)]
 pub struct MemoryBus {
     /// The memory contents.
-    pub memory: [u8; 0xFFFF],
+    pub memory: [u8; 0x10000],
 }
 impl MemoryBus {
     /// Create a new [MemoryBus] initialised to zero.
@@ -37,7 +37,7 @@ impl MemoryBus {
 impl Default for MemoryBus {
     fn default() -> Self {
         Self {
-            memory: [0; 0xFFFF],
+            memory: [0; 0x10000],
         }
     }
 }
