@@ -1,8 +1,10 @@
 //! All functionality related to the registers of the emulated CPU.
 use std::default::Default;
 
+use strum_macros::EnumIter;
+
 /// Enum to define the register target of a function.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, EnumIter)]
 pub enum Target {
     /// Register `A` (accumulator)
     A,
@@ -21,7 +23,7 @@ pub enum Target {
 }
 
 /// Enum to define the virtual register target of a function.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, EnumIter)]
 pub enum VirtTarget {
     /// Virtual register `AF`
     AF,
