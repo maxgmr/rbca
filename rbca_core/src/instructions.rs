@@ -108,7 +108,7 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         // 0x3A =>
 
         // LD (HLD),A / LD (HL-),A / LDD (HL,A)
-        // 0x32 =>
+        0x32 => ld_hld_a(cpu),
 
         // LD A,(HLI) / LD A,(HL+) / LDI A,(HL)
         // 0x2A =>
@@ -398,6 +398,14 @@ fn xor_n(cpu: &mut Cpu, target: Target) {
     cpu.pc += 1;
 }
 
+// LD (HLD),A: (HL) = A. HL -= 1.
+fn ld_hld_a(cpu: &mut Cpu) {
+    let address = cpu.regs.get_virt_reg(VirtTarget::HL);
+    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(Target::A));
+    cpu.regs.set_virt_reg(VirtTarget::HL, address - 1);
+    cpu.pc += 1;
+}
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
@@ -468,5 +476,14 @@ mod tests {
         cpu.regs.set_reg(Target::L, 0b0011_1100);
         execute_opcode(&mut cpu, 0xAD);
         assert_eq!(cpu.regs.get_reg(Target::A), 0b1000_0001);
+    }
+
+    #[test]
+    fn test_ld_hld_a() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_virt_reg(VirtTarget::HL, 0x1234);
+        cpu.regs.set_reg(Target::A, 0xDC);
+        execute_opcode(&mut cpu, 0x32);
+        assert_eq!(cpu.mem_bus.read_byte(0x1234), 0xDC);
     }
 }
