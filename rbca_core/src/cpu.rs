@@ -62,7 +62,7 @@ impl Default for Cpu {
         Self {
             regs: Registers::default(),
             pc: u16::default(),
-            sp: u16::default(),
+            sp: 0xFFFE,
             mem_bus: MemoryBus::new(),
         }
     }

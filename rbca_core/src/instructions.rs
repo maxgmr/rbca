@@ -138,16 +138,16 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         // 0x08 =>
 
         // PUSH nn
-        // 0xF5 =>
-        // 0xC5 =>
-        // 0xD5 =>
-        // 0xE5 =>
+        0xF5 => push_nn(cpu, VirtTarget::AF),
+        0xC5 => push_nn(cpu, VirtTarget::BC),
+        0xD5 => push_nn(cpu, VirtTarget::DE),
+        0xE5 => push_nn(cpu, VirtTarget::HL),
 
         // POP nn
-        // 0xF1 =>
-        // 0xC1 =>
-        // 0xD1 =>
-        // 0xE1 =>
+        0xF1 => pop_nn(cpu, VirtTarget::AF),
+        0xC1 => pop_nn(cpu, VirtTarget::BC),
+        0xD1 => pop_nn(cpu, VirtTarget::DE),
+        0xE1 => pop_nn(cpu, VirtTarget::HL),
 
         // ADD A,n
         // 0x87 =>
@@ -804,8 +804,17 @@ fn jp_helper(cpu: &mut Cpu, address: u16) {
 }
 
 // PUSH nn: Push virtual register nn to stack. Set sp = sp -= 2.
+fn push_nn(cpu: &mut Cpu, target: VirtTarget) {
+    cpu.push_stack(cpu.regs.get_virt_reg(target));
+    cpu.pc += 1;
+}
 
 // POP nn: Pop 2 bytes off stack into virtual register nn. Set sp = sp += 2.
+fn pop_nn(cpu: &mut Cpu, target: VirtTarget) {
+    let popped_val = cpu.pop_stack();
+    cpu.regs.set_virt_reg(target, popped_val);
+    cpu.pc += 1;
+}
 
 // RST n: Push current address to stack. Jump to address 0x0000 + n.
 
@@ -1055,6 +1064,51 @@ mod tests {
         cpu.regs.set_flag(RegFlag::C, true);
         cpu.cycle();
         assert_eq!(cpu.pc, 0x3040);
+    }
+
+    #[test]
+    fn test_push_pop_nn() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_virt_reg(VirtTarget::BC, 0x1234);
+        cpu.regs.set_virt_reg(VirtTarget::DE, 0x5678);
+        cpu.regs.set_virt_reg(VirtTarget::HL, 0x9ABC);
+        // Push BC, push DE, pop DE to AF, push HL, pop HL to BC, pop BC to HL
+        let data = [0xC5, 0xD5, 0xF1, 0xE5, 0xC1, 0xE1];
+        cpu.load(0x0000, &data);
+        assert_eq!(cpu.sp, 0xFFFE);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFFC);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFFA);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFFC);
+        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::AF), 0x5678);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFFA);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFFC);
+        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::BC), 0x9ABC);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFFE);
+        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::HL), 0x1234);
+
+        cpu.regs.set_virt_reg(VirtTarget::AF, 0xFEDC);
+        // Push AF, pop AF to DE
+        let data_2 = [0xF5, 0xD1];
+        cpu.load(0x0006, &data_2);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFFC);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFFE);
+        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::DE), 0xFEDC);
     }
 
     #[test]
