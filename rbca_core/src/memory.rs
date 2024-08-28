@@ -17,6 +17,11 @@ impl MemoryBus {
     pub fn read_byte(&self, address: u16) -> u8 {
         self.memory[address as usize]
     }
+
+    /// Write a byte to a given address.
+    pub fn write_byte(&mut self, address: u16, byte: u8) {
+        self.memory[address as usize] = byte;
+    }
 }
 impl Default for MemoryBus {
     fn default() -> Self {
