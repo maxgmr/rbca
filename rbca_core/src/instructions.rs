@@ -348,14 +348,14 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         // 0xDC =>
 
         // RST n
-        // 0xC7 =>
-        // 0xCF =>
-        // 0xD7 =>
-        // 0xDF =>
-        // 0xE7 =>
-        // 0xEF =>
-        // 0xF7 =>
-        // 0xFF =>
+        0xC7 => rst_n(cpu, 0x0000),
+        0xCF => rst_n(cpu, 0x0008),
+        0xD7 => rst_n(cpu, 0x0010),
+        0xDF => rst_n(cpu, 0x0018),
+        0xE7 => rst_n(cpu, 0x0020),
+        0xEF => rst_n(cpu, 0x0028),
+        0xF7 => rst_n(cpu, 0x0030),
+        0xFF => rst_n(cpu, 0x0038),
 
         // RET
         // 0xC9 =>
@@ -817,6 +817,10 @@ fn pop_nn(cpu: &mut Cpu, target: VirtTarget) {
 }
 
 // RST n: Push current address to stack. Jump to address 0x0000 + n.
+fn rst_n(cpu: &mut Cpu, n: u8) {
+    cpu.push_stack(cpu.pc);
+    cpu.pc = n as u16;
+}
 
 #[cfg(test)]
 mod tests {
@@ -1114,5 +1118,63 @@ mod tests {
     #[test]
     fn test_rst_n() {
         let mut cpu = Cpu::new();
+        cpu.pc = 0xFEDC;
+        // Push 0xFEDC to stack, jump to 0x0000.
+        cpu.mem_bus.write_byte(0xFEDC, 0xC7);
+        // Push 0x0000 to stack, jump to 0x0008.
+        cpu.mem_bus.write_byte(0x0000, 0xCF);
+        // Push 0x0008 to stack, jump to 0x0010.
+        cpu.mem_bus.write_byte(0x0008, 0xD7);
+        // Push 0x0010 to stack, jump to 0x0018.
+        cpu.mem_bus.write_byte(0x0010, 0xDF);
+        // Push 0x0018 to stack, jump to 0x0020.
+        cpu.mem_bus.write_byte(0x0018, 0xE7);
+        // Push 0x0020 to stack, jump to 0x0028.
+        cpu.mem_bus.write_byte(0x0020, 0xEF);
+        // Push 0x0028 to stack, jump to 0x0030.
+        cpu.mem_bus.write_byte(0x0028, 0xF7);
+        // Push 0x0030 to stack, jump to 0x0038.
+        cpu.mem_bus.write_byte(0x0030, 0xFF);
+        assert_eq!(cpu.sp, 0xFFFE);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFFC);
+        assert_eq!(cpu.pc, 0x0000);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFFA);
+        assert_eq!(cpu.pc, 0x0008);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFF8);
+        assert_eq!(cpu.pc, 0x0010);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFF6);
+        assert_eq!(cpu.pc, 0x0018);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFF4);
+        assert_eq!(cpu.pc, 0x0020);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFF2);
+        assert_eq!(cpu.pc, 0x0028);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFF0);
+        assert_eq!(cpu.pc, 0x0030);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFFEE);
+        assert_eq!(cpu.pc, 0x0038);
+
+        assert_eq!(cpu.pop_stack(), 0x0030);
+        assert_eq!(cpu.pop_stack(), 0x0028);
+        assert_eq!(cpu.pop_stack(), 0x0020);
+        assert_eq!(cpu.pop_stack(), 0x0018);
+        assert_eq!(cpu.pop_stack(), 0x0010);
+        assert_eq!(cpu.pop_stack(), 0x0008);
+        assert_eq!(cpu.pop_stack(), 0x0000);
     }
 }
