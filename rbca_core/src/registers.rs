@@ -1,6 +1,28 @@
 //! All functionality related to the registers of the emulated CPU.
 use std::default::Default;
 
+/// Enum to define the register target of a function.
+#[derive(Debug, Copy, Clone)]
+pub enum Target {
+    A,
+    B,
+    C,
+    D,
+    E,
+    F,
+    H,
+    L,
+}
+
+/// Enum to define the virtual register target of a function.
+#[derive(Debug, Copy, Clone)]
+pub enum VirtTarget {
+    AF,
+    BC,
+    DE,
+    HL,
+}
+
 /// The bit masks for the different flags of register `F`.
 #[derive(Debug, Copy, Clone)]
 pub enum RegFlag {
@@ -39,45 +61,27 @@ impl Registers {
         Self::default()
     }
 
-    /// Get register `AF`.
-    pub fn get_af(&self) -> u16 {
-        Self::get_virtual_register_helper(self.a, self.f)
+    /// Get the value of a given virtual register.
+    pub fn get_virt_reg(&self, target: VirtTarget) -> u16 {
+        let (first_register, second_register) = match target {
+            VirtTarget::AF => (self.a, self.f),
+            VirtTarget::BC => (self.a, self.f),
+            VirtTarget::DE => (self.d, self.e),
+            VirtTarget::HL => (self.h, self.l),
+        };
+        ((first_register as u16) << 8) | (second_register as u16)
     }
 
-    /// Get register `BC`.
-    pub fn get_bc(&self) -> u16 {
-        Self::get_virtual_register_helper(self.b, self.c)
-    }
-
-    /// Get register `DE`.
-    pub fn get_de(&self) -> u16 {
-        Self::get_virtual_register_helper(self.d, self.e)
-    }
-
-    /// Get register `HL`.
-    pub fn get_hl(&self) -> u16 {
-        Self::get_virtual_register_helper(self.h, self.l)
-    }
-
-    /// Set register `AF`.
-    pub fn set_af(&mut self, value: u16) {
-        // Last nibble of `F` must always be zero.
-        Self::set_virtual_register_helper(&mut self.a, &mut self.f, value & 0xFFF0)
-    }
-
-    /// Set register `BC`.
-    pub fn set_bc(&mut self, value: u16) {
-        Self::set_virtual_register_helper(&mut self.b, &mut self.c, value)
-    }
-
-    /// Set register `DE`.
-    pub fn set_de(&mut self, value: u16) {
-        Self::set_virtual_register_helper(&mut self.d, &mut self.e, value)
-    }
-
-    /// Set register `HL`.
-    pub fn set_hl(&mut self, value: u16) {
-        Self::set_virtual_register_helper(&mut self.h, &mut self.l, value)
+    /// Set the value of a given virtual register.
+    pub fn set_virt_reg(&mut self, target: VirtTarget, value: u16) {
+        let (first_register, second_register) = match target {
+            VirtTarget::AF => (&mut self.a, &mut self.f),
+            VirtTarget::BC => (&mut self.a, &mut self.f),
+            VirtTarget::DE => (&mut self.d, &mut self.e),
+            VirtTarget::HL => (&mut self.h, &mut self.l),
+        };
+        *first_register = ((value & 0xFF00) >> 8) as u8;
+        *second_register = (value & 0x00FF) as u8;
     }
 
     /// Get flag.
@@ -90,17 +94,6 @@ impl Registers {
         let pos = (flag as u8).trailing_zeros();
         self.f = (self.f & !(0b1 << pos)) | ((if value { 1 } else { 0 }) << pos)
     }
-
-    /// Abstraction of the common code for setting virtual 16-bit registers.
-    fn set_virtual_register_helper(first_register: &mut u8, second_register: &mut u8, value: u16) {
-        *first_register = ((value & 0xFF00) >> 8) as u8;
-        *second_register = (value & 0x00FF) as u8;
-    }
-
-    /// Abstraction of the common code for getting virtual 16-bit registers.
-    fn get_virtual_register_helper(first_register: u8, second_register: u8) -> u16 {
-        ((first_register as u16) << 8) | (second_register as u16)
-    }
 }
 
 #[cfg(test)]
@@ -112,19 +105,19 @@ mod tests {
     #[test]
     fn test_virtual_registers() {
         let mut rs = Registers::default();
-        assert_eq!(rs.get_af(), 0x0000);
-        assert_eq!(rs.get_bc(), 0x0000);
-        assert_eq!(rs.get_de(), 0x0000);
-        assert_eq!(rs.get_hl(), 0x0000);
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x0000);
+        assert_eq!(rs.get_virt_reg(VirtTarget::BC), 0x0000);
+        assert_eq!(rs.get_virt_reg(VirtTarget::DE), 0x0000);
+        assert_eq!(rs.get_virt_reg(VirtTarget::HL), 0x0000);
 
-        rs.set_af(0x01A0);
-        rs.set_bc(0x4567);
-        rs.set_de(0x89AB);
-        rs.set_hl(0xCDEF);
-        assert_eq!(rs.get_af(), 0x01A0);
-        assert_eq!(rs.get_bc(), 0x4567);
-        assert_eq!(rs.get_de(), 0x89AB);
-        assert_eq!(rs.get_hl(), 0xCDEF);
+        rs.set_virt_reg(VirtTarget::AF, 0x01A0);
+        rs.set_virt_reg(VirtTarget::BC, 0x4567);
+        rs.set_virt_reg(VirtTarget::DE, 0x89AB);
+        rs.set_virt_reg(VirtTarget::HL, 0xCDEF);
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x01A0);
+        assert_eq!(rs.get_virt_reg(VirtTarget::BC), 0x4567);
+        assert_eq!(rs.get_virt_reg(VirtTarget::DE), 0x89AB);
+        assert_eq!(rs.get_virt_reg(VirtTarget::HL), 0xCDEF);
         assert_eq!(rs.a, 0x01);
         assert_eq!(rs.b, 0x45);
         assert_eq!(rs.c, 0x67);
@@ -135,7 +128,7 @@ mod tests {
         assert_eq!(rs.l, 0xEF);
 
         rs.a = 0xFF;
-        assert_eq!(rs.get_af(), 0xFFA0);
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0xFFA0);
     }
 
     #[test]
@@ -146,7 +139,7 @@ mod tests {
         assert!(!rs.get_flag(RegFlag::H));
         assert!(!rs.get_flag(RegFlag::C));
         assert_eq!(rs.f, 0x00);
-        assert_eq!(rs.get_af(), 0x0000);
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x0000);
 
         rs.set_flag(RegFlag::C, true);
         assert!(rs.get_flag(RegFlag::C));
@@ -156,17 +149,17 @@ mod tests {
         rs.set_flag(RegFlag::Z, true);
         assert!(rs.get_flag(RegFlag::Z));
         assert!(!rs.get_flag(RegFlag::N));
-        assert_eq!(rs.get_af(), 0x0080);
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x0080);
 
         rs.set_flag(RegFlag::H, true);
         assert!(rs.get_flag(RegFlag::H));
         assert!(rs.get_flag(RegFlag::Z));
-        assert_eq!(rs.get_af(), 0x00A0);
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x00A0);
 
         rs.set_flag(RegFlag::Z, false);
         assert!(rs.get_flag(RegFlag::H));
         assert!(!rs.get_flag(RegFlag::Z));
-        assert_eq!(rs.get_af(), 0x0020);
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x0020);
 
         rs.set_flag(RegFlag::N, true);
         rs.set_flag(RegFlag::C, true);
@@ -174,9 +167,9 @@ mod tests {
         assert!(rs.get_flag(RegFlag::N));
         assert!(rs.get_flag(RegFlag::H));
         assert!(rs.get_flag(RegFlag::C));
-        assert_eq!(rs.get_af(), 0x0070);
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x0070);
 
         rs.set_flag(RegFlag::Z, true);
-        assert_eq!(rs.get_af(), 0x00F0);
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x00F0);
     }
 }
