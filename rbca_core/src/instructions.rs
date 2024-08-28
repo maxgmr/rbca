@@ -803,6 +803,12 @@ fn jp_helper(cpu: &mut Cpu, address: u16) {
     cpu.pc = address;
 }
 
+// PUSH nn: Push virtual register nn to stack. Set sp = sp -= 2.
+
+// POP nn: Pop 2 bytes off stack into virtual register nn. Set sp = sp += 2.
+
+// RST n: Push current address to stack. Jump to address 0x0000 + n.
+
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
@@ -822,19 +828,19 @@ mod tests {
 
         cpu.cycle();
         assert_eq!(cpu.pc, 0x0003);
-        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::BC), 0x1234);
+        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::BC), 0x3412);
 
         cpu.cycle();
         assert_eq!(cpu.pc, 0x0006);
-        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::DE), 0x5678);
+        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::DE), 0x7856);
 
         cpu.cycle();
         assert_eq!(cpu.pc, 0x0009);
-        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::HL), 0x9ABC);
+        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::HL), 0xBC9A);
 
         cpu.cycle();
         assert_eq!(cpu.pc, 0x000C);
-        assert_eq!(cpu.sp, 0xDEF0);
+        assert_eq!(cpu.sp, 0xF0DE);
     }
 
     #[test]
@@ -928,7 +934,7 @@ mod tests {
     fn test_jumps() {
         let mut cpu = Cpu::new();
         // (Testing JP nn) Jump to address 0x1234.
-        let data_1 = [0xC3, 0x12, 0x34];
+        let data_1 = [0xC3, 0x34, 0x12];
         cpu.load(0x0000, &data_1);
         cpu.cycle();
         assert_eq!(cpu.pc, 0x1234);
@@ -936,8 +942,8 @@ mod tests {
         // (Testing JP ~cc,nn) Don't do these jumps; conditions not met. Then, jump to address
         // 0x2000.
         let data_2 = [
-            0xC2, 0xFF, 0xFF, 0xCA, 0xFF, 0xFF, 0xD2, 0xFF, 0xFF, 0xDA, 0xFF, 0xFF, 0xC3, 0x20,
-            0x00,
+            0xC2, 0xFF, 0xFF, 0xCA, 0xFF, 0xFF, 0xD2, 0xFF, 0xFF, 0xDA, 0xFF, 0xFF, 0xC3, 0x00,
+            0x20,
         ];
         cpu.load(0x1234, &data_2);
 
@@ -963,13 +969,13 @@ mod tests {
         assert_eq!(cpu.pc, 0x2000);
 
         // (Testing JP cc,nn) Do all these jumps; the conditions are met.
-        let data_3 = [0xC2, 0x20, 0x10];
+        let data_3 = [0xC2, 0x10, 0x20];
         cpu.load(0x2000, &data_3);
         let data_4 = [0xCA, 0x20, 0x20];
         cpu.load(0x2010, &data_4);
-        let data_5 = [0xD2, 0x20, 0x30];
+        let data_5 = [0xD2, 0x30, 0x20];
         cpu.load(0x2020, &data_5);
-        let data_6 = [0xDA, 0x20, 0x40];
+        let data_6 = [0xDA, 0x40, 0x20];
         cpu.load(0x2030, &data_6);
 
         cpu.regs.reset_flags();
@@ -1001,7 +1007,7 @@ mod tests {
 
         // (Testing JR ~cc,n) Don't do these jumps; conditions not met. Then, jump to 0x3000.
         let data_8 = [
-            0x20, 0xFF, 0x28, 0xFF, 0x30, 0xFF, 0x38, 0xFF, 0xC3, 0x30, 0x00,
+            0x20, 0xFF, 0x28, 0xFF, 0x30, 0xFF, 0x38, 0xFF, 0xC3, 0x00, 0x30,
         ];
         cpu.load(0x2078, &data_8);
         cpu.regs.reset_flags();
@@ -1049,5 +1055,10 @@ mod tests {
         cpu.regs.set_flag(RegFlag::C, true);
         cpu.cycle();
         assert_eq!(cpu.pc, 0x3040);
+    }
+
+    #[test]
+    fn test_rst_n() {
+        let mut cpu = Cpu::new();
     }
 }

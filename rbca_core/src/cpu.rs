@@ -39,11 +39,22 @@ impl Cpu {
         self.mem_bus.memory[(self.pc as usize) + 1]
     }
 
-    /// Get next two bytes.
-    // TODO might be little endian!!!
+    /// Get next two bytes (little-endian).
     pub fn get_next_2_bytes(&mut self) -> u16 {
-        ((self.mem_bus.memory[(self.pc as usize) + 1] as u16) << 8)
-            | (self.mem_bus.memory[(self.pc as usize) + 2] as u16)
+        self.mem_bus.read_2_bytes(self.pc + 1)
+    }
+
+    /// Push to stack.
+    pub fn push_stack(&mut self, value: u16) {
+        self.sp = self.sp.wrapping_sub(2);
+        self.mem_bus.write_2_bytes(self.sp, value);
+    }
+
+    /// Pop from stack.
+    pub fn pop_stack(&mut self) -> u16 {
+        let popped_val = self.mem_bus.read_2_bytes(self.sp);
+        self.sp += 2;
+        popped_val
     }
 }
 impl Default for Cpu {
@@ -68,6 +79,6 @@ mod tests {
         let mut cpu = Cpu::new();
         let data = [0x01, 0x23, 0x45, 0x67];
         cpu.load(0x0000, &data);
-        assert_eq!(cpu.get_next_2_bytes(), 0x2345);
+        assert_eq!(cpu.get_next_2_bytes(), 0x4523);
     }
 }

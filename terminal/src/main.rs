@@ -24,4 +24,6 @@ fn main() {
     while (cpu.pc as usize) < (DMG_BOOT_SIZE + buffer.len()) {
         cpu.cycle();
     }
+
+    println!("done");
 }
