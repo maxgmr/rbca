@@ -108,10 +108,10 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x22 => ld_hli_a(cpu),
 
         // LDH (n),A
-        // 0xE0 =>
+        0xE0 => ldh_n_a(cpu),
 
         // LDH A,(n)
-        // 0xF0 =>
+        0xF0 => ldh_a_n(cpu),
 
         // LD n,nn
         0x01 => ld_n_nn(cpu, VirtTarget::BC),
@@ -813,7 +813,6 @@ fn ld_a_hl_helper(cpu: &mut Cpu, is_inc: bool) {
 
     cpu.pc += 1;
 }
-
 fn ld_hl_a_helper(cpu: &mut Cpu, is_inc: bool) {
     let address = cpu.regs.get_virt_reg(VirtTarget::HL);
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(Target::A));
@@ -822,6 +821,20 @@ fn ld_hl_a_helper(cpu: &mut Cpu, is_inc: bool) {
     cpu.regs.set_virt_reg(VirtTarget::HL, new_val);
 
     cpu.pc += 1;
+}
+
+// LDH (n),A: Set (0xFF00 + n) = A.
+fn ldh_n_a(cpu: &mut Cpu) {
+    let address = 0xFF00 | (cpu.get_next_byte() as u16);
+    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(Target::A));
+    cpu.pc += 2;
+}
+
+// LDH A,(n): Set A = (0xFF00 + n).
+fn ldh_a_n(cpu: &mut Cpu) {
+    let address = 0xFF00 | (cpu.get_next_byte() as u16);
+    cpu.regs.set_reg(Target::A, cpu.mem_bus.read_byte(address));
+    cpu.pc += 2;
 }
 
 // NOP: Do nothing.
@@ -1559,5 +1572,22 @@ mod tests {
         assert_eq!(cpu.mem_bus.read_byte(0x1236), 0xEE);
         assert_eq!(cpu.regs.get_reg(Target::A), 0xEE);
         assert_eq!(cpu.regs.get_virt_reg(VirtTarget::HL), 0x1237);
+    }
+
+    #[test]
+    fn test_ldh_n_a_a_n() {
+        let mut cpu = Cpu::new();
+        let data = [0xF0, 0x12, 0xE0, 0x34];
+        cpu.mem_bus.write_byte(0xFF12, 0xFF);
+        cpu.mem_bus.write_byte(0xFF34, 0x00);
+        cpu.load(0x0000, &data);
+        cpu.regs.set_reg(Target::A, 0x00);
+        cpu.pc = 0x0000;
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xFF);
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(0xFF34), 0xFF);
     }
 }
