@@ -78,17 +78,17 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x3E => ld_a_n(cpu),
 
         // LD n,A
-        // 0x7F =>
-        // 0x47 =>
-        // 0x4F =>
-        // 0x57 =>
-        // 0x5F =>
-        // 0x67 =>
-        // 0x6F =>
-        // 0x02 =>
-        // 0x12 =>
-        // 0x77 =>
-        // 0xEA =>
+        0x7F => ld_r_a(cpu, Target::A),
+        0x47 => ld_r_a(cpu, Target::B),
+        0x4F => ld_r_a(cpu, Target::C),
+        0x57 => ld_r_a(cpu, Target::D),
+        0x5F => ld_r_a(cpu, Target::E),
+        0x67 => ld_r_a(cpu, Target::H),
+        0x6F => ld_r_a(cpu, Target::L),
+        0x02 => ld_vr_a(cpu, VirtTarget::BC),
+        0x12 => ld_vr_a(cpu, VirtTarget::DE),
+        0x77 => ld_vr_a(cpu, VirtTarget::HL),
+        0xEA => ld_nn_a(cpu),
 
         // LD A,(C)
         // 0xF2 =>
@@ -751,6 +751,22 @@ fn ld_a_n_helper(cpu: &mut Cpu, value: u8) {
     cpu.regs.set_reg(Target::A, value);
 }
 
+// LD n,A: Set n = A.
+fn ld_r_a(cpu: &mut Cpu, target: Target) {
+    cpu.regs.set_reg(target, cpu.regs.get_reg(Target::A));
+    cpu.pc += 1;
+}
+fn ld_vr_a(cpu: &mut Cpu, target: VirtTarget) {
+    let address = cpu.regs.get_virt_reg(target);
+    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(Target::A));
+    cpu.pc += 1;
+}
+fn ld_nn_a(cpu: &mut Cpu) {
+    let address = cpu.get_next_2_bytes();
+    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(Target::A));
+    cpu.pc += 3;
+}
+
 // NOP: Do nothing.
 fn nop(cpu: &mut Cpu) {
     cpu.pc += 1;
@@ -1369,5 +1385,67 @@ mod tests {
         assert_eq!(cpu.regs.get_reg(Target::A), 0x2A);
         cpu.cycle();
         assert_eq!(cpu.regs.get_reg(Target::A), 0x3A);
+    }
+
+    #[test]
+    fn test_ld_n_a() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_reg(Target::A, 0xFF);
+        cpu.regs.set_reg(Target::B, 0x00);
+        cpu.regs.set_reg(Target::C, 0x00);
+        cpu.regs.set_reg(Target::D, 0x00);
+        cpu.regs.set_reg(Target::E, 0x00);
+        cpu.regs.set_reg(Target::H, 0x00);
+        cpu.regs.set_reg(Target::L, 0x00);
+        // Put value A into A, B, C, D, E, H, L, (BC), (DE), (HL), (nn).
+        let data = [
+            0x7F, 0x47, 0x4F, 0x57, 0x5F, 0x67, 0x6F, 0x02, 0x12, 0x77, 0xEA, 0x77, 0x77,
+        ];
+        cpu.load(0x0000, &data);
+        cpu.pc = 0x0000;
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xFF);
+        assert_eq!(cpu.regs.get_reg(Target::B), 0x00);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::B), 0xFF);
+        assert_eq!(cpu.regs.get_reg(Target::C), 0x00);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::C), 0xFF);
+        assert_eq!(cpu.regs.get_reg(Target::D), 0x00);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::D), 0xFF);
+        assert_eq!(cpu.regs.get_reg(Target::E), 0x00);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::E), 0xFF);
+        assert_eq!(cpu.regs.get_reg(Target::H), 0x00);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::H), 0xFF);
+        assert_eq!(cpu.regs.get_reg(Target::L), 0x00);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::L), 0xFF);
+
+        // Set regs to point to different addresses for testing
+        cpu.regs.set_virt_reg(VirtTarget::BC, 0x4444);
+        cpu.regs.set_virt_reg(VirtTarget::DE, 0x5555);
+        cpu.regs.set_virt_reg(VirtTarget::HL, 0x6666);
+
+        // Make sure that the values at the addresses aren't already 0xFF.
+        cpu.mem_bus.write_2_bytes(0x4444, 0x0000);
+        cpu.mem_bus.write_2_bytes(0x5555, 0x0000);
+        cpu.mem_bus.write_2_bytes(0x6666, 0x0000);
+        cpu.mem_bus.write_2_bytes(0x7777, 0x0000);
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_2_bytes(0x4444), 0x00FF);
+        assert_eq!(cpu.mem_bus.read_2_bytes(0x5555), 0x0000);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_2_bytes(0x5555), 0x00FF);
+        assert_eq!(cpu.mem_bus.read_2_bytes(0x6666), 0x0000);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_2_bytes(0x6666), 0x00FF);
+        assert_eq!(cpu.mem_bus.read_2_bytes(0x7777), 0x0000);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_2_bytes(0x7777), 0x00FF);
     }
 }
