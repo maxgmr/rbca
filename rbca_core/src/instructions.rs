@@ -96,7 +96,7 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0xE2 => ld_c_a(cpu),
 
         // LD A,(HLD) / LD A,(HL-) / LDD A,(HL)
-        // 0x3A =>
+        0x3A => ld_a_hld(cpu),
 
         // LD (HLD),A / LD (HL-),A / LDD (HL,A)
         0x32 => ld_hld_a(cpu),
@@ -698,6 +698,10 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
     }
 }
 
+// ----------------------------------------------------
+// FUNCTIONS
+// ----------------------------------------------------
+
 // LD nn,n: Set 8-bit immediate value n = nn.
 fn ld_nn_n(cpu: &mut Cpu, target: Target) {
     cpu.mem_bus.memory[(cpu.pc as usize) + 1] = cpu.regs.get_reg(target);
@@ -780,6 +784,22 @@ fn ld_c_a(cpu: &mut Cpu) {
     cpu.pc += 1;
 }
 
+// LD A,(HLD): Set A = (HL). HL -= 1.
+fn ld_a_hld(cpu: &mut Cpu) {
+    let address = cpu.regs.get_virt_reg(VirtTarget::HL);
+    cpu.regs.set_reg(Target::A, cpu.mem_bus.read_byte(address));
+    cpu.regs.set_virt_reg(VirtTarget::HL, address - 1);
+    cpu.pc += 1;
+}
+
+// LD (HLD),A: Set (HL) = A. HL -= 1.
+fn ld_hld_a(cpu: &mut Cpu) {
+    let address = cpu.regs.get_virt_reg(VirtTarget::HL);
+    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(Target::A));
+    cpu.regs.set_virt_reg(VirtTarget::HL, address - 1);
+    cpu.pc += 1;
+}
+
 // NOP: Do nothing.
 fn nop(cpu: &mut Cpu) {
     cpu.pc += 1;
@@ -803,14 +823,6 @@ fn xor_n(cpu: &mut Cpu, target: Target) {
     let result = cpu.regs.get_reg(Target::A) ^ cpu.regs.get_reg(target);
     cpu.regs.set_flag(RegFlag::Z, result == 0);
     cpu.regs.set_reg(Target::A, result);
-    cpu.pc += 1;
-}
-
-// LD (HLD),A: (HL) = A. HL -= 1.
-fn ld_hld_a(cpu: &mut Cpu) {
-    let address = cpu.regs.get_virt_reg(VirtTarget::HL);
-    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(Target::A));
-    cpu.regs.set_virt_reg(VirtTarget::HL, address - 1);
     cpu.pc += 1;
 }
 
@@ -870,7 +882,6 @@ fn jp_cc_helper(cpu: &mut Cpu, flag: RegFlag, expected_value: bool, is_jr: bool)
         (false, false) => cpu.pc += 3,
     }
 }
-
 // Helper function for jumps
 fn jp_helper(cpu: &mut Cpu, address: u16) {
     cpu.pc = address;
@@ -1481,5 +1492,19 @@ mod tests {
         cpu.cycle();
         assert_eq!(cpu.regs.get_reg(Target::A), 0xFF);
         assert_eq!(cpu.mem_bus.read_byte(0xFF34), 0xFF);
+    }
+
+    #[test]
+    fn test_a_hld() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_virt_reg(VirtTarget::HL, 0x1234);
+        cpu.mem_bus.write_byte(0x1234, 0xFF);
+        cpu.regs.set_reg(Target::A, 0x00);
+        cpu.mem_bus.write_byte(0x0000, 0x3A);
+        cpu.pc = 0x0000;
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xFF);
+        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::HL), 0x1233);
     }
 }
