@@ -78,7 +78,6 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x3E => ld_a_n(cpu),
 
         // LD n,A
-        0x7F => ld_r_a(cpu, Target::A),
         0x47 => ld_r_a(cpu, Target::B),
         0x4F => ld_r_a(cpu, Target::C),
         0x57 => ld_r_a(cpu, Target::D),
@@ -91,10 +90,10 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0xEA => ld_nn_a(cpu),
 
         // LD A,(C)
-        // 0xF2 =>
+        0xF2 => ld_a_c(cpu),
 
         // LD (C),A
-        // 0xE2 =>
+        0xE2 => ld_c_a(cpu),
 
         // LD A,(HLD) / LD A,(HL-) / LDD A,(HL)
         // 0x3A =>
@@ -765,6 +764,20 @@ fn ld_nn_a(cpu: &mut Cpu) {
     let address = cpu.get_next_2_bytes();
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(Target::A));
     cpu.pc += 3;
+}
+
+// LD A,(C): Set A = (0xFF00 + C).
+fn ld_a_c(cpu: &mut Cpu) {
+    let address = 0xFF00 | (cpu.regs.get_reg(Target::C) as u16);
+    cpu.regs.set_reg(Target::A, cpu.mem_bus.read_byte(address));
+    cpu.pc += 1;
+}
+
+// LD (C),A: Set (0xFF00 + C) = A.
+fn ld_c_a(cpu: &mut Cpu) {
+    let address = 0xFF00 | (cpu.regs.get_reg(Target::C) as u16);
+    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(Target::A));
+    cpu.pc += 1;
 }
 
 // NOP: Do nothing.
@@ -1447,5 +1460,26 @@ mod tests {
         assert_eq!(cpu.mem_bus.read_2_bytes(0x7777), 0x0000);
         cpu.cycle();
         assert_eq!(cpu.mem_bus.read_2_bytes(0x7777), 0x00FF);
+    }
+
+    #[test]
+    fn test_ld_a_c_c_a() {
+        let mut cpu = Cpu::new();
+
+        cpu.mem_bus.write_byte(0xFF12, 0xFF);
+        cpu.mem_bus.write_byte(0xFF34, 0xEE);
+        cpu.regs.set_reg(Target::A, 0x00);
+        cpu.regs.set_reg(Target::C, 0x12);
+        cpu.mem_bus.write_byte(0x0000, 0xF2);
+        cpu.mem_bus.write_byte(0x0001, 0xE2);
+        cpu.pc = 0x0000;
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xFF);
+
+        cpu.regs.set_reg(Target::C, 0x34);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xFF);
+        assert_eq!(cpu.mem_bus.read_byte(0xFF34), 0xFF);
     }
 }
