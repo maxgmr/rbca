@@ -5,12 +5,12 @@ use crate::{Cpu, RegFlag, Target, VirtTarget};
 pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
     match opcode {
         // LD nn,n
-        // 0x06 =>
-        // 0x0E =>
-        // 0x16 =>
-        // 0x1E =>
-        // 0x26 =>
-        // 0x2E =>
+        0x06 => ld_nn_n(cpu, Target::B),
+        0x0E => ld_nn_n(cpu, Target::C),
+        0x16 => ld_nn_n(cpu, Target::D),
+        0x1E => ld_nn_n(cpu, Target::E),
+        0x26 => ld_nn_n(cpu, Target::H),
+        0x2E => ld_nn_n(cpu, Target::L),
 
         // LD r1,r2
         // 0x7F =>
@@ -707,7 +707,11 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
     }
 }
 
-// LD nn,n:
+// LD nn,n: Set 8-bit immediate value n = nn.
+fn ld_nn_n(cpu: &mut Cpu, target: Target) {
+    cpu.mem_bus.memory[(cpu.pc as usize) + 1] = cpu.regs.get_reg(target);
+    cpu.pc += 1;
+}
 
 // NOP: Do nothing.
 fn nop(cpu: &mut Cpu) {
@@ -1178,5 +1182,30 @@ mod tests {
         assert_eq!(cpu.pop_stack(), 0x0010);
         assert_eq!(cpu.pop_stack(), 0x0008);
         assert_eq!(cpu.pop_stack(), 0x0000);
+    }
+
+    #[test]
+    fn test_ld_nn_n() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_reg(Target::B, 0x0E);
+        cpu.regs.set_reg(Target::C, 0x16);
+        cpu.regs.set_reg(Target::D, 0x1E);
+        cpu.regs.set_reg(Target::E, 0x26);
+        cpu.regs.set_reg(Target::H, 0x2E);
+        cpu.regs.set_reg(Target::L, 0x06);
+        cpu.mem_bus.write_byte(0x0000, 0x06);
+        cpu.pc = 0x0000;
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x0E);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x16);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x1E);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x26);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x2E);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x06);
     }
 }
