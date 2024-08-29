@@ -13,63 +13,63 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x2E => ld_nn_n(cpu, Target::L),
 
         // LD r1,r2
-        // 0x7F =>
-        // 0x78 =>
-        // 0x79 =>
-        // 0x7A =>
-        // 0x7B =>
-        // 0x7C =>
-        // 0x7D =>
-        // 0x7E =>
-        // 0x40 =>
-        // 0x41 =>
-        // 0x42 =>
-        // 0x43 =>
-        // 0x44 =>
-        // 0x45 =>
-        // 0x46 =>
-        // 0x48 =>
-        // 0x49 =>
-        // 0x4A =>
-        // 0x4B =>
-        // 0x4C =>
-        // 0x4D =>
-        // 0x4E =>
-        // 0x50 =>
-        // 0x51 =>
-        // 0x52 =>
-        // 0x53 =>
-        // 0x54 =>
-        // 0x55 =>
-        // 0x56 =>
-        // 0x58 =>
-        // 0x59 =>
-        // 0x5A =>
-        // 0x5B =>
-        // 0x5C =>
-        // 0x5D =>
-        // 0x5E =>
-        // 0x60 =>
-        // 0x61 =>
-        // 0x62 =>
-        // 0x63 =>
-        // 0x64 =>
-        // 0x65 =>
-        // 0x66 =>
-        // 0x68 =>
-        // 0x69 =>
-        // 0x6A =>
-        // 0x6B =>
-        // 0x6C =>
-        // 0x6D =>
-        // 0x6E =>
-        // 0x70 =>
-        // 0x71 =>
-        // 0x72 =>
-        // 0x73 =>
-        // 0x74 =>
-        // 0x75 =>
-        // 0x36 =>
+        0x7F => ld_r1_r2(cpu, Target::A, Target::A),
+        0x78 => ld_r1_r2(cpu, Target::A, Target::B),
+        0x79 => ld_r1_r2(cpu, Target::A, Target::C),
+        0x7A => ld_r1_r2(cpu, Target::A, Target::D),
+        0x7B => ld_r1_r2(cpu, Target::A, Target::E),
+        0x7C => ld_r1_r2(cpu, Target::A, Target::H),
+        0x7D => ld_r1_r2(cpu, Target::A, Target::L),
+        0x7E => ld_r1_hl(cpu, Target::A),
+        0x40 => ld_r1_r2(cpu, Target::B, Target::B),
+        0x41 => ld_r1_r2(cpu, Target::B, Target::C),
+        0x42 => ld_r1_r2(cpu, Target::B, Target::D),
+        0x43 => ld_r1_r2(cpu, Target::B, Target::E),
+        0x44 => ld_r1_r2(cpu, Target::B, Target::H),
+        0x45 => ld_r1_r2(cpu, Target::B, Target::L),
+        0x46 => ld_r1_hl(cpu, Target::B),
+        0x48 => ld_r1_r2(cpu, Target::C, Target::B),
+        0x49 => ld_r1_r2(cpu, Target::C, Target::C),
+        0x4A => ld_r1_r2(cpu, Target::C, Target::D),
+        0x4B => ld_r1_r2(cpu, Target::C, Target::E),
+        0x4C => ld_r1_r2(cpu, Target::C, Target::H),
+        0x4D => ld_r1_r2(cpu, Target::C, Target::L),
+        0x4E => ld_r1_hl(cpu, Target::C),
+        0x50 => ld_r1_r2(cpu, Target::D, Target::B),
+        0x51 => ld_r1_r2(cpu, Target::D, Target::C),
+        0x52 => ld_r1_r2(cpu, Target::D, Target::D),
+        0x53 => ld_r1_r2(cpu, Target::D, Target::E),
+        0x54 => ld_r1_r2(cpu, Target::D, Target::H),
+        0x55 => ld_r1_r2(cpu, Target::D, Target::L),
+        0x56 => ld_r1_hl(cpu, Target::D),
+        0x58 => ld_r1_r2(cpu, Target::E, Target::B),
+        0x59 => ld_r1_r2(cpu, Target::E, Target::C),
+        0x5A => ld_r1_r2(cpu, Target::E, Target::D),
+        0x5B => ld_r1_r2(cpu, Target::E, Target::E),
+        0x5C => ld_r1_r2(cpu, Target::E, Target::H),
+        0x5D => ld_r1_r2(cpu, Target::E, Target::L),
+        0x5E => ld_r1_hl(cpu, Target::E),
+        0x60 => ld_r1_r2(cpu, Target::H, Target::B),
+        0x61 => ld_r1_r2(cpu, Target::H, Target::C),
+        0x62 => ld_r1_r2(cpu, Target::H, Target::D),
+        0x63 => ld_r1_r2(cpu, Target::H, Target::E),
+        0x64 => ld_r1_r2(cpu, Target::H, Target::H),
+        0x65 => ld_r1_r2(cpu, Target::H, Target::L),
+        0x66 => ld_r1_hl(cpu, Target::H),
+        0x68 => ld_r1_r2(cpu, Target::L, Target::B),
+        0x69 => ld_r1_r2(cpu, Target::L, Target::C),
+        0x6A => ld_r1_r2(cpu, Target::L, Target::D),
+        0x6B => ld_r1_r2(cpu, Target::L, Target::E),
+        0x6C => ld_r1_r2(cpu, Target::L, Target::H),
+        0x6D => ld_r1_r2(cpu, Target::L, Target::L),
+        0x6E => ld_r1_hl(cpu, Target::L),
+        0x70 => ld_hl_r2(cpu, Target::B),
+        0x71 => ld_hl_r2(cpu, Target::C),
+        0x72 => ld_hl_r2(cpu, Target::D),
+        0x73 => ld_hl_r2(cpu, Target::E),
+        0x74 => ld_hl_r2(cpu, Target::H),
+        0x75 => ld_hl_r2(cpu, Target::L),
+        0x36 => ld_hl_n(cpu),
 
         // LD A,n
         // 0x7F =>
@@ -710,7 +710,31 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
 // LD nn,n: Set 8-bit immediate value n = nn.
 fn ld_nn_n(cpu: &mut Cpu, target: Target) {
     cpu.mem_bus.memory[(cpu.pc as usize) + 1] = cpu.regs.get_reg(target);
+    cpu.pc += 2;
+}
+
+// LD r1,r2: Set r1 = r2.
+fn ld_r1_r2(cpu: &mut Cpu, r1: Target, r2: Target) {
+    cpu.regs.set_reg(r1, cpu.regs.get_reg(r2));
     cpu.pc += 1;
+}
+fn ld_r1_hl(cpu: &mut Cpu, r1: Target) {
+    let address = cpu.regs.get_virt_reg(VirtTarget::HL);
+    let value = cpu.mem_bus.read_byte(address);
+    cpu.regs.set_reg(r1, value);
+    cpu.pc += 1;
+}
+fn ld_hl_r2(cpu: &mut Cpu, r2: Target) {
+    let address = cpu.regs.get_virt_reg(VirtTarget::HL);
+    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(r2));
+    cpu.pc += 1;
+}
+fn ld_hl_n(cpu: &mut Cpu) {
+    let address = cpu.regs.get_virt_reg(VirtTarget::HL);
+    let value = cpu.get_next_byte();
+    cpu.mem_bus.write_byte(address, value);
+    // TODO not sure about length
+    cpu.pc += 2;
 }
 
 // NOP: Do nothing.
@@ -1196,16 +1220,89 @@ mod tests {
         cpu.mem_bus.write_byte(0x0000, 0x06);
         cpu.pc = 0x0000;
         cpu.cycle();
+        cpu.pc -= 1;
         assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x0E);
         cpu.cycle();
+        cpu.pc -= 1;
         assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x16);
         cpu.cycle();
+        cpu.pc -= 1;
         assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x1E);
         cpu.cycle();
+        cpu.pc -= 1;
         assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x26);
         cpu.cycle();
+        cpu.pc -= 1;
         assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x2E);
         cpu.cycle();
+        cpu.pc -= 1;
         assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x06);
+    }
+
+    #[test]
+    fn test_ld_r1_r2() {
+        fn set_default_vals(cpu: &mut Cpu) {
+            cpu.regs.set_reg(Target::A, 0x12);
+            cpu.regs.set_reg(Target::B, 0x34);
+            cpu.regs.set_reg(Target::C, 0x56);
+            cpu.regs.set_reg(Target::D, 0x78);
+            cpu.regs.set_reg(Target::E, 0x9A);
+            cpu.regs.set_reg(Target::H, 0xBC);
+            cpu.regs.set_reg(Target::L, 0xDE);
+        }
+
+        let mut cpu = Cpu::new();
+        cpu.pc = 0x0000;
+
+        for r1 in Target::iter() {
+            for r2 in Target::iter() {
+                set_default_vals(&mut cpu);
+                let prev_r2_val = cpu.regs.get_reg(r2);
+                let prev_pc = cpu.pc;
+
+                ld_r1_r2(&mut cpu, r1, r2);
+                assert_eq!(cpu.pc, prev_pc + 1);
+                assert_eq!(cpu.regs.get_reg(r1), cpu.regs.get_reg(r2));
+                assert_eq!(cpu.regs.get_reg(r2), prev_r2_val);
+            }
+        }
+
+        let test_byte: u8 = 0xFE;
+        cpu.mem_bus
+            .write_byte(cpu.regs.get_virt_reg(VirtTarget::HL), test_byte);
+        for r1 in Target::iter() {
+            set_default_vals(&mut cpu);
+            let prev_pc = cpu.pc;
+
+            ld_r1_hl(&mut cpu, r1);
+            assert_eq!(cpu.pc, prev_pc + 1);
+            assert_eq!(cpu.regs.get_reg(r1), test_byte);
+        }
+
+        for r2 in Target::iter() {
+            set_default_vals(&mut cpu);
+            cpu.mem_bus
+                .write_byte(cpu.regs.get_virt_reg(VirtTarget::HL), test_byte);
+            let prev_r2_val = cpu.regs.get_reg(r2);
+            let prev_pc = cpu.pc;
+
+            ld_hl_r2(&mut cpu, r2);
+            assert_eq!(cpu.pc, prev_pc + 1);
+            assert_eq!(
+                cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(VirtTarget::HL)),
+                cpu.regs.get_reg(r2)
+            );
+            assert_eq!(prev_r2_val, cpu.regs.get_reg(r2));
+        }
+
+        let data = [0x36, 0x2A];
+        cpu.load(0x0000, &data);
+        cpu.pc = 0x0000;
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x0002);
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(VirtTarget::HL)),
+            0x2A
+        );
     }
 }
