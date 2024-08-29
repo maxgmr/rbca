@@ -72,18 +72,10 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x36 => ld_hl_n(cpu),
 
         // LD A,n
-        // 0x7F =>
-        // 0x78 =>
-        // 0x79 =>
-        // 0x7A =>
-        // 0x7B =>
-        // 0x7C =>
-        // 0x7D =>
-        // 0x0A =>
-        // 0x1A =>
-        // 0x7E =>
-        // 0xFA =>
-        // 0x3E =>
+        0x0A => ld_a_vr(cpu, VirtTarget::BC),
+        0x1A => ld_a_vr(cpu, VirtTarget::DE),
+        0xFA => ld_a_nn(cpu),
+        0x3E => ld_a_n(cpu),
 
         // LD n,A
         // 0x7F =>
@@ -737,6 +729,28 @@ fn ld_hl_n(cpu: &mut Cpu) {
     cpu.pc += 2;
 }
 
+// LD A,n: Set A = n.
+fn ld_a_vr(cpu: &mut Cpu, target: VirtTarget) {
+    let address = cpu.regs.get_virt_reg(target);
+    let value = cpu.mem_bus.read_byte(address);
+    ld_a_n_helper(cpu, value);
+    cpu.pc += 1;
+}
+fn ld_a_nn(cpu: &mut Cpu) {
+    let address = cpu.get_next_2_bytes();
+    let value = cpu.mem_bus.read_byte(address);
+    ld_a_n_helper(cpu, value);
+    cpu.pc += 3;
+}
+fn ld_a_n(cpu: &mut Cpu) {
+    let value = cpu.get_next_byte();
+    ld_a_n_helper(cpu, value);
+    cpu.pc += 2;
+}
+fn ld_a_n_helper(cpu: &mut Cpu, value: u8) {
+    cpu.regs.set_reg(Target::A, value);
+}
+
 // NOP: Do nothing.
 fn nop(cpu: &mut Cpu) {
     cpu.pc += 1;
@@ -1304,5 +1318,56 @@ mod tests {
             cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(VirtTarget::HL)),
             0x2A
         );
+    }
+
+    #[test]
+    fn test_ld_a_n() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_reg(Target::A, 0x01);
+        cpu.regs.set_reg(Target::B, 0x23);
+        cpu.regs.set_reg(Target::C, 0x45);
+        cpu.regs.set_reg(Target::D, 0x67);
+        cpu.regs.set_reg(Target::E, 0x89);
+        cpu.regs.set_reg(Target::H, 0xAB);
+        cpu.regs.set_reg(Target::L, 0xCD);
+        cpu.mem_bus
+            .write_byte(cpu.regs.get_virt_reg(VirtTarget::BC), 0xFE);
+        cpu.mem_bus
+            .write_byte(cpu.regs.get_virt_reg(VirtTarget::DE), 0xDC);
+        cpu.mem_bus
+            .write_byte(cpu.regs.get_virt_reg(VirtTarget::HL), 0xBA);
+        cpu.mem_bus.write_byte(0x7698, 0x2A);
+        // Put values A, B, C, D, E, H, L, (BC), (DE), (HL), (nn), n into A.
+        let data = [
+            0x7F, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x0A, 0x1A, 0x7E, 0xFA, 0x98, 0x76, 0x3E,
+            0x3A,
+        ];
+        cpu.load(0x0000, &data);
+        cpu.pc = 0x0000;
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x01);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x23);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x45);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x67);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x89);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xAB);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xCD);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xFE);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xDC);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xBA);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x2A);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x3A);
     }
 }
