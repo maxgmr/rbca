@@ -126,7 +126,7 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0xF8 => ld_hl_sp_n(cpu),
 
         // LD (nn),SP
-        // 0x08 =>
+        0x08 => ld_nn_sp(cpu),
 
         // PUSH nn
         0xF5 => push_nn(cpu, VirtTarget::AF),
@@ -870,6 +870,17 @@ fn ld_hl_sp_n(cpu: &mut Cpu) {
     cpu.regs
         .set_virt_reg(VirtTarget::HL, cpu.sp.wrapping_add(n));
     cpu.pc += 2;
+}
+
+// LD (nn),SP: Set (nn) = SP.
+fn ld_nn_sp(cpu: &mut Cpu) {
+    let address = cpu.get_next_2_bytes();
+    cpu.mem_bus.write_2_bytes(address, cpu.sp);
+    // let sp_left_byte = (cpu.sp & 0xFF00) >> 8;
+    // let sp_right_byte = cpu.sp & 0x00FF;
+    // cpu.mem_bus
+    //     .write_2_bytes(address, (sp_right_byte << 8) | sp_left_byte);
+    cpu.pc += 3;
 }
 
 // NOP: Do nothing.
@@ -1672,5 +1683,18 @@ mod tests {
         assert!(!cpu.regs.get_flag(RegFlag::N));
         assert!(cpu.regs.get_flag(RegFlag::H));
         assert!(cpu.regs.get_flag(RegFlag::C));
+    }
+
+    #[test]
+    fn test_ld_nn_sp() {
+        let mut cpu = Cpu::new();
+        cpu.sp = 0x1234;
+        // Put 0x1234 at (0x4321).
+        let data = [0x08, 0x21, 0x43];
+        cpu.load(0x0000, &data);
+        cpu.mem_bus.write_2_bytes(0x1234, 0x0000);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(0x4321), 0x34);
+        assert_eq!(cpu.mem_bus.read_byte(0x4322), 0x12);
     }
 }
