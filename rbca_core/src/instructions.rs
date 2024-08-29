@@ -120,7 +120,7 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x31 => ld_n_nn_sp(cpu),
 
         // LD SP,HL
-        // 0xF9 =>
+        0xF9 => ld_sp_hl(cpu),
 
         // LD HL,SP+n / LDHL SP,n
         // 0xF8 =>
@@ -837,11 +837,6 @@ fn ldh_a_n(cpu: &mut Cpu) {
     cpu.pc += 2;
 }
 
-// NOP: Do nothing.
-fn nop(cpu: &mut Cpu) {
-    cpu.pc += 1;
-}
-
 // LD n,nn: Set n = nn.
 fn ld_n_nn(cpu: &mut Cpu, target: VirtTarget) {
     let nn = cpu.get_next_2_bytes();
@@ -852,6 +847,17 @@ fn ld_n_nn_sp(cpu: &mut Cpu) {
     let nn = cpu.get_next_2_bytes();
     cpu.sp = nn;
     cpu.pc += 3;
+}
+
+// LD SP,HL: Set SP = HL.
+fn ld_sp_hl(cpu: &mut Cpu) {
+    cpu.sp = cpu.regs.get_virt_reg(VirtTarget::HL);
+    cpu.pc += 1;
+}
+
+// NOP: Do nothing.
+fn nop(cpu: &mut Cpu) {
+    cpu.pc += 1;
 }
 
 // XOR n: Set A = A XOR n.
@@ -1589,5 +1595,16 @@ mod tests {
 
         cpu.cycle();
         assert_eq!(cpu.mem_bus.read_byte(0xFF34), 0xFF);
+    }
+
+    #[test]
+    fn test_ld_sp_hl() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_virt_reg(VirtTarget::HL, 0x1234);
+        cpu.sp = 0x0000;
+        cpu.mem_bus.write_byte(0x0000, 0xF9);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0x1234);
     }
 }
