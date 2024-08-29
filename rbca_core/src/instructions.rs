@@ -102,10 +102,10 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x32 => ld_hld_a(cpu),
 
         // LD A,(HLI) / LD A,(HL+) / LDI A,(HL)
-        // 0x2A =>
+        0x2A => ld_a_hli(cpu),
 
         // LD (HLI),A / LD (HL+),A / LDI (HL,A)
-        // 0x22 =>
+        0x22 => ld_hli_a(cpu),
 
         // LDH (n),A
         // 0xE0 =>
@@ -786,17 +786,41 @@ fn ld_c_a(cpu: &mut Cpu) {
 
 // LD A,(HLD): Set A = (HL). HL -= 1.
 fn ld_a_hld(cpu: &mut Cpu) {
-    let address = cpu.regs.get_virt_reg(VirtTarget::HL);
-    cpu.regs.set_reg(Target::A, cpu.mem_bus.read_byte(address));
-    cpu.regs.set_virt_reg(VirtTarget::HL, address - 1);
-    cpu.pc += 1;
+    ld_a_hl_helper(cpu, false);
 }
 
 // LD (HLD),A: Set (HL) = A. HL -= 1.
 fn ld_hld_a(cpu: &mut Cpu) {
+    ld_hl_a_helper(cpu, false);
+}
+
+// LD A,(HLI): Set A = (HL). HL += 1.
+fn ld_a_hli(cpu: &mut Cpu) {
+    ld_a_hl_helper(cpu, true);
+}
+
+// LD (HLI),A: Set (HL) = A. HL += 1.
+fn ld_hli_a(cpu: &mut Cpu) {
+    ld_hl_a_helper(cpu, true)
+}
+
+fn ld_a_hl_helper(cpu: &mut Cpu, is_inc: bool) {
+    let address = cpu.regs.get_virt_reg(VirtTarget::HL);
+    cpu.regs.set_reg(Target::A, cpu.mem_bus.read_byte(address));
+
+    let new_val = if is_inc { address + 1 } else { address - 1 };
+    cpu.regs.set_virt_reg(VirtTarget::HL, new_val);
+
+    cpu.pc += 1;
+}
+
+fn ld_hl_a_helper(cpu: &mut Cpu, is_inc: bool) {
     let address = cpu.regs.get_virt_reg(VirtTarget::HL);
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(Target::A));
-    cpu.regs.set_virt_reg(VirtTarget::HL, address - 1);
+
+    let new_val = if is_inc { address + 1 } else { address - 1 };
+    cpu.regs.set_virt_reg(VirtTarget::HL, new_val);
+
     cpu.pc += 1;
 }
 
@@ -1506,5 +1530,34 @@ mod tests {
         cpu.cycle();
         assert_eq!(cpu.regs.get_reg(Target::A), 0xFF);
         assert_eq!(cpu.regs.get_virt_reg(VirtTarget::HL), 0x1233);
+    }
+
+    #[test]
+    fn test_a_hli_hli_a() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_virt_reg(VirtTarget::HL, 0x1234);
+        cpu.mem_bus.write_byte(0x1234, 0x00);
+        cpu.mem_bus.write_byte(0x1235, 0xEE);
+        cpu.mem_bus.write_byte(0x1236, 0x00);
+        cpu.regs.set_reg(Target::A, 0xFF);
+        cpu.mem_bus.write_byte(0x0000, 0x22);
+        cpu.mem_bus.write_byte(0x0001, 0x2A);
+        cpu.mem_bus.write_byte(0x0002, 0x22);
+        cpu.pc = 0x0000;
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(0x1234), 0xFF);
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xFF);
+        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::HL), 0x1235);
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(0x1235), 0xEE);
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xEE);
+        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::HL), 0x1236);
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(0x1236), 0xEE);
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xEE);
+        assert_eq!(cpu.regs.get_virt_reg(VirtTarget::HL), 0x1237);
     }
 }
