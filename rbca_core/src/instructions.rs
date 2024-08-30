@@ -879,6 +879,19 @@ fn ld_nn_sp(cpu: &mut Cpu) {
     cpu.pc += 3;
 }
 
+// PUSH nn: Push virtual register nn to stack. Set sp = sp -= 2.
+fn push_nn(cpu: &mut Cpu, target: VirtTarget) {
+    cpu.push_stack(cpu.regs.get_virt_reg(target));
+    cpu.pc += 1;
+}
+
+// POP nn: Pop 2 bytes off stack into virtual register nn. Set sp = sp += 2.
+fn pop_nn(cpu: &mut Cpu, target: VirtTarget) {
+    let popped_val = cpu.pop_stack();
+    cpu.regs.set_virt_reg(target, popped_val);
+    cpu.pc += 1;
+}
+
 // ADD A,n: A += n.
 fn add_a_n(cpu: &mut Cpu, target: Target) {
     add_a_n_helper(cpu, cpu.regs.get_reg(target), false);
@@ -1054,19 +1067,6 @@ fn jp_cc_helper(cpu: &mut Cpu, flag: RegFlag, expected_value: bool, is_jr: bool)
 // Helper function for jumps
 fn jp_helper(cpu: &mut Cpu, address: u16) {
     cpu.pc = address;
-}
-
-// PUSH nn: Push virtual register nn to stack. Set sp = sp -= 2.
-fn push_nn(cpu: &mut Cpu, target: VirtTarget) {
-    cpu.push_stack(cpu.regs.get_virt_reg(target));
-    cpu.pc += 1;
-}
-
-// POP nn: Pop 2 bytes off stack into virtual register nn. Set sp = sp += 2.
-fn pop_nn(cpu: &mut Cpu, target: VirtTarget) {
-    let popped_val = cpu.pop_stack();
-    cpu.regs.set_virt_reg(target, popped_val);
-    cpu.pc += 1;
 }
 
 // RST n: Push current address to stack. Jump to address 0x0000 + n.
