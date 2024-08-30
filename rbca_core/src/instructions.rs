@@ -152,15 +152,15 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0xC6 => add_a_n_n(cpu),
 
         // ADC A,n
-        // 0x8F =>
-        // 0x88 =>
-        // 0x89 =>
-        // 0x8A =>
-        // 0x8B =>
-        // 0x8C =>
-        // 0x8D =>
-        // 0x8E =>
-        // 0xCE =>
+        0x8F => adc_a_n(cpu, Target::A),
+        0x88 => adc_a_n(cpu, Target::B),
+        0x89 => adc_a_n(cpu, Target::C),
+        0x8A => adc_a_n(cpu, Target::D),
+        0x8B => adc_a_n(cpu, Target::E),
+        0x8C => adc_a_n(cpu, Target::H),
+        0x8D => adc_a_n(cpu, Target::L),
+        0x8E => adc_a_n_hl(cpu),
+        0xCE => adc_a_n_n(cpu),
 
         // SUB n
         // 0x97 =>
@@ -881,22 +881,27 @@ fn ld_nn_sp(cpu: &mut Cpu) {
 
 // ADD A,n: A += n.
 fn add_a_n(cpu: &mut Cpu, target: Target) {
-    add_a_n_helper(cpu, cpu.regs.get_reg(target));
+    add_a_n_helper(cpu, cpu.regs.get_reg(target), false);
     cpu.pc += 1;
 }
 fn add_a_n_hl(cpu: &mut Cpu) {
     let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(VirtTarget::HL));
-    add_a_n_helper(cpu, n);
+    add_a_n_helper(cpu, n, false);
     cpu.pc += 1;
 }
 fn add_a_n_n(cpu: &mut Cpu) {
     let n = cpu.get_next_byte();
-    add_a_n_helper(cpu, n);
+    add_a_n_helper(cpu, n, false);
     cpu.pc += 2;
 }
-fn add_a_n_helper(cpu: &mut Cpu, n: u8) {
+fn add_a_n_helper(cpu: &mut Cpu, n: u8, use_carry: bool) {
     let a = cpu.regs.get_reg(Target::A);
-    let sum = a.wrapping_add(n);
+    let carry = if use_carry && cpu.regs.get_flag(RegFlag::C) {
+        1
+    } else {
+        0
+    };
+    let sum = a.wrapping_add(n).wrapping_add(carry);
 
     cpu.regs.set_flag(RegFlag::Z, sum == 0);
     cpu.regs.set_flag(RegFlag::N, false);
@@ -906,6 +911,22 @@ fn add_a_n_helper(cpu: &mut Cpu, n: u8) {
         .set_flag(RegFlag::C, ((a as u16) + (n as u16)) > 0xFF);
 
     cpu.regs.set_reg(Target::A, sum);
+}
+
+// ADC A,n: A += (n + carry flags).
+fn adc_a_n(cpu: &mut Cpu, target: Target) {
+    add_a_n_helper(cpu, cpu.regs.get_reg(target), true);
+    cpu.pc += 1;
+}
+fn adc_a_n_hl(cpu: &mut Cpu) {
+    let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(VirtTarget::HL));
+    add_a_n_helper(cpu, n, true);
+    cpu.pc += 1;
+}
+fn adc_a_n_n(cpu: &mut Cpu) {
+    let n = cpu.get_next_byte();
+    add_a_n_helper(cpu, n, true);
+    cpu.pc += 2;
 }
 
 // XOR n: Set A = A XOR n.
@@ -1802,6 +1823,85 @@ mod tests {
 
         cpu.cycle();
         assert_eq!(cpu.regs.get_reg(Target::A), 0xBB);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+    }
+
+    #[test]
+    fn test_adc_a_n() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_reg(Target::A, 0x00);
+        cpu.regs.set_reg(Target::B, 0x01);
+        cpu.regs.set_reg(Target::C, 0xFF);
+        cpu.regs.set_reg(Target::D, 0x50);
+        cpu.regs.set_reg(Target::E, 0x0F);
+        cpu.regs.set_reg(Target::H, 0x01);
+        cpu.regs.set_reg(Target::L, 0x03);
+        cpu.mem_bus.write_byte(0x0103, 0x01);
+        let data = [0x8F, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0xCE, 0x01];
+        cpu.load(0x0000, &data);
+        cpu.pc = 0x0000;
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x00);
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x01);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x00);
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x51);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x60);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x61);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x64);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x65);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x66);
         assert!(!cpu.regs.get_flag(RegFlag::Z));
         assert!(!cpu.regs.get_flag(RegFlag::N));
         assert!(!cpu.regs.get_flag(RegFlag::H));
