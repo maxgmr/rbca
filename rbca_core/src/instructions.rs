@@ -196,15 +196,15 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0xE6 => and_n_n(cpu),
 
         // OR n
-        // 0xB7 =>
-        // 0xB0 =>
-        // 0xB1 =>
-        // 0xB2 =>
-        // 0xB3 =>
-        // 0xB4 =>
-        // 0xB5 =>
-        // 0xB6 =>
-        // 0xF6 =>
+        0xB7 => or_n(cpu, Target::A),
+        0xB0 => or_n(cpu, Target::B),
+        0xB1 => or_n(cpu, Target::C),
+        0xB2 => or_n(cpu, Target::D),
+        0xB3 => or_n(cpu, Target::E),
+        0xB4 => or_n(cpu, Target::H),
+        0xB5 => or_n(cpu, Target::L),
+        0xB6 => or_n_hl(cpu),
+        0xF6 => or_n_n(cpu),
 
         // XOR n
         0xAF => xor_n(cpu, Target::A),
@@ -1018,6 +1018,31 @@ fn and_n_helper(cpu: &mut Cpu, n: u8) {
     cpu.regs.reset_flags();
     cpu.regs.set_flag(RegFlag::Z, result == 0);
     cpu.regs.set_flag(RegFlag::H, true);
+
+    cpu.regs.set_reg(Target::A, result);
+}
+
+// OR n: Set A = A OR n.
+fn or_n(cpu: &mut Cpu, target: Target) {
+    or_n_helper(cpu, cpu.regs.get_reg(target));
+    cpu.pc += 1;
+}
+fn or_n_hl(cpu: &mut Cpu) {
+    let address = cpu.regs.get_virt_reg(VirtTarget::HL);
+    let n = cpu.mem_bus.read_byte(address);
+    or_n_helper(cpu, n);
+    cpu.pc += 1;
+}
+fn or_n_n(cpu: &mut Cpu) {
+    let n = cpu.get_next_byte();
+    or_n_helper(cpu, n);
+    cpu.pc += 2;
+}
+fn or_n_helper(cpu: &mut Cpu, n: u8) {
+    let result = cpu.regs.get_reg(Target::A) | n;
+
+    cpu.regs.reset_flags();
+    cpu.regs.set_flag(RegFlag::Z, result == 0);
 
     cpu.regs.set_reg(Target::A, result);
 }
@@ -2217,5 +2242,75 @@ mod tests {
         cpu.cycle();
         assert_eq!(cpu.regs.get_reg(Target::A), 0b0000_0000);
         assert!(cpu.regs.get_flag(RegFlag::Z));
+    }
+
+    #[test]
+    fn test_or_n() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_flag(RegFlag::Z, false);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.pc = 0x0000;
+        cpu.regs.set_reg(Target::A, 0b0000_0000);
+        cpu.regs.set_reg(Target::B, 0b1000_0001);
+        cpu.regs.set_reg(Target::C, 0b0000_1000);
+        cpu.regs.set_reg(Target::D, 0b0100_1000);
+        cpu.regs.set_reg(Target::E, 0b0010_1000);
+        cpu.regs.set_reg(Target::H, 0b0110_0000);
+        cpu.regs.set_reg(Target::L, 0b0000_0000);
+        cpu.mem_bus.write_byte(0b0110_0000_0000_0000, 0b1111_0000);
+        let data = [
+            0xB7,
+            0xB0,
+            0xB1,
+            0xB2,
+            0xB3,
+            0xB4,
+            0xB5,
+            0xF6,
+            0b0000_0100,
+            0xB6,
+        ];
+        cpu.load(0x0000, &data);
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b0000_0000);
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1000_0001);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1000_1001);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1100_1001);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1110_1001);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1110_1001);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1110_1001);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1110_1101);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0b1111_1101);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
     }
 }
