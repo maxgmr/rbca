@@ -43,7 +43,7 @@ fn main() {
         cpu.cycle();
         if cpu.mem_bus.read_byte(0xFF02) == 0x81 {
             let c = cpu.mem_bus.read_byte(0xFF01) as char;
-            println!("{}", c);
+            // println!("{}", c);
             cpu.mem_bus.write_byte(0xFF02, 0x00);
         }
     }
