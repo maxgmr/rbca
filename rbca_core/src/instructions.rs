@@ -141,15 +141,15 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0xE1 => pop_nn(cpu, VirtTarget::HL),
 
         // ADD A,n
-        // 0x87 =>
-        // 0x80 =>
-        // 0x81 =>
-        // 0x82 =>
-        // 0x83 =>
-        // 0x84 =>
-        // 0x85 =>
-        // 0x86 =>
-        // 0xC6 =>
+        0x87 => add_a_n(cpu, Target::A),
+        0x80 => add_a_n(cpu, Target::B),
+        0x81 => add_a_n(cpu, Target::C),
+        0x82 => add_a_n(cpu, Target::D),
+        0x83 => add_a_n(cpu, Target::E),
+        0x84 => add_a_n(cpu, Target::H),
+        0x85 => add_a_n(cpu, Target::L),
+        0x86 => add_a_n_hl(cpu),
+        0xC6 => add_a_n_n(cpu),
 
         // ADC A,n
         // 0x8F =>
@@ -876,16 +876,36 @@ fn ld_hl_sp_n(cpu: &mut Cpu) {
 fn ld_nn_sp(cpu: &mut Cpu) {
     let address = cpu.get_next_2_bytes();
     cpu.mem_bus.write_2_bytes(address, cpu.sp);
-    // let sp_left_byte = (cpu.sp & 0xFF00) >> 8;
-    // let sp_right_byte = cpu.sp & 0x00FF;
-    // cpu.mem_bus
-    //     .write_2_bytes(address, (sp_right_byte << 8) | sp_left_byte);
     cpu.pc += 3;
 }
 
-// NOP: Do nothing.
-fn nop(cpu: &mut Cpu) {
+// ADD A,n: A += n.
+fn add_a_n(cpu: &mut Cpu, target: Target) {
+    add_a_n_helper(cpu, cpu.regs.get_reg(target));
     cpu.pc += 1;
+}
+fn add_a_n_hl(cpu: &mut Cpu) {
+    let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(VirtTarget::HL));
+    add_a_n_helper(cpu, n);
+    cpu.pc += 1;
+}
+fn add_a_n_n(cpu: &mut Cpu) {
+    let n = cpu.get_next_byte();
+    add_a_n_helper(cpu, n);
+    cpu.pc += 2;
+}
+fn add_a_n_helper(cpu: &mut Cpu, n: u8) {
+    let a = cpu.regs.get_reg(Target::A);
+    let sum = a.wrapping_add(n);
+
+    cpu.regs.set_flag(RegFlag::Z, sum == 0);
+    cpu.regs.set_flag(RegFlag::N, false);
+    cpu.regs
+        .set_flag(RegFlag::H, ((0x0F & a) + (0x0F & n)) > 0x0F);
+    cpu.regs
+        .set_flag(RegFlag::C, ((a as u16) + (n as u16)) > 0xFF);
+
+    cpu.regs.set_reg(Target::A, sum);
 }
 
 // XOR n: Set A = A XOR n.
@@ -894,6 +914,11 @@ fn xor_n(cpu: &mut Cpu, target: Target) {
     let result = cpu.regs.get_reg(Target::A) ^ cpu.regs.get_reg(target);
     cpu.regs.set_flag(RegFlag::Z, result == 0);
     cpu.regs.set_reg(Target::A, result);
+    cpu.pc += 1;
+}
+
+// NOP: Do nothing.
+fn nop(cpu: &mut Cpu) {
     cpu.pc += 1;
 }
 
@@ -1696,5 +1721,90 @@ mod tests {
         cpu.cycle();
         assert_eq!(cpu.mem_bus.read_byte(0x4321), 0x34);
         assert_eq!(cpu.mem_bus.read_byte(0x4322), 0x12);
+    }
+
+    #[test]
+    fn test_add_a_n() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_reg(Target::A, 0x00);
+        cpu.regs.set_reg(Target::B, 0x12);
+        cpu.regs.set_reg(Target::C, 0x34);
+        cpu.regs.set_reg(Target::D, 0x56);
+        cpu.regs.set_reg(Target::E, 0x78);
+        cpu.regs.set_reg(Target::H, 0x9A);
+        cpu.regs.set_reg(Target::L, 0xBC);
+        cpu.regs.set_flag(RegFlag::Z, false);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, false);
+        cpu.regs.set_flag(RegFlag::C, false);
+        cpu.mem_bus.write_byte(0x9ABC, 0x0E);
+        // Add A, B, C, D, E, H, L, (HL), n to A
+        let data = [0x87, 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0xC6, 0x01];
+        cpu.load(0x0000, &data);
+        cpu.pc = 0x0000;
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x00);
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x12);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x46);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x9C);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0x14);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xAE);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.regs.set_reg(Target::A, 0xF0);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xAC);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xBA);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(Target::A), 0xBB);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
     }
 }
