@@ -14,6 +14,8 @@ pub struct Cpu {
     pub sp: u16,
     /// Memory
     pub mem_bus: MemoryBus,
+    /// Halted
+    pub is_halted: bool,
 }
 impl Cpu {
     /// Create a new [Cpu].
@@ -65,6 +67,7 @@ impl Default for Cpu {
             pc: u16::default(),
             sp: 0xFFFE,
             mem_bus: MemoryBus::new(),
+            is_halted: false,
         }
     }
 }
