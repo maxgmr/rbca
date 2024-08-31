@@ -277,7 +277,7 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x27 => daa(cpu),
 
         // CPL
-        // 0x2F =>
+        0x2F => cpl(cpu),
 
         // CCF
         // 0x3F =>
@@ -1280,6 +1280,14 @@ fn daa(cpu: &mut Cpu) {
 
     cpu.regs.set_reg(A, result);
 
+    cpu.pc += 1;
+}
+
+// CPL: Complement A register.
+fn cpl(cpu: &mut Cpu) {
+    cpu.regs.set_flag(RegFlag::N, true);
+    cpu.regs.set_flag(RegFlag::H, true);
+    cpu.regs.set_reg(A, cpu.regs.get_reg(A) ^ 0xFF);
     cpu.pc += 1;
 }
 
@@ -3045,5 +3053,41 @@ mod tests {
         assert_eq!(cpu.regs.get_reg(A), 0x93);
         assert!(!cpu.regs.get_flag(RegFlag::H));
         assert!(cpu.regs.get_flag(RegFlag::C));
+    }
+
+    #[test]
+    fn test_cpl() {
+        let mut cpu = Cpu::new();
+        let data = [0x2F, 0x2F, 0x2F, 0x2F];
+        cpu.load(0x0000, &data);
+        cpu.pc = 0x0000;
+
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, false);
+        cpu.regs.set_flag(RegFlag::H, false);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.regs.set_reg(A, 0b0000_0000);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b1111_1111);
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+        assert!(cpu.regs.get_flag(RegFlag::N));
+        assert!(cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.regs.set_flag(RegFlag::Z, false);
+        cpu.regs.set_flag(RegFlag::C, false);
+        cpu.regs.set_reg(A, 0b1111_1111);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b0000_0000);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.regs.set_reg(A, 0b1010_1010);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b0101_0101);
+
+        cpu.regs.set_reg(A, 0b1001_0110);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b0110_1001);
     }
 }
