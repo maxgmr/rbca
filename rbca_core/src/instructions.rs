@@ -289,10 +289,13 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x00 => nop(cpu),
 
         // HALT
-        // 0x76 =>
+        0x76 => halt(cpu),
 
         // STOP
-        // 0x10 => need to check next byte == 00
+        0x10 => match cpu.get_next_byte() {
+            0x00 => stop(cpu),
+            other => panic!("Illegal operation: 0x10 {:#02}", other),
+        },
 
         // DI
         // 0xF3 =>
@@ -1315,6 +1318,18 @@ fn scf(cpu: &mut Cpu) {
 // NOP: Do nothing.
 fn nop(cpu: &mut Cpu) {
     cpu.pc += 1;
+}
+
+// HALT: Power down CPU until interrupt.
+fn halt(cpu: &mut Cpu) {
+    cpu.is_halted = true;
+    cpu.pc += 1;
+}
+
+// STOP: Halt CPU & LCD display until button pressed.
+fn stop(cpu: &mut Cpu) {
+    cpu.is_stopped = true;
+    cpu.pc += 2;
 }
 
 // BIT b,r: Iff bit b in register r == 0, set Z flag = 1. Else, set Z flag = 0.
@@ -3162,5 +3177,24 @@ mod tests {
         assert!(!cpu.regs.get_flag(RegFlag::N));
         assert!(!cpu.regs.get_flag(RegFlag::H));
         assert!(cpu.regs.get_flag(RegFlag::C));
+    }
+
+    #[test]
+    fn test_good_stop() {
+        let mut cpu = Cpu::new();
+        cpu.pc = 0x0000;
+        cpu.mem_bus.write_byte(0x0000, 0x10);
+        cpu.mem_bus.write_byte(0x0001, 0x00);
+        cpu.cycle();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_bad_stop() {
+        let mut cpu = Cpu::new();
+        cpu.pc = 0x0000;
+        cpu.mem_bus.write_byte(0x0000, 0x10);
+        cpu.mem_bus.write_byte(0x0001, 0x01);
+        cpu.cycle();
     }
 }
