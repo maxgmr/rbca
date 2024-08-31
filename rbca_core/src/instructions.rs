@@ -274,7 +274,7 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x3B => dec_nn_sp(cpu),
 
         // DAA
-        // 0x27 =>
+        0x27 => daa(cpu),
 
         // CPL
         // 0x2F =>
@@ -1238,6 +1238,49 @@ fn swap_n_helper(cpu: &mut Cpu, val: u8) -> u8 {
     cpu.regs.reset_flags();
     cpu.regs.set_flag(RegFlag::Z, result == 0);
     result
+}
+
+// DAA: Adjust resgister A such that the correct representation of Binary Coded Decimal is
+// obtained.
+// Existing flag vals:
+// N = 1 iff the previous operation was a subtraction.
+// H = 1 iff there was a carry from bit 4 to 5
+// C = 1 iff there was a carry from bit 8
+//
+// Implementation:
+// Iff not subtracting && unit digit > 9, or there was a half carry, add 0x06 to A.
+// Iff not subtracting && A > 0x99, or there was a full carry, add 0x60 to A.
+fn daa(cpu: &mut Cpu) {
+    let n_val = cpu.regs.get_flag(RegFlag::N);
+    let h_val = cpu.regs.get_flag(RegFlag::H);
+    let c_val = cpu.regs.get_flag(RegFlag::C);
+
+    let original_value = cpu.regs.get_reg(A);
+    let mut result = original_value;
+    let mut correction: u8 = 0x00;
+
+    if h_val || (!n_val && ((0x0F & original_value) > 0x09)) {
+        correction |= 0x06;
+    }
+    let mut should_carry = false;
+    if c_val || (!n_val && (original_value > 0x99)) {
+        correction |= 0x60;
+        should_carry = true;
+    }
+
+    if n_val {
+        result = result.wrapping_sub(correction);
+    } else {
+        result = result.wrapping_add(correction);
+    }
+
+    cpu.regs.set_flag(RegFlag::Z, result == 0x0000);
+    cpu.regs.set_flag(RegFlag::H, false);
+    cpu.regs.set_flag(RegFlag::C, should_carry);
+
+    cpu.regs.set_reg(A, result);
+
+    cpu.pc += 1;
 }
 
 // NOP: Do nothing.
@@ -2904,5 +2947,103 @@ mod tests {
         cpu.cycle();
         assert_eq!(cpu.mem_bus.read_byte(0b1010_0101_0100_0000), 0xBA);
         assert!(!cpu.regs.get_flag(RegFlag::Z));
+    }
+
+    #[test]
+    fn test_daa() {
+        let mut cpu = Cpu::new();
+        let data = [0x27; 10];
+        cpu.load(0x0000, &data);
+
+        // Test convert 0x73 + 0x23 = 0x96; no change necessary.
+        cpu.regs.reset_flags();
+        cpu.regs.set_reg(A, 0x96);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0x96);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        // Test convert 0x39 + 0x26 = 0x5F; want 0x65.
+        cpu.regs.reset_flags();
+        cpu.regs.set_reg(A, 0x5F);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0x65);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        // Test convert 0x80 + 0x90 = 0x10 + carry; want 0x70 + carry.
+        cpu.regs.reset_flags();
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.regs.set_reg(A, 0x10);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0x70);
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        // Test convert 0x08 + 0x09 = 0x11 + half carry; want 0x17.
+        cpu.regs.reset_flags();
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_reg(A, 0x11);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0x17);
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        // Test convert 0x70 + 0x30 = 0xA0; want 0x00 + carry.
+        cpu.regs.reset_flags();
+        cpu.regs.set_reg(A, 0xA0);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0x00);
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        // Test convert 0x02 + 0x09 = 0x0B; want 0x11.
+        cpu.regs.reset_flags();
+        cpu.regs.set_reg(A, 0x0B);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0x11);
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        // Switch to testing subtraction.
+        cpu.regs.reset_flags();
+        cpu.regs.set_flag(RegFlag::N, true);
+
+        // Test convert 0x19 - 0x07 = 0x12; no change necessary.
+        cpu.regs.set_reg(A, 0x12);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0x12);
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        // Test convert 0x10 - 0x01 = 0x0F + half carry; want 0x09.
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_reg(A, 0x0F);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0x09);
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        // Test convert 0x00 - 0x01 = 0xFF + half carry + carry; want 0x99 + carry.
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.regs.set_reg(A, 0xFF);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0x99);
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        // Test convert 0x03 - 0x10 = 0xF3 + carry; want 0x93 + carry.
+        cpu.regs.set_flag(RegFlag::H, false);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.regs.set_reg(A, 0xF3);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0x93);
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
     }
 }
