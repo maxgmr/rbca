@@ -262,16 +262,16 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0xE8 => add_sp_n(cpu),
 
         // INC nn
-        // 0x03 =>
-        // 0x13 =>
-        // 0x23 =>
-        // 0x33 =>
+        0x03 => inc_nn(cpu, BC),
+        0x13 => inc_nn(cpu, DE),
+        0x23 => inc_nn(cpu, HL),
+        0x33 => inc_nn_sp(cpu),
 
         // DEC nn
-        // 0x0B =>
-        // 0x1B =>
-        // 0x2B =>
-        // 0x3B =>
+        0x0B => dec_nn(cpu, BC),
+        0x1B => dec_nn(cpu, DE),
+        0x2B => dec_nn(cpu, HL),
+        0x3B => dec_nn_sp(cpu),
 
         // DAA
         // 0x27 =>
@@ -1192,6 +1192,28 @@ fn add_sp_n(cpu: &mut Cpu) {
     let result = sp_n_helper(cpu);
     cpu.sp = result;
     cpu.pc += 2;
+}
+
+// INC nn: nn += 1.
+fn inc_nn(cpu: &mut Cpu, target: VirtTarget) {
+    let val = cpu.regs.get_virt_reg(target);
+    cpu.regs.set_virt_reg(target, val.wrapping_add(1));
+    cpu.pc += 1;
+}
+fn inc_nn_sp(cpu: &mut Cpu) {
+    cpu.sp = cpu.sp.wrapping_add(1);
+    cpu.pc += 1;
+}
+
+// DEC nn: nn -= 1.
+fn dec_nn(cpu: &mut Cpu, target: VirtTarget) {
+    let val = cpu.regs.get_virt_reg(target);
+    cpu.regs.set_virt_reg(target, val.wrapping_sub(1));
+    cpu.pc += 1;
+}
+fn dec_nn_sp(cpu: &mut Cpu) {
+    cpu.sp = cpu.sp.wrapping_sub(1);
+    cpu.pc += 1;
 }
 
 // NOP: Do nothing.
@@ -2759,5 +2781,41 @@ mod tests {
         assert_eq!(cpu.sp, 0xFFFF); // underflow
         assert!(!cpu.regs.get_flag(RegFlag::H));
         assert!(!cpu.regs.get_flag(RegFlag::C));
+    }
+
+    #[test]
+    fn test_inc_dec_nn() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_virt_reg(BC, 0x001F);
+        cpu.regs.set_virt_reg(DE, 0xFFFF);
+        cpu.regs.set_virt_reg(HL, 0x0FFF);
+        cpu.sp = 0xFF30;
+        // INC BC, DE, HL, SP; DEC BC, DE, HL, SP.
+        let data = [0x03, 0x13, 0x23, 0x33, 0x0B, 0x1B, 0x2B, 0x3B];
+        cpu.load(0x0000, &data);
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_virt_reg(BC), 0x0020);
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_virt_reg(DE), 0x0000);
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_virt_reg(HL), 0x1000);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFF31);
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_virt_reg(BC), 0x001F);
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_virt_reg(DE), 0xFFFF);
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_virt_reg(HL), 0x0FFF);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0xFF30);
     }
 }
