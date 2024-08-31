@@ -259,7 +259,7 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x39 => add_hl_n_sp(cpu),
 
         // ADD SP,n
-        // 0xE8 =>
+        0xE8 => add_sp_n(cpu),
 
         // INC nn
         // 0x03 =>
@@ -860,19 +860,35 @@ fn ld_sp_hl(cpu: &mut Cpu) {
 }
 
 // LD HL,SP+n: Set HL = SP + n.
+// Iff n is positive, set H iff carry on lowest nibble.
+// Iff n is positive, set C iff carry on lowest byte.
+// Iff n is negative, set H iff lowest nibble is decreased.
+// Iff n is negative, set C iff lowest byte is decreased.
 fn ld_hl_sp_n(cpu: &mut Cpu) {
-    let n = cpu.get_next_byte() as i8 as i16 as u16;
+    let result = sp_n_helper(cpu);
+    cpu.regs.set_virt_reg(HL, result);
+    cpu.pc += 2;
+}
+fn sp_n_helper(cpu: &mut Cpu) -> u16 {
+    let n_i = cpu.get_next_byte() as i8;
+    let n_u = cpu.get_next_byte() as i8 as i16 as u16;
 
     cpu.regs.reset_flags();
-    cpu.regs.set_flag(RegFlag::Z, false);
-    cpu.regs.set_flag(RegFlag::N, false);
-    cpu.regs
-        .set_flag(RegFlag::H, ((cpu.sp & 0x000F) + (n & 0x000F)) > 0x000F);
-    cpu.regs
-        .set_flag(RegFlag::C, ((cpu.sp & 0x00FF) + (n & 0x00FF)) > 0x00FF);
-
-    cpu.regs.set_virt_reg(HL, cpu.sp.wrapping_add(n));
-    cpu.pc += 2;
+    let h_val;
+    let c_val;
+    let result;
+    if (n_i) >= 0 {
+        result = cpu.sp.wrapping_add(n_u);
+        h_val = ((0x000F & cpu.sp) + (0x000F & n_u)) > 0x000F;
+        c_val = ((0x00FF & cpu.sp) + (n_u)) > 0x00FF;
+    } else {
+        result = cpu.sp.wrapping_add_signed(n_i as i16);
+        h_val = (0x000F & result) <= (0x000F & cpu.sp);
+        c_val = (0x00FF & result) <= (0x00FF & cpu.sp);
+    }
+    cpu.regs.set_flag(RegFlag::H, h_val);
+    cpu.regs.set_flag(RegFlag::C, c_val);
+    result
 }
 
 // LD (nn),SP: Set (nn) = SP.
@@ -1149,7 +1165,7 @@ fn dec_n_set_flags(cpu: &mut Cpu, val: u8, result: u8) {
     cpu.regs.set_flag(RegFlag::H, (0x0F & val) == 0);
 }
 
-// ADD HL,n: Set HL = HL += n.
+// ADD HL,n: HL += n.
 fn add_hl_n(cpu: &mut Cpu, target: VirtTarget) {
     add_hl_n_helper(cpu, cpu.regs.get_virt_reg(target));
     cpu.pc += 1;
@@ -1169,6 +1185,13 @@ fn add_hl_n_helper(cpu: &mut Cpu, n: u16) {
         .set_flag(RegFlag::C, ((hl_val as u32) + (n as u32)) > 0x0000_FFFF);
 
     cpu.regs.set_virt_reg(HL, result);
+}
+
+// ADD SP,n: SP += n. (n = one byte signed immediate value)
+fn add_sp_n(cpu: &mut Cpu) {
+    let result = sp_n_helper(cpu);
+    cpu.sp = result;
+    cpu.pc += 2;
 }
 
 // NOP: Do nothing.
@@ -2673,5 +2696,68 @@ mod tests {
         assert_eq!(cpu.regs.get_virt_reg(HL), 0x1000);
         assert!(cpu.regs.get_flag(RegFlag::H));
         assert!(cpu.regs.get_flag(RegFlag::C));
+    }
+
+    #[test]
+    fn test_add_sp_n() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.sp = 0x0000;
+        cpu.pc = 0x0000;
+        let data = [
+            0xE8,
+            0x01,
+            0xE8,
+            0x0F,
+            0xE8,
+            0b1111_1111, // -1 / -0x01
+            0xE8,
+            0b1000_0001, // -127 / -0x7F
+            0xE8,
+            0b0111_1111, // 127 / 0x7F
+            0xE8,
+            0b1111_1111, // -1
+        ];
+        cpu.load(0x0000, &data);
+
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0x0001);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.sp = 0x0002;
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0x0011);
+        assert!(cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.sp = 0x0030;
+        cpu.cycle();
+        assert_eq!(cpu.sp, 0x002F);
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.sp = 0x0091; // 145
+        cpu.cycle(); // - 127
+        assert_eq!(cpu.sp, 0x0012); // 18
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.sp = 0xFFFE; // default
+        cpu.cycle(); // + 127
+        assert_eq!(cpu.sp, 0x007D); // 125
+        assert!(cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.sp = 0x0000; // test underflow with subtraction
+        cpu.cycle(); // -1
+        assert_eq!(cpu.sp, 0xFFFF); // underflow
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
     }
 }
