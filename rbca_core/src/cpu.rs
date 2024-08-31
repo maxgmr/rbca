@@ -18,6 +18,12 @@ pub struct Cpu {
     pub is_halted: bool,
     /// Stopped
     pub is_stopped: bool,
+    /// Countdown until interrupts are disabled.
+    pub di_countdown: usize,
+    /// Countdown until interrupts are enabled.
+    pub ei_countdown: usize,
+    /// Interrupt Master Enable flag.
+    pub ime: bool,
 }
 impl Cpu {
     /// Create a new [Cpu].
@@ -28,9 +34,29 @@ impl Cpu {
     // TODO temp test function
     /// Perform one cycle.
     pub fn cycle(&mut self) {
+        self.update_interrupt_countdown();
         let opcode = self.mem_bus.memory[self.pc as usize];
         execute_opcode(self, opcode);
         // println!("{:#04X}", self.pc);
+    }
+
+    fn update_interrupt_countdown(&mut self) {
+        self.di_countdown = match self.di_countdown {
+            2 => 1,
+            1 => {
+                self.ime = false;
+                0
+            }
+            _ => 0,
+        };
+        self.ei_countdown = match self.ei_countdown {
+            2 => 1,
+            1 => {
+                self.ime = true;
+                0
+            }
+            _ => 0,
+        }
     }
 
     /// Load something into memory.
@@ -71,6 +97,9 @@ impl Default for Cpu {
             mem_bus: MemoryBus::new(),
             is_halted: false,
             is_stopped: false,
+            ei_countdown: 0,
+            di_countdown: 0,
+            ime: false,
         }
     }
 }
