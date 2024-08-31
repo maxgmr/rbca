@@ -253,10 +253,10 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x35 => dec_n_hl(cpu),
 
         // ADD HL,n
-        // 0x09 =>
-        // 0x19 =>
-        // 0x29 =>
-        // 0x39 =>
+        0x09 => add_hl_n(cpu, BC),
+        0x19 => add_hl_n(cpu, DE),
+        0x29 => add_hl_n(cpu, HL),
+        0x39 => add_hl_n_sp(cpu),
 
         // ADD SP,n
         // 0xE8 =>
@@ -1147,6 +1147,28 @@ fn dec_n_set_flags(cpu: &mut Cpu, val: u8, result: u8) {
     cpu.regs.set_flag(RegFlag::Z, result == 0);
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, (0x0F & val) == 0);
+}
+
+// ADD HL,n: Set HL = HL += n.
+fn add_hl_n(cpu: &mut Cpu, target: VirtTarget) {
+    add_hl_n_helper(cpu, cpu.regs.get_virt_reg(target));
+    cpu.pc += 1;
+}
+fn add_hl_n_sp(cpu: &mut Cpu) {
+    add_hl_n_helper(cpu, cpu.sp);
+    cpu.pc += 1;
+}
+fn add_hl_n_helper(cpu: &mut Cpu, n: u16) {
+    let hl_val = cpu.regs.get_virt_reg(HL);
+    let result = hl_val.wrapping_add(n);
+
+    cpu.regs.set_flag(RegFlag::N, false);
+    cpu.regs
+        .set_flag(RegFlag::H, ((0x0FFF & hl_val) + (0x0FFF & n)) > 0x0FFF);
+    cpu.regs
+        .set_flag(RegFlag::C, ((hl_val as u32) + (n as u32)) > 0x0000_FFFF);
+
+    cpu.regs.set_virt_reg(HL, result);
 }
 
 // NOP: Do nothing.
@@ -2610,5 +2632,46 @@ mod tests {
         cpu.cycle();
         assert_eq!(cpu.mem_bus.read_byte(0xF112), 0x23);
         assert!(!cpu.regs.get_flag(RegFlag::H));
+    }
+
+    #[test]
+    fn test_add_hl_n() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.regs.set_virt_reg(HL, 0x0780);
+        cpu.regs.set_virt_reg(BC, 0x0100);
+        cpu.regs.set_virt_reg(DE, 0xFF01);
+        cpu.sp = 0x1100;
+        let data = [0x29, 0x09, 0x19, 0x39];
+        cpu.load(0x0000, &data);
+        cpu.pc = 0x0000;
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_virt_reg(HL), 0x0F00);
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.regs.set_flag(RegFlag::Z, false);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_virt_reg(HL), 0x1000);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_virt_reg(HL), 0x0F01);
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.regs.set_virt_reg(HL, 0xFF00);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_virt_reg(HL), 0x1000);
+        assert!(cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
     }
 }
