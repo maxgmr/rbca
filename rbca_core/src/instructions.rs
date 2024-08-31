@@ -280,10 +280,10 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x2F => cpl(cpu),
 
         // CCF
-        // 0x3F =>
+        0x3F => ccf(cpu),
 
         // SCF
-        // 0x37 =>
+        0x37 => scf(cpu),
 
         // NOP
         0x00 => nop(cpu),
@@ -1288,6 +1288,27 @@ fn cpl(cpu: &mut Cpu) {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_reg(A, cpu.regs.get_reg(A) ^ 0xFF);
+    cpu.pc += 1;
+}
+
+// CCF: Complement carry flag.
+fn ccf(cpu: &mut Cpu) {
+    cpu.regs.set_flag(RegFlag::N, false);
+    cpu.regs.set_flag(RegFlag::H, false);
+
+    if cpu.regs.get_flag(RegFlag::C) {
+        cpu.regs.set_flag(RegFlag::C, false);
+    } else {
+        cpu.regs.set_flag(RegFlag::C, true);
+    }
+    cpu.pc += 1;
+}
+
+// SCF: Set carry flag.
+fn scf(cpu: &mut Cpu) {
+    cpu.regs.set_flag(RegFlag::N, false);
+    cpu.regs.set_flag(RegFlag::H, false);
+    cpu.regs.set_flag(RegFlag::C, true);
     cpu.pc += 1;
 }
 
@@ -3089,5 +3110,57 @@ mod tests {
         cpu.regs.set_reg(A, 0b1001_0110);
         cpu.cycle();
         assert_eq!(cpu.regs.get_reg(A), 0b0110_1001);
+    }
+
+    #[test]
+    fn test_ccf_scf() {
+        let mut cpu = Cpu::new();
+        let data = [0x3F, 0x37, 0x37, 0x3F, 0x3F];
+        cpu.load(0x0000, &data);
+        cpu.pc = 0x0000;
+
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.cycle();
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.regs.set_flag(RegFlag::Z, false);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.cycle();
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.cycle();
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.regs.set_flag(RegFlag::Z, false);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.cycle();
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.cycle();
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
     }
 }
