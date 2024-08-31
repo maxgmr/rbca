@@ -369,14 +369,14 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
             let ext_opcode = cpu.mem_bus.read_byte(cpu.pc + 1);
             match ext_opcode {
                 // SWAP n
-                // 0x37 =>
-                // 0x30 =>
-                // 0x31 =>
-                // 0x32 =>
-                // 0x33 =>
-                // 0x34 =>
-                // 0x35 =>
-                // 0x36 =>
+                0x37 => swap_n(cpu, A),
+                0x30 => swap_n(cpu, B),
+                0x31 => swap_n(cpu, C),
+                0x32 => swap_n(cpu, D),
+                0x33 => swap_n(cpu, E),
+                0x34 => swap_n(cpu, H),
+                0x35 => swap_n(cpu, L),
+                0x36 => swap_n_hl(cpu),
 
                 // RLC n
                 // 0x07 =>
@@ -1214,6 +1214,30 @@ fn dec_nn(cpu: &mut Cpu, target: VirtTarget) {
 fn dec_nn_sp(cpu: &mut Cpu) {
     cpu.sp = cpu.sp.wrapping_sub(1);
     cpu.pc += 1;
+}
+
+// SWAP n: Swap upper & lower nibbles of n.
+fn swap_n(cpu: &mut Cpu, target: Target) {
+    let val = cpu.regs.get_reg(target);
+    let result = swap_n_helper(cpu, val);
+    cpu.regs.set_reg(target, result);
+    cpu.pc += 2;
+}
+fn swap_n_hl(cpu: &mut Cpu) {
+    let address = cpu.regs.get_virt_reg(HL);
+    let val = cpu.mem_bus.read_byte(address);
+    let result = swap_n_helper(cpu, val);
+    cpu.mem_bus.write_byte(address, result);
+    cpu.pc += 2;
+}
+fn swap_n_helper(cpu: &mut Cpu, val: u8) -> u8 {
+    let upper_nibble = (0xF0 & val) >> 4;
+    let lower_nibble = 0x0F & val;
+    let result = (lower_nibble << 4) | upper_nibble;
+
+    cpu.regs.reset_flags();
+    cpu.regs.set_flag(RegFlag::Z, result == 0);
+    result
 }
 
 // NOP: Do nothing.
@@ -2817,5 +2841,68 @@ mod tests {
 
         cpu.cycle();
         assert_eq!(cpu.sp, 0xFF30);
+    }
+
+    #[test]
+    fn test_swap_n() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_reg(A, 0b0000_0000);
+        cpu.regs.set_reg(B, 0b1010_1010);
+        cpu.regs.set_reg(C, 0b1111_0000);
+        cpu.regs.set_reg(D, 0b0000_1111);
+        cpu.regs.set_reg(E, 0b0110_1001);
+        cpu.regs.set_reg(H, 0b1010_0101);
+        cpu.regs.set_reg(L, 0b0100_0000);
+        cpu.mem_bus.write_byte(0b1010_0101_0100_0000, 0xAB);
+        let data = [
+            0xCB, 0x37, 0xCB, 0x30, 0xCB, 0x31, 0xCB, 0x32, 0xCB, 0x33, 0xCB, 0x34, 0xCB, 0x35,
+            0xCB, 0x36,
+        ];
+        cpu.load(0x0000, &data);
+        cpu.pc = 0x0000;
+        cpu.regs.set_flag(RegFlag::Z, false);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b0000_0000);
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(B), 0b1010_1010);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(C), 0b0000_1111);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(D), 0b1111_0000);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(E), 0b1001_0110);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(H), 0b0101_1010);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(L), 0b0000_0100);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.regs.set_reg(H, 0b1010_0101);
+        cpu.regs.set_reg(L, 0b0100_0000);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(0b1010_0101_0100_0000), 0xBA);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
     }
 }
