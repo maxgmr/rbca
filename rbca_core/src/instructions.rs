@@ -365,7 +365,7 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0xD8 => ret_cc(cpu, RegFlag::C, true),
 
         // RETI
-        // 0xD9 =>
+        0xD9 => reti(cpu),
 
         // CB-Opcodes
         0xCB => {
@@ -1684,6 +1684,12 @@ fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) {
     } else {
         cpu.pc += 1;
     }
+}
+
+// RETI: Pop two bytes from stack. Jump to the address. Enable interrupts.
+fn reti(cpu: &mut Cpu) {
+    ret(cpu);
+    cpu.ei_countdown = 1;
 }
 
 #[cfg(test)]
