@@ -337,7 +337,7 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0x38 => jr_cc_n(cpu, RegFlag::C, true),
 
         // CALL nn
-        // 0xCD =>
+        0xCD => call_nn(cpu),
 
         // CALL cc,nn
         // 0xC4 =>
@@ -1640,6 +1640,12 @@ fn jp_cc_helper(cpu: &mut Cpu, flag: RegFlag, expected_value: bool, is_jr: bool)
 // Helper function for jumps
 fn jp_helper(cpu: &mut Cpu, address: u16) {
     cpu.pc = address;
+}
+
+// CALL nn: Push address of next instruction onto stack. Jump to address nn.
+fn call_nn(cpu: &mut Cpu) {
+    cpu.push_stack(cpu.pc + 3);
+    cpu.pc = cpu.get_next_2_bytes();
 }
 
 // RST n: Push current address to stack. Jump to address 0x0000 + n.
@@ -4158,5 +4164,16 @@ mod tests {
             cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
             0b0000_0000,
         );
+    }
+
+    #[test]
+    fn test_call_nn() {
+        let mut cpu = Cpu::new();
+        let data = [0xCD, 0x34, 0x12];
+        cpu.load(0x0000, &data);
+        cpu.pc = 0x0000;
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x1234);
+        assert_eq!(cpu.pop_stack(), 0x0003);
     }
 }
