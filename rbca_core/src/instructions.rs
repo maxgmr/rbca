@@ -304,16 +304,16 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0xFB => ei(cpu),
 
         // RLCA
-        // 0x07 =>
+        0x07 => rlca(cpu),
 
         // RLA
-        // 0x17 =>
+        0x17 => rla(cpu),
 
         // RRCA
-        // 0x0F =>
+        0x0F => rrca(cpu),
 
         // RRA
-        // 0x1F =>
+        0x1F => rra(cpu),
 
         // JP nn
         0xC3 => jp_nn(cpu),
@@ -1341,6 +1341,63 @@ fn di(cpu: &mut Cpu) {
 // EI: Enable interrupts after the instruction after EI is executed.
 fn ei(cpu: &mut Cpu) {
     cpu.ei_countdown = 2;
+    cpu.pc += 1;
+}
+
+// RLCA: Rotate A left; set carry flag to original bit 7 in A.
+fn rlca(cpu: &mut Cpu) {
+    let a_val = cpu.regs.get_reg(A);
+    let bit_7 = a_val >> 7;
+    let a_rotated_l = (a_val << 1) | bit_7;
+
+    cpu.regs.reset_flags();
+    cpu.regs.set_flag(RegFlag::Z, a_rotated_l == 0);
+    cpu.regs.set_flag(RegFlag::C, bit_7 == 1);
+    cpu.regs.set_reg(A, a_rotated_l);
+    cpu.pc += 1;
+}
+
+// RLA: Rotate A left through carry flag.
+fn rla(cpu: &mut Cpu) {
+    let a_val = cpu.regs.get_reg(A);
+    let bit_7 = a_val >> 7;
+    let a_rotated_l = (a_val << 1) | if cpu.regs.get_flag(RegFlag::C) { 1 } else { 0 };
+
+    cpu.regs.reset_flags();
+    cpu.regs.set_flag(RegFlag::Z, a_rotated_l == 0);
+    cpu.regs.set_flag(RegFlag::C, bit_7 == 1);
+    cpu.regs.set_reg(A, a_rotated_l);
+    cpu.pc += 1;
+}
+
+// RRCA: Rotate A right; set carry flag to original bit 0 in A.
+fn rrca(cpu: &mut Cpu) {
+    let a_val = cpu.regs.get_reg(A);
+    let bit_0 = a_val & 0x01;
+    let a_rotated_r = (a_val >> 1) | (bit_0 << 7);
+
+    cpu.regs.reset_flags();
+    cpu.regs.set_flag(RegFlag::Z, a_rotated_r == 0);
+    cpu.regs.set_flag(RegFlag::C, bit_0 == 1);
+    cpu.regs.set_reg(A, a_rotated_r);
+    cpu.pc += 1;
+}
+
+// RRA: Rotate A right through carry flag.
+fn rra(cpu: &mut Cpu) {
+    let a_val = cpu.regs.get_reg(A);
+    let bit_0 = a_val & 0x01;
+    let a_rotated_r = (a_val >> 1)
+        | if cpu.regs.get_flag(RegFlag::C) {
+            0x80
+        } else {
+            0
+        };
+
+    cpu.regs.reset_flags();
+    cpu.regs.set_flag(RegFlag::Z, a_rotated_r == 0);
+    cpu.regs.set_flag(RegFlag::C, bit_0 == 1);
+    cpu.regs.set_reg(A, a_rotated_r);
     cpu.pc += 1;
 }
 
@@ -3267,5 +3324,111 @@ mod tests {
         assert!(cpu.interrupts_enabled);
         assert_eq!(cpu.di_countdown, 0);
         assert_eq!(cpu.ei_countdown, 0);
+    }
+
+    #[test]
+    fn test_ra() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.regs.set_reg(A, 0b0101_0011);
+        cpu.pc = 0x0000;
+        let data = [
+            0x07, 0x07, 0x17, 0x17, 0x17, 0x0F, 0x0F, 0x1F, 0x1F, 0x1F, 0x1F, 0x07, 0x17, 0x0F,
+            0x1F,
+        ];
+        cpu.load(0x0000, &data);
+
+        // Test RLCA
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b1010_0110);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b0100_1101);
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        // Test RLA
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b1001_1011);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b0011_0110);
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b0110_1101);
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        // Test RRCA
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, false);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b1011_0110);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b0101_1011);
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        // Test RRA
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, false);
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b0010_1101);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b1001_0110);
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b1100_1011);
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.regs.get_reg(A), 0b0110_0101);
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        // Test zero flag
+        cpu.regs.reset_flags();
+        cpu.regs.set_reg(A, 0x00);
+        cpu.cycle();
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.regs.reset_flags();
+        cpu.cycle();
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.regs.reset_flags();
+        cpu.cycle();
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.regs.reset_flags();
+        cpu.cycle();
+        assert!(cpu.regs.get_flag(RegFlag::Z));
     }
 }
