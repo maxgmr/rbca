@@ -612,86 +612,87 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
                 0xFE => set_b_r_hl(cpu, 7),
 
                 // RES 0,r
-                // 0x87 =>
-                // 0x80 =>
-                // 0x81 =>
-                // 0x82 =>
-                // 0x83 =>
-                // 0x84 =>
-                // 0x85 =>
-                // 0x86 =>
+                0x87 => res_b_r(cpu, 0, A),
+                0x80 => res_b_r(cpu, 0, B),
+                0x81 => res_b_r(cpu, 0, C),
+                0x82 => res_b_r(cpu, 0, D),
+                0x83 => res_b_r(cpu, 0, E),
+                0x84 => res_b_r(cpu, 0, H),
+                0x85 => res_b_r(cpu, 0, L),
+                0x86 => res_b_r_hl(cpu, 0),
 
                 // RES 1,r
-                // 0x8F =>
-                // 0x88 =>
-                // 0x89 =>
-                // 0x8A =>
-                // 0x8B =>
-                // 0x8C =>
-                // 0x8D =>
-                // 0x8E =>
+                0x8F => res_b_r(cpu, 1, A),
+                0x88 => res_b_r(cpu, 1, B),
+                0x89 => res_b_r(cpu, 1, C),
+                0x8A => res_b_r(cpu, 1, D),
+                0x8B => res_b_r(cpu, 1, E),
+                0x8C => res_b_r(cpu, 1, H),
+                0x8D => res_b_r(cpu, 1, L),
+                0x8E => res_b_r_hl(cpu, 1),
 
                 // RES 2,r
-                // 0x97 =>
-                // 0x90 =>
-                // 0x91 =>
-                // 0x92 =>
-                // 0x93 =>
-                // 0x94 =>
-                // 0x95 =>
-                // 0x96 =>
+                0x97 => res_b_r(cpu, 2, A),
+                0x90 => res_b_r(cpu, 2, B),
+                0x91 => res_b_r(cpu, 2, C),
+                0x92 => res_b_r(cpu, 2, D),
+                0x93 => res_b_r(cpu, 2, E),
+                0x94 => res_b_r(cpu, 2, H),
+                0x95 => res_b_r(cpu, 2, L),
+                0x96 => res_b_r_hl(cpu, 2),
 
                 // RES 3,r
-                // 0x9F =>
-                // 0x98 =>
-                // 0x99 =>
-                // 0x9A =>
-                // 0x9B =>
-                // 0x9C =>
-                // 0x9D =>
-                // 0x9E =>
+                0x9F => res_b_r(cpu, 3, A),
+                0x98 => res_b_r(cpu, 3, B),
+                0x99 => res_b_r(cpu, 3, C),
+                0x9A => res_b_r(cpu, 3, D),
+                0x9B => res_b_r(cpu, 3, E),
+                0x9C => res_b_r(cpu, 3, H),
+                0x9D => res_b_r(cpu, 3, L),
+                0x9E => res_b_r_hl(cpu, 3),
 
                 // RES 4,r
-                // 0xA7 =>
-                // 0xA0 =>
-                // 0xA1 =>
-                // 0xA2 =>
-                // 0xA3 =>
-                // 0xA4 =>
-                // 0xA5 =>
-                // 0xA6 =>
+                0xA7 => res_b_r(cpu, 4, A),
+                0xA0 => res_b_r(cpu, 4, B),
+                0xA1 => res_b_r(cpu, 4, C),
+                0xA2 => res_b_r(cpu, 4, D),
+                0xA3 => res_b_r(cpu, 4, E),
+                0xA4 => res_b_r(cpu, 4, H),
+                0xA5 => res_b_r(cpu, 4, L),
+                0xA6 => res_b_r_hl(cpu, 4),
 
                 // RES 5,r
-                // 0xAF =>
-                // 0xA8 =>
-                // 0xA9 =>
-                // 0xAA =>
-                // 0xAB =>
-                // 0xAC =>
-                // 0xAD =>
-                // 0xAE =>
+                0xAF => res_b_r(cpu, 5, A),
+                0xA8 => res_b_r(cpu, 5, B),
+                0xA9 => res_b_r(cpu, 5, C),
+                0xAA => res_b_r(cpu, 5, D),
+                0xAB => res_b_r(cpu, 5, E),
+                0xAC => res_b_r(cpu, 5, H),
+                0xAD => res_b_r(cpu, 5, L),
+                0xAE => res_b_r_hl(cpu, 5),
 
                 // RES 6,r
-                // 0xB7 =>
-                // 0xB0 =>
-                // 0xB1 =>
-                // 0xB2 =>
-                // 0xB3 =>
-                // 0xB4 =>
-                // 0xB5 =>
-                // 0xB6 =>
+                0xB7 => res_b_r(cpu, 6, A),
+                0xB0 => res_b_r(cpu, 6, B),
+                0xB1 => res_b_r(cpu, 6, C),
+                0xB2 => res_b_r(cpu, 6, D),
+                0xB3 => res_b_r(cpu, 6, E),
+                0xB4 => res_b_r(cpu, 6, H),
+                0xB5 => res_b_r(cpu, 6, L),
+                0xB6 => res_b_r_hl(cpu, 6),
 
                 // RES 7,r
-                // 0xCF =>
-                // 0xC8 =>
-                // 0xC9 =>
-                // 0xCA =>
-                // 0xCB =>
-                // 0xCC =>
-                // 0xCD =>
-                // 0xCE =>
+                0xBF => res_b_r(cpu, 7, A),
+                0xB8 => res_b_r(cpu, 7, B),
+                0xB9 => res_b_r(cpu, 7, C),
+                0xBA => res_b_r(cpu, 7, D),
+                0xBB => res_b_r(cpu, 7, E),
+                0xBC => res_b_r(cpu, 7, H),
+                0xBD => res_b_r(cpu, 7, L),
+                0xBE => res_b_r_hl(cpu, 7),
 
                 // Unimplemented instruction
+                #[allow(unreachable_patterns)]
                 _ => panic!(
                     "Unimplemented extended opcode {:#04X} at {:#04X}",
                     ((opcode as u16) << 8) | (ext_opcode as u16),
@@ -699,6 +700,8 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
                 ),
             }
         }
+
+        // TODO handle illegal opcodes
 
         // Unimplemented instruction
         _ => panic!("Unimplemented opcode {:#02X} at {:#04X}", opcode, cpu.pc,),
@@ -1578,6 +1581,19 @@ fn set_b_r_hl(cpu: &mut Cpu, b: usize) {
     let address = cpu.regs.get_virt_reg(HL);
     let byte = cpu.mem_bus.read_byte(address);
     cpu.mem_bus.write_byte(address, byte | (0x01 << b));
+    cpu.pc += 2;
+}
+
+// RES b,r: Reset bit b in register r.
+fn res_b_r(cpu: &mut Cpu, b: usize, target: Target) {
+    let byte = cpu.regs.get_reg(target);
+    cpu.regs.set_reg(target, byte & !(0x01 << b));
+    cpu.pc += 2;
+}
+fn res_b_r_hl(cpu: &mut Cpu, b: usize) {
+    let address = cpu.regs.get_virt_reg(HL);
+    let byte = cpu.mem_bus.read_byte(address);
+    cpu.mem_bus.write_byte(address, byte & !(0x01 << b));
     cpu.pc += 2;
 }
 
@@ -4021,13 +4037,126 @@ mod tests {
         }
 
         cpu.mem_bus
-            .write_byte(cpu.regs.get_virt_reg(HL), 0b0000_0000);
+            .write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1010_1011,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1010_1011,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1010_1111,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1010_1111,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1011_1111,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1011_1111,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1111_1111,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1111_1111,
+        );
+    }
+
+    #[test]
+    fn test_res_b_r() {
+        let mut cpu = Cpu::new();
+        cpu.regs.set_reg(A, 0b0000_0000);
+        cpu.regs.set_reg(B, 0b1010_1010);
+        cpu.regs.set_reg(C, 0b0101_0101);
+        cpu.regs.set_reg(D, 0b0000_1111);
+        cpu.regs.set_reg(E, 0b1111_0000);
+        cpu.regs.set_reg(H, 0b1100_0011);
+        cpu.regs.set_reg(L, 0b1111_1111);
+        let mut data: Vec<u8> = Vec::new();
+        let target_even_opcode_suffixes = [0x07, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06];
+        let target_odd_opcode_suffixes = [0x0F, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E];
+        let opcode_prefixes = [0x80, 0x90, 0xA0, 0xB0];
         for i in 0..8 {
-            cpu.cycle();
-            assert_eq!(
-                (cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)) & 2_u8.pow(i)) >> i,
-                1
-            );
+            for j in 0..8 {
+                let prefix = opcode_prefixes[j / 2];
+                let suffix = if j % 2 == 0 {
+                    target_even_opcode_suffixes[i]
+                } else {
+                    target_odd_opcode_suffixes[i]
+                };
+                data.push(0xCB);
+                data.push(prefix | suffix);
+            }
         }
+        cpu.pc = 0x0000;
+        cpu.load(0x0000, &data);
+
+        for target in Target::iter() {
+            for i in 0..8 {
+                cpu.cycle();
+                assert_eq!((cpu.regs.get_reg(target) & 2_u8.pow(i)) >> i, 0);
+            }
+        }
+
+        cpu.mem_bus
+            .write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1010_1010,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1010_1000,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1010_1000,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1010_0000,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1010_0000,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1000_0000,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b1000_0000,
+        );
+        cpu.cycle();
+        assert_eq!(
+            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            0b0000_0000,
+        );
     }
 }
