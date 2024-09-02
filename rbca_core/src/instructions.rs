@@ -340,10 +340,10 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         0xCD => call_nn(cpu),
 
         // CALL cc,nn
-        // 0xC4 =>
-        // 0xCC =>
-        // 0xD4 =>
-        // 0xDC =>
+        0xC4 => call_cc_nn(cpu, RegFlag::Z, false),
+        0xCC => call_cc_nn(cpu, RegFlag::Z, true),
+        0xD4 => call_cc_nn(cpu, RegFlag::C, false),
+        0xDC => call_cc_nn(cpu, RegFlag::C, true),
 
         // RST n
         0xC7 => rst_n(cpu, 0x0000),
@@ -1646,6 +1646,20 @@ fn jp_helper(cpu: &mut Cpu, address: u16) {
 fn call_nn(cpu: &mut Cpu) {
     cpu.push_stack(cpu.pc + 3);
     cpu.pc = cpu.get_next_2_bytes();
+}
+
+// CALL cc,nn: Iff condition cc == true, push address of next instrucion to stack & jump to address
+// nn.
+fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) {
+    let test_val = match flag {
+        RegFlag::Z | RegFlag::C => cpu.regs.get_flag(flag),
+        _ => panic!("call_cc_nn: Cannot use flag {:?}. C or Z flags only.", flag),
+    };
+    if test_val == expected_value {
+        call_nn(cpu);
+    } else {
+        cpu.pc += 3;
+    }
 }
 
 // RST n: Push current address to stack. Jump to address 0x0000 + n.
@@ -4175,5 +4189,55 @@ mod tests {
         cpu.cycle();
         assert_eq!(cpu.pc, 0x1234);
         assert_eq!(cpu.pop_stack(), 0x0003);
+    }
+
+    #[test]
+    fn test_call_cc_nn() {
+        let mut cpu = Cpu::new();
+        let data = [
+            0xC4, 0xFF, 0xFF, 0xCC, 0xFF, 0xFF, 0xD4, 0xFF, 0xFF, 0xDC, 0xFF, 0xFF, 0xC4, 0x00,
+            0x01,
+        ];
+        cpu.load(0x0000, &data);
+        cpu.mem_bus.write_byte(0x0100, 0xCC);
+        cpu.mem_bus.write_2_bytes(0x0101, 0x0200);
+        cpu.mem_bus.write_byte(0x0200, 0xD4);
+        cpu.mem_bus.write_2_bytes(0x0201, 0x0300);
+        cpu.mem_bus.write_byte(0x0300, 0xDC);
+        cpu.mem_bus.write_2_bytes(0x0301, 0x0400);
+        cpu.pc = 0x0000;
+
+        // Conditions not met- should not jump.
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x0003);
+        cpu.regs.set_flag(RegFlag::Z, false);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x0006);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x0009);
+        cpu.regs.set_flag(RegFlag::C, false);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x000C);
+
+        // Conditions met- should jump!
+        cpu.regs.set_flag(RegFlag::Z, false);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x0100);
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x0200);
+        cpu.regs.set_flag(RegFlag::C, false);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x0300);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.cycle();
+        assert_eq!(cpu.pc, 0x0400);
+
+        assert_eq!(cpu.pop_stack(), 0x0303);
+        assert_eq!(cpu.pop_stack(), 0x0203);
+        assert_eq!(cpu.pop_stack(), 0x0103);
+        assert_eq!(cpu.pop_stack(), 0x000F);
     }
 }
