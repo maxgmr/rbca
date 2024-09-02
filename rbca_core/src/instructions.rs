@@ -298,10 +298,10 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
         },
 
         // DI
-        // 0xF3 =>
+        0xF3 => di(cpu),
 
         // EI
-        // 0xFB =>
+        0xFB => ei(cpu),
 
         // RLCA
         // 0x07 =>
@@ -1330,6 +1330,18 @@ fn halt(cpu: &mut Cpu) {
 fn stop(cpu: &mut Cpu) {
     cpu.is_stopped = true;
     cpu.pc += 2;
+}
+
+// DI: Disable interrupts after the instruction after DI is executed.
+fn di(cpu: &mut Cpu) {
+    cpu.di_countdown = 2;
+    cpu.pc += 1;
+}
+
+// EI: Enable interrupts after the instruction after EI is executed.
+fn ei(cpu: &mut Cpu) {
+    cpu.ei_countdown = 2;
+    cpu.pc += 1;
 }
 
 // BIT b,r: Iff bit b in register r == 0, set Z flag = 1. Else, set Z flag = 0.
@@ -3196,5 +3208,64 @@ mod tests {
         cpu.mem_bus.write_byte(0x0000, 0x10);
         cpu.mem_bus.write_byte(0x0001, 0x01);
         cpu.cycle();
+    }
+
+    #[test]
+    fn test_ei_di() {
+        // TODO
+        let mut cpu = Cpu::new();
+        let data = [
+            0xF3, 0x00, 0x00, 0x00, 0xFB, 0x00, 0x00, 0xF3, 0xFB, 0x00, 0x00,
+        ];
+        cpu.load(0x0000, &data);
+        cpu.interrupts_enabled = true;
+        cpu.pc = 0x0000;
+        cpu.di_countdown = 0;
+        cpu.ei_countdown = 0;
+
+        cpu.cycle();
+        assert!(cpu.interrupts_enabled);
+        assert_eq!(cpu.di_countdown, 2);
+        assert_eq!(cpu.ei_countdown, 0);
+        cpu.cycle();
+        assert!(cpu.interrupts_enabled);
+        assert_eq!(cpu.di_countdown, 1);
+        assert_eq!(cpu.ei_countdown, 0);
+        cpu.cycle();
+        assert!(!cpu.interrupts_enabled);
+        assert_eq!(cpu.di_countdown, 0);
+        assert_eq!(cpu.ei_countdown, 0);
+        cpu.cycle();
+        assert!(!cpu.interrupts_enabled);
+        assert_eq!(cpu.di_countdown, 0);
+        assert_eq!(cpu.ei_countdown, 0);
+        cpu.cycle();
+        assert!(!cpu.interrupts_enabled);
+        assert_eq!(cpu.di_countdown, 0);
+        assert_eq!(cpu.ei_countdown, 2);
+        cpu.cycle();
+        assert!(!cpu.interrupts_enabled);
+        assert_eq!(cpu.di_countdown, 0);
+        assert_eq!(cpu.ei_countdown, 1);
+        cpu.cycle();
+        assert!(cpu.interrupts_enabled);
+        assert_eq!(cpu.di_countdown, 0);
+        assert_eq!(cpu.ei_countdown, 0);
+        cpu.cycle();
+        assert!(cpu.interrupts_enabled);
+        assert_eq!(cpu.di_countdown, 2);
+        assert_eq!(cpu.ei_countdown, 0);
+        cpu.cycle();
+        assert!(cpu.interrupts_enabled);
+        assert_eq!(cpu.di_countdown, 1);
+        assert_eq!(cpu.ei_countdown, 2);
+        cpu.cycle();
+        assert!(!cpu.interrupts_enabled);
+        assert_eq!(cpu.di_countdown, 0);
+        assert_eq!(cpu.ei_countdown, 1);
+        cpu.cycle();
+        assert!(cpu.interrupts_enabled);
+        assert_eq!(cpu.di_countdown, 0);
+        assert_eq!(cpu.ei_countdown, 0);
     }
 }

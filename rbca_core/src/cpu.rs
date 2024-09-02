@@ -3,6 +3,9 @@ use std::default::Default;
 
 use crate::{instructions::execute_opcode, MemoryBus, Registers};
 
+const INTERRUPT_FLAG_REGISTER_ADDR: u16 = 0xFF0F;
+const INTERRUPT_ENABLE_REGISTER_ADDR: u16 = 0xFFFF;
+
 /// The emulated CPU of the Game Boy.
 #[derive(Debug)]
 pub struct Cpu {
@@ -22,8 +25,8 @@ pub struct Cpu {
     pub di_countdown: usize,
     /// Countdown until interrupts are enabled.
     pub ei_countdown: usize,
-    /// Interrupt Master Enable flag.
-    pub ime: bool,
+    /// Whether interrupts are enabled or not.
+    pub interrupts_enabled: bool,
 }
 impl Cpu {
     /// Create a new [Cpu].
@@ -35,16 +38,36 @@ impl Cpu {
     /// Perform one cycle.
     pub fn cycle(&mut self) {
         self.update_interrupt_countdown();
+        if self.interrupts_enabled && self.handle_interrupt() {
+            return;
+        }
+
         let opcode = self.mem_bus.memory[self.pc as usize];
         execute_opcode(self, opcode);
         // println!("{:#04X}", self.pc);
+    }
+
+    // Handle interrupts
+    fn handle_interrupt(&mut self) -> bool {
+        // If some interrupt is both enabled and allowed...
+        let interrupt_enable_register = self.mem_bus.read_byte(INTERRUPT_ENABLE_REGISTER_ADDR);
+        let interrupt_flag_register = self.mem_bus.read_byte(INTERRUPT_FLAG_REGISTER_ADDR);
+        if (interrupt_enable_register & interrupt_flag_register) != 0 {
+            // ...handle interrupts by priority
+            // Top priority: v-blank @ bit 0
+            if (interrupt_enable_register & 0x0001) & (interrupt_flag_register & 0x0001) != 0 {
+                // TODO
+                return true;
+            }
+        }
+        false
     }
 
     fn update_interrupt_countdown(&mut self) {
         self.di_countdown = match self.di_countdown {
             2 => 1,
             1 => {
-                self.ime = false;
+                self.interrupts_enabled = false;
                 0
             }
             _ => 0,
@@ -52,7 +75,7 @@ impl Cpu {
         self.ei_countdown = match self.ei_countdown {
             2 => 1,
             1 => {
-                self.ime = true;
+                self.interrupts_enabled = true;
                 0
             }
             _ => 0,
@@ -99,7 +122,7 @@ impl Default for Cpu {
             is_stopped: false,
             ei_countdown: 0,
             di_countdown: 0,
-            ime: false,
+            interrupts_enabled: false,
         }
     }
 }

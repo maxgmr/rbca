@@ -36,7 +36,7 @@ fn main() {
     let mut rom_buffer = Vec::new();
     let mut rom_file = File::open(&args[1]).expect("Unable to open file.");
     rom_file.read_to_end(&mut rom_buffer).unwrap();
-    cpu.load(0x0000, &rom_buffer);
+    cpu.load(0x0100, &rom_buffer);
     cpu.pc = 0x0100;
 
     while (cpu.pc as usize) < (0x0100 + rom_buffer.len()) {
