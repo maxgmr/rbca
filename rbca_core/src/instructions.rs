@@ -382,44 +382,44 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
                 0x36 => swap_n_hl(cpu),
 
                 // RLC n
-                // 0x07 =>
-                // 0x00 =>
-                // 0x01 =>
-                // 0x02 =>
-                // 0x03 =>
-                // 0x04 =>
-                // 0x05 =>
-                // 0x06 =>
+                0x07 => rlc_n(cpu, A),
+                0x00 => rlc_n(cpu, B),
+                0x01 => rlc_n(cpu, C),
+                0x02 => rlc_n(cpu, D),
+                0x03 => rlc_n(cpu, E),
+                0x04 => rlc_n(cpu, H),
+                0x05 => rlc_n(cpu, L),
+                0x06 => rlc_n_hl(cpu),
 
                 // RL n
-                // 0x17 =>
-                // 0x10 =>
-                // 0x11 =>
-                // 0x12 =>
-                // 0x13 =>
-                // 0x14 =>
-                // 0x15 =>
-                // 0x16 =>
+                0x17 => rl_n(cpu, A),
+                0x10 => rl_n(cpu, B),
+                0x11 => rl_n(cpu, C),
+                0x12 => rl_n(cpu, D),
+                0x13 => rl_n(cpu, E),
+                0x14 => rl_n(cpu, H),
+                0x15 => rl_n(cpu, L),
+                0x16 => rl_n_hl(cpu),
 
                 // RRC n
-                // 0x0F =>
-                // 0x08 =>
-                // 0x09 =>
-                // 0x0A =>
-                // 0x0B =>
-                // 0x0C =>
-                // 0x0D =>
-                // 0x0E =>
+                0x0F => rrc_n(cpu, A),
+                0x08 => rrc_n(cpu, B),
+                0x09 => rrc_n(cpu, C),
+                0x0A => rrc_n(cpu, D),
+                0x0B => rrc_n(cpu, E),
+                0x0C => rrc_n(cpu, H),
+                0x0D => rrc_n(cpu, L),
+                0x0E => rrc_n_hl(cpu),
 
                 // RR n
-                // 0x1F =>
-                // 0x18 =>
-                // 0x19 =>
-                // 0x1A =>
-                // 0x1B =>
-                // 0x1C =>
-                // 0x1D =>
-                // 0x1E =>
+                0x1F => rr_n(cpu, A),
+                0x18 => rr_n(cpu, B),
+                0x19 => rr_n(cpu, C),
+                0x1A => rr_n(cpu, D),
+                0x1B => rr_n(cpu, E),
+                0x1C => rr_n(cpu, H),
+                0x1D => rr_n(cpu, L),
+                0x1E => rr_n_hl(cpu),
 
                 // SLA n
                 // 0x27 =>
@@ -1346,48 +1346,125 @@ fn ei(cpu: &mut Cpu) {
 
 // RLCA: Rotate A left; set carry flag to original bit 7 in A.
 fn rlca(cpu: &mut Cpu) {
-    let a_val = cpu.regs.get_reg(A);
-    let bit_7 = a_val >> 7;
-    let a_rotated_l = (a_val << 1) | bit_7;
-
-    cpu.regs.reset_flags();
-    cpu.regs.set_flag(RegFlag::Z, a_rotated_l == 0);
-    cpu.regs.set_flag(RegFlag::C, bit_7 == 1);
-    cpu.regs.set_reg(A, a_rotated_l);
+    let original_val = cpu.regs.get_reg(A);
+    let rotated_l = rlc_n_helper(cpu, original_val);
+    cpu.regs.set_reg(A, rotated_l);
     cpu.pc += 1;
 }
 
 // RLA: Rotate A left through carry flag.
 fn rla(cpu: &mut Cpu) {
-    let a_val = cpu.regs.get_reg(A);
-    let bit_7 = a_val >> 7;
-    let a_rotated_l = (a_val << 1) | if cpu.regs.get_flag(RegFlag::C) { 1 } else { 0 };
-
-    cpu.regs.reset_flags();
-    cpu.regs.set_flag(RegFlag::Z, a_rotated_l == 0);
-    cpu.regs.set_flag(RegFlag::C, bit_7 == 1);
-    cpu.regs.set_reg(A, a_rotated_l);
+    let original_val = cpu.regs.get_reg(A);
+    let rotated_l = rl_n_helper(cpu, original_val);
+    cpu.regs.set_reg(A, rotated_l);
     cpu.pc += 1;
 }
 
 // RRCA: Rotate A right; set carry flag to original bit 0 in A.
 fn rrca(cpu: &mut Cpu) {
-    let a_val = cpu.regs.get_reg(A);
-    let bit_0 = a_val & 0x01;
-    let a_rotated_r = (a_val >> 1) | (bit_0 << 7);
-
-    cpu.regs.reset_flags();
-    cpu.regs.set_flag(RegFlag::Z, a_rotated_r == 0);
-    cpu.regs.set_flag(RegFlag::C, bit_0 == 1);
-    cpu.regs.set_reg(A, a_rotated_r);
+    let original_val = cpu.regs.get_reg(A);
+    let rotated_r = rrc_n_helper(cpu, original_val);
+    cpu.regs.set_reg(A, rotated_r);
     cpu.pc += 1;
 }
 
 // RRA: Rotate A right through carry flag.
 fn rra(cpu: &mut Cpu) {
-    let a_val = cpu.regs.get_reg(A);
-    let bit_0 = a_val & 0x01;
-    let a_rotated_r = (a_val >> 1)
+    let original_val = cpu.regs.get_reg(A);
+    let rotated_r = rr_n_helper(cpu, original_val);
+    cpu.regs.set_reg(A, rotated_r);
+    cpu.pc += 1;
+}
+
+// RLC n: Rotate n left; set carry flag to original bit 7 in n.
+fn rlc_n(cpu: &mut Cpu, target: Target) {
+    let original_val = cpu.regs.get_reg(target);
+    let rotated_l = rlc_n_helper(cpu, original_val);
+    cpu.regs.set_reg(target, rotated_l);
+    cpu.pc += 2;
+}
+fn rlc_n_hl(cpu: &mut Cpu) {
+    let address = cpu.regs.get_virt_reg(HL);
+    let original_val = cpu.mem_bus.read_byte(address);
+    let rotated_l = rlc_n_helper(cpu, original_val);
+    cpu.mem_bus.write_byte(address, rotated_l);
+    cpu.pc += 2;
+}
+fn rlc_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
+    let bit_7 = original_val >> 7;
+    let rotated_l = (original_val << 1) | bit_7;
+
+    cpu.regs.reset_flags();
+    cpu.regs.set_flag(RegFlag::Z, rotated_l == 0);
+    cpu.regs.set_flag(RegFlag::C, bit_7 == 1);
+    rotated_l
+}
+
+// RL n: Rotate n left through carry flag.
+fn rl_n(cpu: &mut Cpu, target: Target) {
+    let original_val = cpu.regs.get_reg(target);
+    let rotated_l = rl_n_helper(cpu, original_val);
+    cpu.regs.set_reg(target, rotated_l);
+    cpu.pc += 2;
+}
+fn rl_n_hl(cpu: &mut Cpu) {
+    let address = cpu.regs.get_virt_reg(HL);
+    let original_val = cpu.mem_bus.read_byte(address);
+    let rotated_l = rl_n_helper(cpu, original_val);
+    cpu.mem_bus.write_byte(address, rotated_l);
+    cpu.pc += 2;
+}
+fn rl_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
+    let bit_7 = original_val >> 7;
+    let rotated_l = (original_val << 1) | if cpu.regs.get_flag(RegFlag::C) { 1 } else { 0 };
+
+    cpu.regs.reset_flags();
+    cpu.regs.set_flag(RegFlag::Z, rotated_l == 0);
+    cpu.regs.set_flag(RegFlag::C, bit_7 == 1);
+    rotated_l
+}
+
+// RRC n: Rotate n right; set carry flag to original bit 0 in n.
+fn rrc_n(cpu: &mut Cpu, target: Target) {
+    let original_val = cpu.regs.get_reg(target);
+    let rotated_r = rrc_n_helper(cpu, original_val);
+    cpu.regs.set_reg(target, rotated_r);
+    cpu.pc += 2;
+}
+fn rrc_n_hl(cpu: &mut Cpu) {
+    let address = cpu.regs.get_virt_reg(HL);
+    let original_val = cpu.mem_bus.read_byte(address);
+    let rotated_r = rrc_n_helper(cpu, original_val);
+    cpu.mem_bus.write_byte(address, rotated_r);
+    cpu.pc += 2;
+}
+fn rrc_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
+    let bit_0 = original_val & 0x01;
+    let rotated_r = (original_val >> 1) | (bit_0 << 7);
+
+    cpu.regs.reset_flags();
+    cpu.regs.set_flag(RegFlag::Z, rotated_r == 0);
+    cpu.regs.set_flag(RegFlag::C, bit_0 == 1);
+    rotated_r
+}
+
+// RR n: Rotate n right through carry flag.
+fn rr_n(cpu: &mut Cpu, target: Target) {
+    let original_val = cpu.regs.get_reg(target);
+    let rotated_r = rr_n_helper(cpu, original_val);
+    cpu.regs.set_reg(target, rotated_r);
+    cpu.pc += 2;
+}
+fn rr_n_hl(cpu: &mut Cpu) {
+    let address = cpu.regs.get_virt_reg(HL);
+    let original_val = cpu.mem_bus.read_byte(address);
+    let rotated_r = rr_n_helper(cpu, original_val);
+    cpu.mem_bus.write_byte(address, rotated_r);
+    cpu.pc += 2;
+}
+fn rr_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
+    let bit_0 = original_val & 0x01;
+    let rotated_r = (original_val >> 1)
         | if cpu.regs.get_flag(RegFlag::C) {
             0x80
         } else {
@@ -1395,10 +1472,9 @@ fn rra(cpu: &mut Cpu) {
         };
 
     cpu.regs.reset_flags();
-    cpu.regs.set_flag(RegFlag::Z, a_rotated_r == 0);
+    cpu.regs.set_flag(RegFlag::Z, rotated_r == 0);
     cpu.regs.set_flag(RegFlag::C, bit_0 == 1);
-    cpu.regs.set_reg(A, a_rotated_r);
-    cpu.pc += 1;
+    rotated_r
 }
 
 // BIT b,r: Iff bit b in register r == 0, set Z flag = 1. Else, set Z flag = 0.
@@ -3416,6 +3492,250 @@ mod tests {
         // Test zero flag
         cpu.regs.reset_flags();
         cpu.regs.set_reg(A, 0x00);
+        cpu.cycle();
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.regs.reset_flags();
+        cpu.cycle();
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.regs.reset_flags();
+        cpu.cycle();
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+
+        cpu.regs.reset_flags();
+        cpu.cycle();
+        assert!(cpu.regs.get_flag(RegFlag::Z));
+    }
+
+    #[test]
+    #[allow(clippy::same_item_push)]
+    fn test_rotates() {
+        let mut cpu = Cpu::new();
+        cpu.pc = 0x0000;
+        // 2x RLC, 3x RL, 2x RRC, 4x RR, RLC, RL, RRC, RR
+        let mut data: Vec<u8> = Vec::new();
+        // Targets are denoted by the second digit of the opcode
+        let target_num_l: [u8; 8] = [0x07, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06];
+        let target_num_r: [u8; 8] = [0x0F, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E];
+        // For each target...
+        for i in 0..8 {
+            // 2x RLC
+            for _ in 0..2 {
+                data.push(0xCB);
+                data.push(target_num_l[i]);
+            }
+            // 3x RL
+            for _ in 0..3 {
+                data.push(0xCB);
+                data.push(0x10 | target_num_l[i]);
+            }
+            // 2x RRC
+            for _ in 0..2 {
+                data.push(0xCB);
+                data.push(target_num_r[i]);
+            }
+            // 4x RR
+            for _ in 0..4 {
+                data.push(0xCB);
+                data.push(0x10 | target_num_r[i])
+            }
+            // RLC
+            data.push(0xCB);
+            data.push(target_num_l[i]);
+            // RL
+            data.push(0xCB);
+            data.push(0x10 | target_num_l[i]);
+            // RRC
+            data.push(0xCB);
+            data.push(target_num_r[i]);
+            // RR
+            data.push(0xCB);
+            data.push(0x10 | target_num_r[i])
+        }
+
+        cpu.load(0x0000, &data);
+        for target in Target::iter() {
+            cpu.regs.set_flag(RegFlag::Z, true);
+            cpu.regs.set_flag(RegFlag::N, true);
+            cpu.regs.set_flag(RegFlag::H, true);
+            cpu.regs.set_flag(RegFlag::C, true);
+            cpu.regs.set_reg(target, 0b0101_0011);
+
+            // Test RLC
+            cpu.cycle();
+            assert_eq!(cpu.regs.get_reg(target), 0b1010_0110);
+            assert!(!cpu.regs.get_flag(RegFlag::Z));
+            assert!(!cpu.regs.get_flag(RegFlag::N));
+            assert!(!cpu.regs.get_flag(RegFlag::H));
+            assert!(!cpu.regs.get_flag(RegFlag::C));
+
+            cpu.cycle();
+            assert_eq!(cpu.regs.get_reg(target), 0b0100_1101);
+            assert!(cpu.regs.get_flag(RegFlag::C));
+
+            // Test RL
+            cpu.regs.set_flag(RegFlag::Z, true);
+            cpu.regs.set_flag(RegFlag::N, true);
+            cpu.regs.set_flag(RegFlag::H, true);
+            cpu.regs.set_flag(RegFlag::C, true);
+            cpu.cycle();
+            assert_eq!(cpu.regs.get_reg(target), 0b1001_1011);
+            assert!(!cpu.regs.get_flag(RegFlag::Z));
+            assert!(!cpu.regs.get_flag(RegFlag::N));
+            assert!(!cpu.regs.get_flag(RegFlag::H));
+            assert!(!cpu.regs.get_flag(RegFlag::C));
+
+            cpu.cycle();
+            assert_eq!(cpu.regs.get_reg(target), 0b0011_0110);
+            assert!(cpu.regs.get_flag(RegFlag::C));
+
+            cpu.cycle();
+            assert_eq!(cpu.regs.get_reg(target), 0b0110_1101);
+            assert!(!cpu.regs.get_flag(RegFlag::C));
+
+            // Test RRC
+            cpu.regs.set_flag(RegFlag::Z, true);
+            cpu.regs.set_flag(RegFlag::N, true);
+            cpu.regs.set_flag(RegFlag::H, true);
+            cpu.regs.set_flag(RegFlag::C, false);
+            cpu.cycle();
+            assert_eq!(cpu.regs.get_reg(target), 0b1011_0110);
+            assert!(!cpu.regs.get_flag(RegFlag::Z));
+            assert!(!cpu.regs.get_flag(RegFlag::N));
+            assert!(!cpu.regs.get_flag(RegFlag::H));
+            assert!(cpu.regs.get_flag(RegFlag::C));
+
+            cpu.cycle();
+            assert_eq!(cpu.regs.get_reg(target), 0b0101_1011);
+            assert!(!cpu.regs.get_flag(RegFlag::C));
+
+            // Test RR
+            cpu.regs.set_flag(RegFlag::Z, true);
+            cpu.regs.set_flag(RegFlag::N, true);
+            cpu.regs.set_flag(RegFlag::H, true);
+            cpu.regs.set_flag(RegFlag::C, false);
+            cpu.cycle();
+            assert_eq!(cpu.regs.get_reg(target), 0b0010_1101);
+            assert!(!cpu.regs.get_flag(RegFlag::Z));
+            assert!(!cpu.regs.get_flag(RegFlag::N));
+            assert!(!cpu.regs.get_flag(RegFlag::H));
+            assert!(cpu.regs.get_flag(RegFlag::C));
+
+            cpu.cycle();
+            assert_eq!(cpu.regs.get_reg(target), 0b1001_0110);
+            assert!(cpu.regs.get_flag(RegFlag::C));
+
+            cpu.cycle();
+            assert_eq!(cpu.regs.get_reg(target), 0b1100_1011);
+            assert!(!cpu.regs.get_flag(RegFlag::C));
+
+            cpu.cycle();
+            assert_eq!(cpu.regs.get_reg(target), 0b0110_0101);
+            assert!(cpu.regs.get_flag(RegFlag::C));
+
+            // Test zero flag
+            cpu.regs.reset_flags();
+            cpu.regs.set_reg(target, 0x00);
+            cpu.cycle();
+            assert!(cpu.regs.get_flag(RegFlag::Z));
+
+            cpu.regs.reset_flags();
+            cpu.cycle();
+            assert!(cpu.regs.get_flag(RegFlag::Z));
+
+            cpu.regs.reset_flags();
+            cpu.cycle();
+            assert!(cpu.regs.get_flag(RegFlag::Z));
+
+            cpu.regs.reset_flags();
+            cpu.cycle();
+            assert!(cpu.regs.get_flag(RegFlag::Z));
+        }
+
+        let address = cpu.regs.get_virt_reg(HL);
+
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.mem_bus.write_byte(address, 0b0101_0011);
+
+        // Test RLC
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(address), 0b1010_0110);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(address), 0b0100_1101);
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        // Test RL
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(address), 0b1001_1011);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(address), 0b0011_0110);
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(address), 0b0110_1101);
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        // Test RRC
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, false);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(address), 0b1011_0110);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(address), 0b0101_1011);
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        // Test RR
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, true);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, false);
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(address), 0b0010_1101);
+        assert!(!cpu.regs.get_flag(RegFlag::Z));
+        assert!(!cpu.regs.get_flag(RegFlag::N));
+        assert!(!cpu.regs.get_flag(RegFlag::H));
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(address), 0b1001_0110);
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(address), 0b1100_1011);
+        assert!(!cpu.regs.get_flag(RegFlag::C));
+
+        cpu.cycle();
+        assert_eq!(cpu.mem_bus.read_byte(address), 0b0110_0101);
+        assert!(cpu.regs.get_flag(RegFlag::C));
+
+        // Test zero flag
+        cpu.regs.reset_flags();
+        cpu.mem_bus.write_byte(address, 0x00);
         cpu.cycle();
         assert!(cpu.regs.get_flag(RegFlag::Z));
 
