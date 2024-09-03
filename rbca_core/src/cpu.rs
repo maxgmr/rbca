@@ -42,9 +42,9 @@ impl Cpu {
             return;
         }
 
-        let opcode = self.mem_bus.memory[self.pc as usize];
+        let opcode = self.mem_bus.read_byte(self.pc);
         execute_opcode(self, opcode);
-        // println!("{:#04X}", self.pc);
+        // println!("{:#02X} @ {:#04X}", opcode, self.pc);
     }
 
     // Handle interrupts
@@ -56,7 +56,6 @@ impl Cpu {
             // ...handle interrupts by priority
             // Top priority: v-blank @ bit 0
             if (interrupt_enable_register & 0x0001) & (interrupt_flag_register & 0x0001) != 0 {
-                // TODO
                 return true;
             }
         }
@@ -84,13 +83,14 @@ impl Cpu {
 
     /// Load something into memory.
     pub fn load(&mut self, start_index: u16, data: &[u8]) {
-        let end_index = (start_index as usize) + data.len();
-        self.mem_bus.memory[(start_index as usize)..end_index].copy_from_slice(data);
+        for (i, _) in data.iter().enumerate() {
+            self.mem_bus.write_byte(start_index + (i as u16), data[i]);
+        }
     }
 
     /// Get next byte.
     pub fn get_next_byte(&mut self) -> u8 {
-        self.mem_bus.memory[(self.pc as usize) + 1]
+        self.mem_bus.read_byte(self.pc + 1)
     }
 
     /// Get next two bytes (little-endian).

@@ -252,9 +252,9 @@ fn test_push_pop_nn() {
 #[test]
 fn test_rst_n() {
     let mut cpu = Cpu::new();
-    cpu.pc = 0xFEDC;
-    // Push 0xFEDC to stack, jump to 0x0000.
-    cpu.mem_bus.write_byte(0xFEDC, 0xC7);
+    cpu.pc = 0xB000;
+    // Push 0xB000 to stack, jump to 0x0000.
+    cpu.mem_bus.write_byte(0xB000, 0xC7);
     // Push 0x0000 to stack, jump to 0x0008.
     cpu.mem_bus.write_byte(0x0000, 0xCF);
     // Push 0x0008 to stack, jump to 0x0010.
@@ -325,22 +325,22 @@ fn test_ld_nn_n() {
     cpu.pc = 0x0000;
     cpu.cycle();
     cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x0E);
+    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x0E);
     cpu.cycle();
     cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x16);
+    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x16);
     cpu.cycle();
     cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x1E);
+    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x1E);
     cpu.cycle();
     cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x26);
+    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x26);
     cpu.cycle();
     cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x2E);
+    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x2E);
     cpu.cycle();
     cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.memory[cpu.pc as usize], 0x06);
+    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x06);
 }
 
 #[test]
@@ -1795,7 +1795,6 @@ fn test_bad_stop() {
 
 #[test]
 fn test_ei_di() {
-    // TODO
     let mut cpu = Cpu::new();
     let data = [
         0xF3, 0x00, 0x00, 0x00, 0xFB, 0x00, 0x00, 0xF3, 0xFB, 0x00, 0x00,

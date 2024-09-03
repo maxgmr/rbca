@@ -718,7 +718,7 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
 
 // LD nn,n: Set 8-bit immediate value n = nn.
 fn ld_nn_n(cpu: &mut Cpu, target: Target) {
-    cpu.mem_bus.memory[(cpu.pc as usize) + 1] = cpu.regs.get_reg(target);
+    cpu.mem_bus.write_byte(cpu.pc + 1, cpu.regs.get_reg(target));
     cpu.pc += 2;
 }
 

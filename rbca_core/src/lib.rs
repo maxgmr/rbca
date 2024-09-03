@@ -3,7 +3,9 @@
 
 mod boot;
 mod cpu;
+mod ie_register;
 mod instructions;
+mod io_registers;
 mod memory;
 mod registers;
 
