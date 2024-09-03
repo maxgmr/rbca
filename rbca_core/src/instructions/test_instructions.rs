@@ -1003,7 +1003,7 @@ fn test_and_n() {
     cpu.regs.set_reg(E, 0b1110_1111);
     cpu.regs.set_reg(H, 0b1110_0000);
     cpu.regs.set_reg(L, 0b0111_0110);
-    cpu.mem_bus.write_byte(0b1110_0000_0111_0110, 0b0000_1111);
+    cpu.mem_bus.write_byte(0b0110_0000_0111_0110, 0b0000_1111);
     let data = [
         0xA7,
         0xA0,
@@ -1148,7 +1148,7 @@ fn test_xor_n() {
     cpu.regs.set_reg(E, 0b0000_1010); // 0b0110_0010
     cpu.regs.set_reg(H, 0b1110_0100); // 0b1000_0110
     cpu.regs.set_reg(L, 0b0000_0011); // 0b1000_0101
-    cpu.mem_bus.write_byte(0b1110_0100_0000_0011, 0b1111_0000); // 0b0111_0001
+    cpu.mem_bus.write_byte(0b0110_0100_0000_0011, 0b1111_0000); // 0b0111_0001
     let data = [
         0xAF,
         0xA8,
@@ -1198,6 +1198,7 @@ fn test_xor_n() {
     assert_eq!(cpu.regs.get_reg(A), 0b1000_0001);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
+    cpu.regs.set_virt_reg(HL, 0b0110_0100_0000_0011);
     cpu.cycle();
     assert_eq!(cpu.regs.get_reg(A), 0b0111_0001);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
@@ -1290,9 +1291,9 @@ fn test_inc_dec_n() {
     cpu.regs.set_reg(C, 0x0F);
     cpu.regs.set_reg(D, 0xFF);
     cpu.regs.set_reg(E, 0x1F);
-    cpu.regs.set_reg(H, 0xF0);
+    cpu.regs.set_reg(H, 0xD0);
     cpu.regs.set_reg(L, 0x11);
-    cpu.mem_bus.write_byte(0xF112, 0x23);
+    cpu.mem_bus.write_byte(0xD112, 0x23);
     let data = [
         0x3C, 0x04, 0x0C, 0x14, 0x1C, 0x24, 0x2C, 0x34, 0x3D, 0x05, 0x0D, 0x15, 0x1D, 0x25, 0x2D,
         0x35,
@@ -1328,7 +1329,7 @@ fn test_inc_dec_n() {
     assert!(cpu.regs.get_flag(RegFlag::H));
 
     cpu.cycle();
-    assert_eq!(cpu.regs.get_reg(H), 0xF1);
+    assert_eq!(cpu.regs.get_reg(H), 0xD1);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 
     cpu.cycle();
@@ -1372,16 +1373,16 @@ fn test_inc_dec_n() {
     assert!(cpu.regs.get_flag(RegFlag::H));
 
     cpu.cycle();
-    assert_eq!(cpu.regs.get_reg(H), 0xF0);
+    assert_eq!(cpu.regs.get_reg(H), 0xD0);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 
     cpu.cycle();
     assert_eq!(cpu.regs.get_reg(L), 0x11);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 
-    cpu.regs.set_virt_reg(HL, 0xF112);
+    cpu.regs.set_virt_reg(HL, 0xD112);
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(0xF112), 0x23);
+    assert_eq!(cpu.mem_bus.read_byte(0xD112), 0x23);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 }
 

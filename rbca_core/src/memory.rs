@@ -8,8 +8,16 @@ use crate::{io_registers::IORegisters, Flags};
 pub struct MemoryBus {
     /// [0x0000-0x3FFF] Cartridge ROM bank 0. Usually a fixed bank.
     pub cart_rom_0: [u8; 0x4000],
-    /// [0x4000-0x7FFF] Switchable cartridge ROM bank.
-    pub cart_rom_n: [u8; 0x4000],
+    /// [0x4000-0x7FFF] Switchable cartridge ROM bank 1.
+    pub cart_rom_1: [u8; 0x4000],
+    /// [0x4000-0x7FFF] Switchable cartridge ROM bank 2.
+    pub cart_rom_2: [u8; 0x4000],
+    /// [0x4000-0x7FFF] Switchable cartridge ROM bank 3.
+    pub cart_rom_3: [u8; 0x4000],
+    /// [0x4000-0x7FFF] Switchable cartridge ROM bank 5.
+    pub cart_rom_5: [u8; 0x4000],
+    /// Currently-selected cartridge ROM bank.
+    current_rom_bank: usize,
     /// [0x8000-0x9FFF] Video RAM. Background & sprite data.
     pub vram: [u8; 0x2000],
     /// [0xA000-0xBFFF] External cartridge RAM. Programs that require more RAM than available can
@@ -27,7 +35,7 @@ pub struct MemoryBus {
     pub io_regs: IORegisters,
     /// [0xFF80-0xFFFE] High RAM. High-speed RAM where the most interaction between the hardware
     /// and the program occurs.
-    pub hram: [u8; 0x0080],
+    pub hram: [u8; 0x007F],
     /// [0xFFFF] Interrupt enable register.
     pub ie_reg: Flags,
 }
@@ -36,15 +44,39 @@ impl MemoryBus {
     pub fn new() -> Self {
         Self {
             cart_rom_0: [0x00; 0x4000],
-            cart_rom_n: [0x00; 0x4000],
+            cart_rom_1: [0x00; 0x4000],
+            cart_rom_2: [0x00; 0x4000],
+            cart_rom_3: [0x00; 0x4000],
+            cart_rom_5: [0x00; 0x4000],
+            current_rom_bank: 1,
             vram: [0x00; 0x2000],
             eram: [0x00; 0x2000],
             wram: [0x00; 0x2000],
             wram_echo: [0x00; 0x1E00],
             oam: [0x00; 0x00A0],
             io_regs: IORegisters::new(),
-            hram: [0x00; 0x0080],
+            hram: [0x00; 0x007F],
             ie_reg: Flags::new(0b0000_0000),
+        }
+    }
+
+    /// Match the currently-selected ROM bank.
+    pub fn match_rom_bank(&self) -> &[u8; 0x4000] {
+        match self.current_rom_bank {
+            5 => &self.cart_rom_5,
+            3 => &self.cart_rom_3,
+            2 => &self.cart_rom_2,
+            _ => &self.cart_rom_1,
+        }
+    }
+
+    /// Match the currently-selected ROM bank.
+    pub fn match_rom_bank_mut(&mut self) -> &mut [u8; 0x4000] {
+        match self.current_rom_bank {
+            5 => &mut self.cart_rom_5,
+            3 => &mut self.cart_rom_3,
+            2 => &mut self.cart_rom_2,
+            _ => &mut self.cart_rom_1,
         }
     }
 
@@ -52,11 +84,11 @@ impl MemoryBus {
     pub fn read_byte(&self, address: u16) -> u8 {
         match address {
             0x0000..=0x3FFF => self.cart_rom_0[address as usize],
-            0x4000..=0x7FFF => self.cart_rom_n[address as usize - 0x4000],
+            0x4000..=0x7FFF => self.match_rom_bank()[address as usize - 0x4000],
             0x8000..=0x9FFF => self.vram[address as usize - 0x8000],
             0xA000..=0xBFFF => self.eram[address as usize - 0xA000],
             0xC000..=0xDFFF => self.wram[address as usize - 0xC000],
-            0xE000..=0xFDFF => self.eram[address as usize - 0xE000],
+            0xE000..=0xFDFF => self.wram_echo[address as usize - 0xE000],
             0xFE00..=0xFE9F => self.oam[address as usize - 0xFE00],
             // TODO should probably not just instantly panic- maybe warning?
             0xFEA0..=0xFEFF => {
@@ -77,11 +109,18 @@ impl MemoryBus {
     pub fn write_byte(&mut self, address: u16, byte: u8) {
         match address {
             0x0000..=0x3FFF => self.cart_rom_0[address as usize] = byte,
-            0x4000..=0x7FFF => self.cart_rom_n[address as usize - 0x4000] = byte,
+            0x4000..=0x7FFF => self.match_rom_bank_mut()[address as usize - 0x4000] = byte,
             0x8000..=0x9FFF => self.vram[address as usize - 0x8000] = byte,
             0xA000..=0xBFFF => self.eram[address as usize - 0xA000] = byte,
-            0xC000..=0xDFFF => self.wram[address as usize - 0xC000] = byte,
-            0xE000..=0xFDFF => self.eram[address as usize - 0xE000] = byte,
+            0xC000..=0xDFFF => {
+                self.wram[address as usize - 0xC000] = byte;
+                // Echo RAM only mirrors 0xC000..=0xDDFF.
+                if address <= 0xDDFF {
+                    self.wram_echo[address as usize - 0xC000] = byte;
+                }
+            }
+            // Writing to wram_echo is prohibited
+            0xE000..=0xFDFF => panic!("Illegal write attempt to Echo RAM @ {:#04X}", address),
             0xFE00..=0xFE9F => self.oam[address as usize - 0xFE00] = byte,
             // TODO should probably not just instantly panic- maybe warning?
             0xFEA0..=0xFEFF => panic!(
@@ -127,5 +166,132 @@ mod tests {
         assert_eq!(mem_bus.read_byte(0x0000), 0x12);
         assert_eq!(mem_bus.read_byte(0x0001), 0xFB);
         assert_eq!(mem_bus.read_byte(0x0002), 0x34);
+    }
+
+    #[test]
+    fn test_rw_rom0() {
+        let mut mb = MemoryBus::new();
+
+        mb.write_byte(0x3FFF, 0xAB);
+        assert_eq!(mb.read_byte(0x3FFF), 0xAB);
+        assert_eq!(mb.cart_rom_0[0x3FFF], 0xAB);
+    }
+
+    #[test]
+    fn test_rw_romn() {
+        let mut mb = MemoryBus::new();
+
+        mb.write_byte(0x4000, 0xAB);
+        assert_eq!(mb.read_byte(0x4000), 0xAB);
+        assert_eq!(mb.cart_rom_1[0x0000], 0xAB);
+
+        mb.current_rom_bank = 2;
+        mb.write_byte(0x4000, 0xCD);
+        assert_eq!(mb.read_byte(0x4000), 0xCD);
+        assert_eq!(mb.cart_rom_2[0x0000], 0xCD);
+        assert_eq!(mb.cart_rom_1[0x0000], 0xAB);
+
+        mb.current_rom_bank = 3;
+        mb.write_byte(0x4000, 0xEF);
+        assert_eq!(mb.read_byte(0x4000), 0xEF);
+        assert_eq!(mb.cart_rom_3[0x0000], 0xEF);
+        assert_eq!(mb.cart_rom_1[0x0000], 0xAB);
+        assert_eq!(mb.cart_rom_2[0x0000], 0xCD);
+
+        mb.current_rom_bank = 5;
+        mb.write_byte(0x4000, 0x12);
+        assert_eq!(mb.read_byte(0x4000), 0x12);
+        assert_eq!(mb.cart_rom_5[0x0000], 0x12);
+        assert_eq!(mb.cart_rom_1[0x0000], 0xAB);
+        assert_eq!(mb.cart_rom_2[0x0000], 0xCD);
+        assert_eq!(mb.cart_rom_3[0x0000], 0xEF);
+
+        mb.current_rom_bank = 1;
+        assert_eq!(mb.read_byte(0x4000), 0xAB);
+        mb.current_rom_bank = 2;
+        assert_eq!(mb.read_byte(0x4000), 0xCD);
+        mb.current_rom_bank = 3;
+        assert_eq!(mb.read_byte(0x4000), 0xEF);
+        mb.current_rom_bank = 5;
+        assert_eq!(mb.read_byte(0x4000), 0x12);
+    }
+
+    #[test]
+    fn test_rw_vram() {
+        let mut mb = MemoryBus::new();
+
+        mb.write_byte(0x8000, 0xAB);
+        mb.write_byte(0x9FFF, 0xCD);
+        assert_eq!(mb.read_byte(0x8000), 0xAB);
+        assert_eq!(mb.vram[0x0000], 0xAB);
+        assert_eq!(mb.read_byte(0x9FFF), 0xCD);
+        assert_eq!(mb.vram[0x1FFF], 0xCD);
+    }
+
+    #[test]
+    fn test_rw_eram() {
+        let mut mb = MemoryBus::new();
+
+        mb.write_byte(0xA000, 0xAB);
+        mb.write_byte(0xBFFF, 0xCD);
+        assert_eq!(mb.read_byte(0xA000), 0xAB);
+        assert_eq!(mb.eram[0x0000], 0xAB);
+        assert_eq!(mb.read_byte(0xBFFF), 0xCD);
+        assert_eq!(mb.eram[0x1FFF], 0xCD);
+    }
+
+    #[test]
+    fn test_rw_wram() {
+        let mut mb = MemoryBus::new();
+
+        mb.write_byte(0xC000, 0xAB);
+        assert_eq!(mb.read_byte(0xC000), 0xAB);
+        assert_eq!(mb.wram[0x0000], 0xAB);
+        assert_eq!(mb.wram_echo[0x0000], 0xAB);
+
+        mb.write_byte(0xDFFF, 0xCD);
+        assert_eq!(mb.read_byte(0xDFFF), 0xCD);
+        assert_eq!(mb.wram[0x1FFF], 0xCD);
+
+        mb.write_byte(0xDDFF, 0x12);
+        assert_eq!(mb.read_byte(0xDDFF), 0x12);
+        assert_eq!(mb.wram[0x1DFF], 0x12);
+        assert_eq!(mb.wram_echo[0x1DFF], 0x12);
+    }
+
+    #[test]
+    fn test_rw_oam() {
+        let mut mb = MemoryBus::new();
+
+        mb.write_byte(0xFE00, 0xAB);
+        mb.write_byte(0xFE9F, 0xCD);
+        assert_eq!(mb.read_byte(0xFE00), 0xAB);
+        assert_eq!(mb.oam[0x0000], 0xAB);
+        assert_eq!(mb.read_byte(0xFE9F), 0xCD);
+        assert_eq!(mb.oam[0x009F], 0xCD);
+    }
+
+    #[test]
+    fn test_rw_io_regs() {
+        let mut mb = MemoryBus::new();
+
+        mb.write_byte(0xFF00, 0xAB);
+        mb.write_byte(0xFF70, 0xCD);
+        assert_eq!(mb.read_byte(0xFF00), 0xAB);
+        assert_eq!(mb.io_regs.read_byte(0x0000), 0xAB);
+        assert_eq!(mb.read_byte(0xFF70), 0xCD);
+        assert_eq!(mb.io_regs.read_byte(0x0070), 0xCD);
+    }
+
+    #[test]
+    fn test_rw_hram() {
+        let mut mb = MemoryBus::new();
+
+        mb.write_byte(0xFF80, 0xAB);
+        mb.write_byte(0xFFFE, 0xCD);
+        assert_eq!(mb.read_byte(0xFF80), 0xAB);
+        assert_eq!(mb.hram[0x0000], 0xAB);
+        assert_eq!(mb.read_byte(0xFFFE), 0xCD);
+        assert_eq!(mb.hram[0x007E], 0xCD);
     }
 }
