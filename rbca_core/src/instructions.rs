@@ -701,10 +701,14 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
             }
         }
 
-        // TODO handle illegal opcodes
+        // Illegal opcodes
+        0xD3 | 0xDB | 0xDD | 0xE3 | 0xE4 | 0xEB | 0xEC | 0xED | 0xF4 | 0xFC | 0xFD => {
+            panic!("Illegal opcode {:#02X} at {:#04X}", opcode, cpu.pc)
+        }
 
         // Unimplemented instruction
-        _ => panic!("Unimplemented opcode {:#02X} at {:#04X}", opcode, cpu.pc,),
+        #[allow(unreachable_patterns)]
+        _ => panic!("Unimplemented opcode {:#02X} at {:#04X}", opcode, cpu.pc),
     }
 }
 

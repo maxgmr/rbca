@@ -7,7 +7,7 @@ const INTERRUPT_FLAG_REGISTER_ADDR: u16 = 0xFF0F;
 const INTERRUPT_ENABLE_REGISTER_ADDR: u16 = 0xFFFF;
 
 /// The emulated CPU of the Game Boy.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Cpu {
     /// Registers
     pub regs: Registers,

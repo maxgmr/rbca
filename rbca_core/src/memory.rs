@@ -2,7 +2,7 @@
 use std::default::Default;
 
 /// Memory bus of the Game Boy.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MemoryBus {
     /// The memory contents.
     pub memory: [u8; 0x10000],
