@@ -3,6 +3,8 @@ use std::default::Default;
 
 use strum_macros::EnumIter;
 
+use crate::{Flags, FlagsEnum};
+
 /// Enum to define the register target of a function.
 #[derive(Debug, Copy, Clone, EnumIter)]
 pub enum Target {
@@ -39,13 +41,23 @@ pub enum VirtTarget {
 #[derive(Debug, Copy, Clone)]
 pub enum RegFlag {
     /// `Z`: Zero flag
-    Z = 0b1000_0000,
+    Z,
     /// `N`: Subtraction flag
-    N = 0b0100_0000,
+    N,
     /// `H`: Half Carry flag
-    H = 0b0010_0000,
+    H,
     /// `C`: Carry flag
-    C = 0b0001_0000,
+    C,
+}
+impl FlagsEnum for RegFlag {
+    fn val(&self) -> u8 {
+        match self {
+            Self::Z => 0b1000_0000,
+            Self::N => 0b0100_0000,
+            Self::H => 0b0010_0000,
+            Self::C => 0b0001_0000,
+        }
+    }
 }
 
 /// The registers of the emulated CPU.
@@ -61,7 +73,7 @@ pub struct Registers {
     d: u8,
     /// Register `E`
     e: u8,
-    f: u8,
+    f: Flags,
     /// Register `H`
     h: u8,
     /// Register `L`
@@ -103,7 +115,7 @@ impl Registers {
     /// Get the value of a given virtual register.
     pub fn get_virt_reg(&self, target: VirtTarget) -> u16 {
         let (first_register, second_register) = match target {
-            VirtTarget::AF => (self.a, self.f),
+            VirtTarget::AF => (self.a, self.f.read_byte()),
             VirtTarget::BC => (self.b, self.c),
             VirtTarget::DE => (self.d, self.e),
             VirtTarget::HL => (self.h, self.l),
@@ -114,7 +126,7 @@ impl Registers {
     /// Set the value of a given virtual register.
     pub fn set_virt_reg(&mut self, target: VirtTarget, value: u16) {
         let (first_register, second_register) = match target {
-            VirtTarget::AF => (&mut self.a, &mut self.f),
+            VirtTarget::AF => (&mut self.a, self.f.read_byte_mut()),
             VirtTarget::BC => (&mut self.b, &mut self.c),
             VirtTarget::DE => (&mut self.d, &mut self.e),
             VirtTarget::HL => (&mut self.h, &mut self.l),
@@ -125,18 +137,17 @@ impl Registers {
 
     /// Get flag.
     pub fn get_flag(&self, flag: RegFlag) -> bool {
-        (self.f & (flag as u8)) != 0
+        self.f.get(flag)
     }
 
     /// Set flag.
     pub fn set_flag(&mut self, flag: RegFlag, value: bool) {
-        let pos = (flag as u8).trailing_zeros();
-        self.f = (self.f & !(0b1 << pos)) | ((if value { 1 } else { 0 }) << pos)
+        self.f.set(flag, value)
     }
 
     /// Reset flags.
     pub fn reset_flags(&mut self) {
-        self.f = 0b0000_0000;
+        self.f.write_byte(0b0000_0000);
     }
 }
 
@@ -198,7 +209,7 @@ mod tests {
         assert_eq!(rs.c, 0x67);
         assert_eq!(rs.d, 0x89);
         assert_eq!(rs.e, 0xAB);
-        assert_eq!(rs.f, 0xA0);
+        assert_eq!(rs.f.read_byte(), 0xA0);
         assert_eq!(rs.h, 0xCD);
         assert_eq!(rs.l, 0xEF);
 
@@ -213,12 +224,12 @@ mod tests {
         assert!(!rs.get_flag(RegFlag::N));
         assert!(!rs.get_flag(RegFlag::H));
         assert!(!rs.get_flag(RegFlag::C));
-        assert_eq!(rs.f, 0x00);
+        assert_eq!(rs.f.read_byte(), 0x00);
         assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x0000);
 
         rs.set_flag(RegFlag::C, true);
         assert!(rs.get_flag(RegFlag::C));
-        assert_eq!(rs.f, 0b0001_0000);
+        assert_eq!(rs.f.read_byte(), 0b0001_0000);
         rs.set_flag(RegFlag::C, false);
 
         rs.set_flag(RegFlag::Z, true);
