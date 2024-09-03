@@ -1,5 +1,8 @@
 use std::default::Default;
 
+const DISPLAY_WIDTH: usize = 160;
+const DISPLAY_HEIGHT: usize = 144;
+
 /// Graphics processing unit.
 #[derive(Debug, Clone)]
 pub struct GPU {

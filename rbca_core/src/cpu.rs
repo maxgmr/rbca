@@ -82,6 +82,7 @@ impl Cpu {
     }
 
     /// Load something into memory.
+    #[cfg(test)]
     pub fn load(&mut self, start_index: u16, data: &[u8]) {
         for (i, _) in data.iter().enumerate() {
             self.mem_bus.write_byte(start_index + (i as u16), data[i]);

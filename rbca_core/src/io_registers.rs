@@ -114,8 +114,7 @@ impl Default for IORegisters {
 
 /// Joypad enum.
 #[derive(Debug, Copy, Clone)]
-#[allow(clippy::upper_case_acronyms)]
-enum JOYP {
+enum Joyp {
     /// If 0, buttons (SsBA) can be read from lower nibble.
     SelectButtons,
     /// If 0, directional keys can be read from lower nibble.
@@ -129,7 +128,7 @@ enum JOYP {
     /// 0 = pressed.
     ARight,
 }
-impl FlagsEnum for JOYP {
+impl FlagsEnum for Joyp {
     fn val(&self) -> u8 {
         match self {
             Self::SelectButtons => 0b0010_0000,
@@ -144,8 +143,7 @@ impl FlagsEnum for JOYP {
 
 /// Serial transfer control enum.
 #[derive(Debug, Copy, Clone)]
-#[allow(clippy::upper_case_acronyms)]
-enum STC {
+enum Stc {
     /// If 1, transfer is either requested or in progress.
     TransferEnable,
     /// (CGB mode only) If 1, enable high speed serial clock (~256 kHz in single-speed mode)
@@ -153,7 +151,7 @@ enum STC {
     /// If 0, External/slave clock, 1 = Internal/master clock.
     ClockSelect,
 }
-impl FlagsEnum for STC {
+impl FlagsEnum for Stc {
     fn val(&self) -> u8 {
         match self {
             Self::TransferEnable => 0b1000_0000,
@@ -165,8 +163,7 @@ impl FlagsEnum for STC {
 
 /// Timer control enum.
 #[derive(Debug, Copy, Clone)]
-#[allow(clippy::upper_case_acronyms)]
-enum TAC {
+enum Tac {
     /// If 1, increment TIMA.
     Enable,
     /// Bit 1 of clock select.
@@ -174,7 +171,7 @@ enum TAC {
     /// Bit 0 of clock select.
     ClockSelect0,
 }
-impl FlagsEnum for TAC {
+impl FlagsEnum for Tac {
     fn val(&self) -> u8 {
         match self {
             Self::Enable => 0b0000_0100,
@@ -186,8 +183,7 @@ impl FlagsEnum for TAC {
 
 /// Interrupt flags enum. Controls whether the different interrupt handlers are being requested.
 #[derive(Debug, Copy, Clone)]
-#[allow(clippy::upper_case_acronyms)]
-enum IF {
+enum If {
     /// Joypad interrupt handler.
     Joypad,
     /// Serial interrupt handler.
@@ -195,17 +191,17 @@ enum IF {
     /// Timer interrupt handler.
     Timer,
     /// LCD interrupt handler.
-    LCD,
+    Lcd,
     /// VBlank interrupt handler.
     VBlank,
 }
-impl FlagsEnum for IF {
+impl FlagsEnum for If {
     fn val(&self) -> u8 {
         match self {
             Self::Joypad => 0b0001_0000,
             Self::Serial => 0b0000_1000,
             Self::Timer => 0b0000_0100,
-            Self::LCD => 0b0000_0010,
+            Self::Lcd => 0b0000_0010,
             Self::VBlank => 0b0000_0001,
         }
     }
