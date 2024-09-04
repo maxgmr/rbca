@@ -56,6 +56,12 @@ impl Cpu {
             // ...handle interrupts by priority
             // Top priority: v-blank @ bit 0
             if (interrupt_enable_register & 0x0001) & (interrupt_flag_register & 0x0001) != 0 {
+                // Push PC to stack & jump to address 0x0040
+                self.push_stack(self.pc);
+                self.pc = 0x0040;
+                // Turn off the VBlank interrupt after PC has been rearranged.
+                self.mem_bus
+                    .write_byte(0xFF0F, self.mem_bus.read_byte(0xFF0F) & !0x0001);
                 return true;
             }
         }
