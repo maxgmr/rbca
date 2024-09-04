@@ -19,6 +19,8 @@ pub struct Display {
     canvas: Canvas<Window>,
     event_pump: EventPump,
     display_arr: [bool; DISPLAY_WIDTH * DISPLAY_HEIGHT],
+    // TODO test
+    px_coords: (u32, u32),
 }
 impl Display {
     pub fn new() -> eyre::Result<Self> {
@@ -50,6 +52,8 @@ impl Display {
             canvas,
             event_pump,
             display_arr: [false; DISPLAY_WIDTH * DISPLAY_HEIGHT],
+            // TODO test
+            px_coords: (DISPLAY_WIDTH as u32 / 2, DISPLAY_HEIGHT as u32 / 2),
         })
     }
 
@@ -63,6 +67,34 @@ impl Display {
                         ..
                     } => {
                         break 'main_loop;
+                    }
+                    // TODO test
+                    Event::KeyDown {
+                        keycode: Some(Keycode::W),
+                        ..
+                    } => {
+                        self.px_coords = (self.px_coords.0, self.px_coords.1 - 1);
+                    }
+                    // TODO test
+                    Event::KeyDown {
+                        keycode: Some(Keycode::S),
+                        ..
+                    } => {
+                        self.px_coords = (self.px_coords.0, self.px_coords.1 + 1);
+                    }
+                    // TODO test
+                    Event::KeyDown {
+                        keycode: Some(Keycode::A),
+                        ..
+                    } => {
+                        self.px_coords = (self.px_coords.0 - 1, self.px_coords.1);
+                    }
+                    // TODO test
+                    Event::KeyDown {
+                        keycode: Some(Keycode::D),
+                        ..
+                    } => {
+                        self.px_coords = (self.px_coords.0 + 1, self.px_coords.1);
                     }
                     _ => {}
                 }
@@ -78,7 +110,16 @@ impl Display {
             .set_draw_color(Color::RGB(BG_RGB.0, BG_RGB.1, BG_RGB.2));
         self.canvas.clear();
 
+        // TODO test
+        for i in 0..(DISPLAY_HEIGHT * DISPLAY_WIDTH) {
+            let x = (i % DISPLAY_WIDTH) as u32;
+            let y = (i / DISPLAY_HEIGHT) as u32;
+            self.display_arr[i] = (x == self.px_coords.0) && (y == self.px_coords.1);
+        }
+
         // TODO get display here
+        self.canvas
+            .set_draw_color(Color::RGB(FG_RGB.0, FG_RGB.1, FG_RGB.2));
         for (i, pixel) in self.display_arr.iter().enumerate() {
             if *pixel {
                 // Convert index to 2D [x,y] position

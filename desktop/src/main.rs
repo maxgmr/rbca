@@ -22,7 +22,7 @@ fn main() -> eyre::Result<()> {
     let mut desktop = Display::new()?;
 
     // Run desktop UI
-    desktop.run();
+    desktop.run()?;
 
     Ok(())
 }
