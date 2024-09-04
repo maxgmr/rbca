@@ -10,12 +10,10 @@ pub const DISPLAY_HEIGHT: usize = 144;
 /// Picture processing unit.
 #[derive(Debug, Clone)]
 pub struct PPU {
-    // PPU mode.
-    // 0 = HBlank
-    // 1 = VBlank
-    // 2 = OAM Scan
-    // 3 = Pixel Draw
-    mode: u8,
+    /// Set this to true to signal to memory bus to set the right IF register bit.
+    pub interrupt_activated: bool,
+    // Clock to keep track of timing while in PPU mode.
+    mode_clock: u32,
     // [0xFF40]
     lcd_control: Flags,
     // [0xFF44] read-only
@@ -61,7 +59,8 @@ impl PPU {
     /// Create a new PPU.
     pub fn new() -> Self {
         Self {
-            mode: 0,
+            interrupt_activated: false,
+            mode_clock: 0,
             lcd_control: Flags::new(0b0101_1000),
             lcd_y_coord: 0b0000_0000,
             ly_compare: 0b0000_0000,
@@ -116,6 +115,40 @@ impl PPU {
             0x000A => self.win_y = value,
             0x000B => self.win_x = value,
             _ => unimplemented!("Unimplemented PPU address: {:#04X}", address),
+        }
+    }
+
+    /// Perform one full cycle.
+    // TODO
+    pub fn cycle(&mut self, t_cycles: u32) {
+        if !self.lcd_control.get(Lcdc::LcdPpuEnable) {
+            return;
+        }
+
+        match self.mode() {
+            // OAM scan. Search for OBJs which overlap this line. Scanline active. OAM (except by
+            // DMA) inaccessible.
+            2 => {}
+            // Drawing pixels. Send pixels to the LCD. OAM (except by DMA) & VRAM inaccessible.
+            3 => {}
+            // HBlank. After the last HBlank, push the screen data to the canvas.
+            0 => {}
+            // VBlank. Wait until next frame.
+            1 => {}
+            _ => {}
+        }
+    }
+
+    /// Get the mode of the PPU.
+    pub fn mode(&self) -> u8 {
+        0x00 | if self.lcd_status.get(Stat::PpuModeBit1) {
+            0x02
+        } else {
+            0x00
+        } | if self.lcd_status.get(Stat::PpuModeBit0) {
+            0x01
+        } else {
+            0x00
         }
     }
 }

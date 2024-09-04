@@ -5,8 +5,8 @@ use crate::{
     VirtTarget::{self, AF, BC, DE, HL},
 };
 
-/// Execute a given opcode.
-pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
+/// Execute a given opcode. Return the amount of cycles the instruction takes.
+pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) -> u32 {
     match opcode {
         // LD nn,n
         0x06 => ld_nn_n(cpu, B),
@@ -717,105 +717,122 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) {
 // ----------------------------------------------------
 
 // LD nn,n: Set 8-bit immediate value n = nn.
-fn ld_nn_n(cpu: &mut Cpu, target: Target) {
+fn ld_nn_n(cpu: &mut Cpu, target: Target) -> u32 {
     cpu.mem_bus.write_byte(cpu.pc + 1, cpu.regs.get_reg(target));
     cpu.pc += 2;
+    8
 }
 
 // LD r1,r2: Set r1 = r2.
-fn ld_r1_r2(cpu: &mut Cpu, r1: Target, r2: Target) {
+fn ld_r1_r2(cpu: &mut Cpu, r1: Target, r2: Target) -> u32 {
     cpu.regs.set_reg(r1, cpu.regs.get_reg(r2));
     cpu.pc += 1;
+    4
 }
-fn ld_r1_hl(cpu: &mut Cpu, r1: Target) {
+fn ld_r1_hl(cpu: &mut Cpu, r1: Target) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let value = cpu.mem_bus.read_byte(address);
     cpu.regs.set_reg(r1, value);
     cpu.pc += 1;
+    8
 }
-fn ld_hl_r2(cpu: &mut Cpu, r2: Target) {
+fn ld_hl_r2(cpu: &mut Cpu, r2: Target) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(r2));
     cpu.pc += 1;
+    8
 }
-fn ld_hl_n(cpu: &mut Cpu) {
+fn ld_hl_n(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let value = cpu.get_next_byte();
     cpu.mem_bus.write_byte(address, value);
     // TODO not sure about length
     cpu.pc += 2;
+    12
 }
 
 // LD A,n: Set A = n.
-fn ld_a_vr(cpu: &mut Cpu, target: VirtTarget) {
+fn ld_a_vr(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let address = cpu.regs.get_virt_reg(target);
     let value = cpu.mem_bus.read_byte(address);
     ld_a_n_helper(cpu, value);
     cpu.pc += 1;
+    8
 }
-fn ld_a_nn(cpu: &mut Cpu) {
+fn ld_a_nn(cpu: &mut Cpu) -> u32 {
     let address = cpu.get_next_2_bytes();
     let value = cpu.mem_bus.read_byte(address);
     ld_a_n_helper(cpu, value);
     cpu.pc += 3;
+    16
 }
-fn ld_a_n(cpu: &mut Cpu) {
+fn ld_a_n(cpu: &mut Cpu) -> u32 {
     let value = cpu.get_next_byte();
     ld_a_n_helper(cpu, value);
     cpu.pc += 2;
+    8
 }
 fn ld_a_n_helper(cpu: &mut Cpu, value: u8) {
     cpu.regs.set_reg(A, value);
 }
 
 // LD n,A: Set n = A.
-fn ld_r_a(cpu: &mut Cpu, target: Target) {
+fn ld_r_a(cpu: &mut Cpu, target: Target) -> u32 {
     cpu.regs.set_reg(target, cpu.regs.get_reg(A));
     cpu.pc += 1;
+    4
 }
-fn ld_vr_a(cpu: &mut Cpu, target: VirtTarget) {
+fn ld_vr_a(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let address = cpu.regs.get_virt_reg(target);
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
     cpu.pc += 1;
+    8
 }
-fn ld_nn_a(cpu: &mut Cpu) {
+fn ld_nn_a(cpu: &mut Cpu) -> u32 {
     let address = cpu.get_next_2_bytes();
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
     cpu.pc += 3;
+    16
 }
 
 // LD A,(C): Set A = (0xFF00 + C).
-fn ld_a_c(cpu: &mut Cpu) {
+fn ld_a_c(cpu: &mut Cpu) -> u32 {
     let address = 0xFF00 | (cpu.regs.get_reg(C) as u16);
     cpu.regs.set_reg(A, cpu.mem_bus.read_byte(address));
     cpu.pc += 1;
+    8
 }
 
 // LD (C),A: Set (0xFF00 + C) = A.
-fn ld_c_a(cpu: &mut Cpu) {
+fn ld_c_a(cpu: &mut Cpu) -> u32 {
     let address = 0xFF00 | (cpu.regs.get_reg(C) as u16);
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
     cpu.pc += 1;
+    8
 }
 
 // LD A,(HLD): Set A = (HL). HL -= 1.
-fn ld_a_hld(cpu: &mut Cpu) {
+fn ld_a_hld(cpu: &mut Cpu) -> u32 {
     ld_a_hl_helper(cpu, false);
+    8
 }
 
 // LD (HLD),A: Set (HL) = A. HL -= 1.
-fn ld_hld_a(cpu: &mut Cpu) {
+fn ld_hld_a(cpu: &mut Cpu) -> u32 {
     ld_hl_a_helper(cpu, false);
+    8
 }
 
 // LD A,(HLI): Set A = (HL). HL += 1.
-fn ld_a_hli(cpu: &mut Cpu) {
+fn ld_a_hli(cpu: &mut Cpu) -> u32 {
     ld_a_hl_helper(cpu, true);
+    8
 }
 
 // LD (HLI),A: Set (HL) = A. HL += 1.
-fn ld_hli_a(cpu: &mut Cpu) {
-    ld_hl_a_helper(cpu, true)
+fn ld_hli_a(cpu: &mut Cpu) -> u32 {
+    ld_hl_a_helper(cpu, true);
+    8
 }
 
 fn ld_a_hl_helper(cpu: &mut Cpu, is_inc: bool) {
@@ -838,35 +855,40 @@ fn ld_hl_a_helper(cpu: &mut Cpu, is_inc: bool) {
 }
 
 // LDH (n),A: Set (0xFF00 + n) = A.
-fn ldh_n_a(cpu: &mut Cpu) {
+fn ldh_n_a(cpu: &mut Cpu) -> u32 {
     let address = 0xFF00 | (cpu.get_next_byte() as u16);
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
     cpu.pc += 2;
+    12
 }
 
 // LDH A,(n): Set A = (0xFF00 + n).
-fn ldh_a_n(cpu: &mut Cpu) {
+fn ldh_a_n(cpu: &mut Cpu) -> u32 {
     let address = 0xFF00 | (cpu.get_next_byte() as u16);
     cpu.regs.set_reg(A, cpu.mem_bus.read_byte(address));
     cpu.pc += 2;
+    12
 }
 
 // LD n,nn: Set n = nn.
-fn ld_n_nn(cpu: &mut Cpu, target: VirtTarget) {
+fn ld_n_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let nn = cpu.get_next_2_bytes();
     cpu.regs.set_virt_reg(target, nn);
     cpu.pc += 3;
+    12
 }
-fn ld_n_nn_sp(cpu: &mut Cpu) {
+fn ld_n_nn_sp(cpu: &mut Cpu) -> u32 {
     let nn = cpu.get_next_2_bytes();
     cpu.sp = nn;
     cpu.pc += 3;
+    12
 }
 
 // LD SP,HL: Set SP = HL.
-fn ld_sp_hl(cpu: &mut Cpu) {
+fn ld_sp_hl(cpu: &mut Cpu) -> u32 {
     cpu.sp = cpu.regs.get_virt_reg(HL);
     cpu.pc += 1;
+    8
 }
 
 // LD HL,SP+n: Set HL = SP + n.
@@ -874,10 +896,11 @@ fn ld_sp_hl(cpu: &mut Cpu) {
 // Iff n is positive, set C iff carry on lowest byte.
 // Iff n is negative, set H iff lowest nibble is decreased.
 // Iff n is negative, set C iff lowest byte is decreased.
-fn ld_hl_sp_n(cpu: &mut Cpu) {
+fn ld_hl_sp_n(cpu: &mut Cpu) -> u32 {
     let result = sp_n_helper(cpu);
     cpu.regs.set_virt_reg(HL, result);
     cpu.pc += 2;
+    12
 }
 fn sp_n_helper(cpu: &mut Cpu) -> u16 {
     let n_i = cpu.get_next_byte() as i8;
@@ -902,39 +925,45 @@ fn sp_n_helper(cpu: &mut Cpu) -> u16 {
 }
 
 // LD (nn),SP: Set (nn) = SP.
-fn ld_nn_sp(cpu: &mut Cpu) {
+fn ld_nn_sp(cpu: &mut Cpu) -> u32 {
     let address = cpu.get_next_2_bytes();
     cpu.mem_bus.write_2_bytes(address, cpu.sp);
     cpu.pc += 3;
+    20
 }
 
-// PUSH nn: Push virtual register nn to stack. Set sp = sp -= 2.
-fn push_nn(cpu: &mut Cpu, target: VirtTarget) {
+// PUSH nn: Push virtual register nn to stack.
+fn push_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     cpu.push_stack(cpu.regs.get_virt_reg(target));
     cpu.pc += 1;
+    16
 }
 
-// POP nn: Pop 2 bytes off stack into virtual register nn. Set sp = sp += 2.
-fn pop_nn(cpu: &mut Cpu, target: VirtTarget) {
+// POP nn: Pop 2 bytes off stack into virtual register nn.
+fn pop_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let popped_val = cpu.pop_stack();
     cpu.regs.set_virt_reg(target, popped_val);
     cpu.pc += 1;
+    12
 }
 
 // ADD A,n: A += n.
-fn add_a_n(cpu: &mut Cpu, target: Target) {
+fn add_a_n(cpu: &mut Cpu, target: Target) -> u32 {
     add_a_n_helper(cpu, cpu.regs.get_reg(target), false);
     cpu.pc += 1;
+    4
 }
-fn add_a_n_hl(cpu: &mut Cpu) {
+fn add_a_n_hl(cpu: &mut Cpu) -> u32 {
     let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
     add_a_n_helper(cpu, n, false);
     cpu.pc += 1;
+    8
 }
-fn add_a_n_n(cpu: &mut Cpu) {
+fn add_a_n_n(cpu: &mut Cpu) -> u32 {
     let n = cpu.get_next_byte();
     add_a_n_helper(cpu, n, false);
     cpu.pc += 2;
+    8
 }
 fn add_a_n_helper(cpu: &mut Cpu, n: u8, use_carry: bool) {
     let a = cpu.regs.get_reg(A);
@@ -959,35 +988,41 @@ fn add_a_n_helper(cpu: &mut Cpu, n: u8, use_carry: bool) {
 }
 
 // ADC A,n: A += (n + carry flags).
-fn adc_a_n(cpu: &mut Cpu, target: Target) {
+fn adc_a_n(cpu: &mut Cpu, target: Target) -> u32 {
     add_a_n_helper(cpu, cpu.regs.get_reg(target), true);
     cpu.pc += 1;
+    4
 }
-fn adc_a_n_hl(cpu: &mut Cpu) {
+fn adc_a_n_hl(cpu: &mut Cpu) -> u32 {
     let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
     add_a_n_helper(cpu, n, true);
     cpu.pc += 1;
+    8
 }
-fn adc_a_n_n(cpu: &mut Cpu) {
+fn adc_a_n_n(cpu: &mut Cpu) -> u32 {
     let n = cpu.get_next_byte();
     add_a_n_helper(cpu, n, true);
     cpu.pc += 2;
+    8
 }
 
 // SUB n: A -= n.
-fn sub_n(cpu: &mut Cpu, target: Target) {
+fn sub_n(cpu: &mut Cpu, target: Target) -> u32 {
     sub_n_helper(cpu, cpu.regs.get_reg(target), false);
     cpu.pc += 1;
+    4
 }
-fn sub_n_hl(cpu: &mut Cpu) {
+fn sub_n_hl(cpu: &mut Cpu) -> u32 {
     let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
     sub_n_helper(cpu, n, false);
     cpu.pc += 1;
+    8
 }
-fn sub_n_n(cpu: &mut Cpu) {
+fn sub_n_n(cpu: &mut Cpu) -> u32 {
     let n = cpu.get_next_byte();
     sub_n_helper(cpu, n, false);
     cpu.pc += 2;
+    8
 }
 fn sub_n_helper(cpu: &mut Cpu, n: u8, use_borrow: bool) {
     let a = cpu.regs.get_reg(A);
@@ -1010,36 +1045,42 @@ fn sub_n_helper(cpu: &mut Cpu, n: u8, use_borrow: bool) {
 }
 
 // SBC A,n: Set A -= (n + carry flag).
-fn sbc_n(cpu: &mut Cpu, target: Target) {
+fn sbc_n(cpu: &mut Cpu, target: Target) -> u32 {
     sub_n_helper(cpu, cpu.regs.get_reg(target), true);
     cpu.pc += 1;
+    4
 }
-fn sbc_n_hl(cpu: &mut Cpu) {
+fn sbc_n_hl(cpu: &mut Cpu) -> u32 {
     let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
     sub_n_helper(cpu, n, true);
     cpu.pc += 1;
+    8
 }
-fn sbc_n_n(cpu: &mut Cpu) {
+fn sbc_n_n(cpu: &mut Cpu) -> u32 {
     let n = cpu.get_next_byte();
     sub_n_helper(cpu, n, true);
     cpu.pc += 2;
+    8
 }
 
 // AND n: Set A = A AND n.
-fn and_n(cpu: &mut Cpu, target: Target) {
+fn and_n(cpu: &mut Cpu, target: Target) -> u32 {
     and_n_helper(cpu, cpu.regs.get_reg(target));
     cpu.pc += 1;
+    4
 }
-fn and_n_hl(cpu: &mut Cpu) {
+fn and_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let n = cpu.mem_bus.read_byte(address);
     and_n_helper(cpu, n);
     cpu.pc += 1;
+    8
 }
-fn and_n_n(cpu: &mut Cpu) {
+fn and_n_n(cpu: &mut Cpu) -> u32 {
     let n = cpu.get_next_byte();
     and_n_helper(cpu, n);
     cpu.pc += 2;
+    8
 }
 fn and_n_helper(cpu: &mut Cpu, n: u8) {
     let result = cpu.regs.get_reg(A) & n;
@@ -1052,20 +1093,23 @@ fn and_n_helper(cpu: &mut Cpu, n: u8) {
 }
 
 // OR n: Set A = A OR n.
-fn or_n(cpu: &mut Cpu, target: Target) {
+fn or_n(cpu: &mut Cpu, target: Target) -> u32 {
     or_n_helper(cpu, cpu.regs.get_reg(target));
     cpu.pc += 1;
+    4
 }
-fn or_n_hl(cpu: &mut Cpu) {
+fn or_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let n = cpu.mem_bus.read_byte(address);
     or_n_helper(cpu, n);
     cpu.pc += 1;
+    8
 }
-fn or_n_n(cpu: &mut Cpu) {
+fn or_n_n(cpu: &mut Cpu) -> u32 {
     let n = cpu.get_next_byte();
     or_n_helper(cpu, n);
     cpu.pc += 2;
+    8
 }
 fn or_n_helper(cpu: &mut Cpu, n: u8) {
     let result = cpu.regs.get_reg(A) | n;
@@ -1077,20 +1121,23 @@ fn or_n_helper(cpu: &mut Cpu, n: u8) {
 }
 
 // XOR n: Set A = A XOR n.
-fn xor_n(cpu: &mut Cpu, target: Target) {
+fn xor_n(cpu: &mut Cpu, target: Target) -> u32 {
     xor_n_helper(cpu, cpu.regs.get_reg(target));
     cpu.pc += 1;
+    4
 }
-fn xor_n_hl(cpu: &mut Cpu) {
+fn xor_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let n = cpu.mem_bus.read_byte(address);
     xor_n_helper(cpu, n);
     cpu.pc += 1;
+    8
 }
-fn xor_n_n(cpu: &mut Cpu) {
+fn xor_n_n(cpu: &mut Cpu) -> u32 {
     let n = cpu.get_next_byte();
     xor_n_helper(cpu, n);
     cpu.pc += 2;
+    8
 }
 fn xor_n_helper(cpu: &mut Cpu, n: u8) {
     let result = cpu.regs.get_reg(A) ^ n;
@@ -1102,20 +1149,23 @@ fn xor_n_helper(cpu: &mut Cpu, n: u8) {
 }
 
 // CP n: Compare A with n.
-fn cp_n(cpu: &mut Cpu, target: Target) {
+fn cp_n(cpu: &mut Cpu, target: Target) -> u32 {
     cp_n_helper(cpu, cpu.regs.get_reg(target));
     cpu.pc += 1;
+    4
 }
-fn cp_n_hl(cpu: &mut Cpu) {
+fn cp_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let n = cpu.mem_bus.read_byte(address);
     cp_n_helper(cpu, n);
     cpu.pc += 1;
+    8
 }
-fn cp_n_n(cpu: &mut Cpu) {
+fn cp_n_n(cpu: &mut Cpu) -> u32 {
     let n = cpu.get_next_byte();
     cp_n_helper(cpu, n);
     cpu.pc += 2;
+    8
 }
 fn cp_n_helper(cpu: &mut Cpu, n: u8) {
     let a_val = cpu.regs.get_reg(A);
@@ -1124,7 +1174,7 @@ fn cp_n_helper(cpu: &mut Cpu, n: u8) {
 }
 
 // INC n: n += 1.
-fn inc_n(cpu: &mut Cpu, target: Target) {
+fn inc_n(cpu: &mut Cpu, target: Target) -> u32 {
     let reg_val = cpu.regs.get_reg(target);
     let result = reg_val.wrapping_add(1);
 
@@ -1132,8 +1182,9 @@ fn inc_n(cpu: &mut Cpu, target: Target) {
 
     cpu.regs.set_reg(target, result);
     cpu.pc += 1;
+    4
 }
-fn inc_n_hl(cpu: &mut Cpu) {
+fn inc_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let val = cpu.mem_bus.read_byte(address);
     let result = val.wrapping_add(1);
@@ -1142,6 +1193,7 @@ fn inc_n_hl(cpu: &mut Cpu) {
 
     cpu.mem_bus.write_byte(address, result);
     cpu.pc += 1;
+    12
 }
 fn inc_n_set_flags(cpu: &mut Cpu, val: u8, result: u8) {
     cpu.regs.set_flag(RegFlag::Z, result == 0);
@@ -1150,7 +1202,7 @@ fn inc_n_set_flags(cpu: &mut Cpu, val: u8, result: u8) {
 }
 
 // DEC n: n -= 1.
-fn dec_n(cpu: &mut Cpu, target: Target) {
+fn dec_n(cpu: &mut Cpu, target: Target) -> u32 {
     let reg_val = cpu.regs.get_reg(target);
     let result = reg_val.wrapping_sub(1);
 
@@ -1158,8 +1210,9 @@ fn dec_n(cpu: &mut Cpu, target: Target) {
 
     cpu.regs.set_reg(target, result);
     cpu.pc += 1;
+    4
 }
-fn dec_n_hl(cpu: &mut Cpu) {
+fn dec_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let val = cpu.mem_bus.read_byte(address);
     let result = val.wrapping_sub(1);
@@ -1168,6 +1221,7 @@ fn dec_n_hl(cpu: &mut Cpu) {
 
     cpu.mem_bus.write_byte(address, result);
     cpu.pc += 1;
+    12
 }
 fn dec_n_set_flags(cpu: &mut Cpu, val: u8, result: u8) {
     cpu.regs.set_flag(RegFlag::Z, result == 0);
@@ -1176,13 +1230,15 @@ fn dec_n_set_flags(cpu: &mut Cpu, val: u8, result: u8) {
 }
 
 // ADD HL,n: HL += n.
-fn add_hl_n(cpu: &mut Cpu, target: VirtTarget) {
+fn add_hl_n(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     add_hl_n_helper(cpu, cpu.regs.get_virt_reg(target));
     cpu.pc += 1;
+    8
 }
-fn add_hl_n_sp(cpu: &mut Cpu) {
+fn add_hl_n_sp(cpu: &mut Cpu) -> u32 {
     add_hl_n_helper(cpu, cpu.sp);
     cpu.pc += 1;
+    8
 }
 fn add_hl_n_helper(cpu: &mut Cpu, n: u16) {
     let hl_val = cpu.regs.get_virt_reg(HL);
@@ -1198,47 +1254,54 @@ fn add_hl_n_helper(cpu: &mut Cpu, n: u16) {
 }
 
 // ADD SP,n: SP += n. (n = one byte signed immediate value)
-fn add_sp_n(cpu: &mut Cpu) {
+fn add_sp_n(cpu: &mut Cpu) -> u32 {
     let result = sp_n_helper(cpu);
     cpu.sp = result;
     cpu.pc += 2;
+    16
 }
 
 // INC nn: nn += 1.
-fn inc_nn(cpu: &mut Cpu, target: VirtTarget) {
+fn inc_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let val = cpu.regs.get_virt_reg(target);
     cpu.regs.set_virt_reg(target, val.wrapping_add(1));
     cpu.pc += 1;
+    8
 }
-fn inc_nn_sp(cpu: &mut Cpu) {
+fn inc_nn_sp(cpu: &mut Cpu) -> u32 {
     cpu.sp = cpu.sp.wrapping_add(1);
     cpu.pc += 1;
+    8
 }
 
 // DEC nn: nn -= 1.
-fn dec_nn(cpu: &mut Cpu, target: VirtTarget) {
+fn dec_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let val = cpu.regs.get_virt_reg(target);
     cpu.regs.set_virt_reg(target, val.wrapping_sub(1));
     cpu.pc += 1;
+    8
 }
-fn dec_nn_sp(cpu: &mut Cpu) {
+fn dec_nn_sp(cpu: &mut Cpu) -> u32 {
     cpu.sp = cpu.sp.wrapping_sub(1);
     cpu.pc += 1;
+    8
 }
 
 // SWAP n: Swap upper & lower nibbles of n.
-fn swap_n(cpu: &mut Cpu, target: Target) {
+fn swap_n(cpu: &mut Cpu, target: Target) -> u32 {
     let val = cpu.regs.get_reg(target);
     let result = swap_n_helper(cpu, val);
     cpu.regs.set_reg(target, result);
     cpu.pc += 2;
+    8
 }
-fn swap_n_hl(cpu: &mut Cpu) {
+fn swap_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let val = cpu.mem_bus.read_byte(address);
     let result = swap_n_helper(cpu, val);
     cpu.mem_bus.write_byte(address, result);
     cpu.pc += 2;
+    16
 }
 fn swap_n_helper(cpu: &mut Cpu, val: u8) -> u8 {
     let upper_nibble = (0xF0 & val) >> 4;
@@ -1260,7 +1323,7 @@ fn swap_n_helper(cpu: &mut Cpu, val: u8) -> u8 {
 // Implementation:
 // Iff not subtracting && unit digit > 9, or there was a half carry, add 0x06 to A.
 // Iff not subtracting && A > 0x99, or there was a full carry, add 0x60 to A.
-fn daa(cpu: &mut Cpu) {
+fn daa(cpu: &mut Cpu) -> u32 {
     let n_val = cpu.regs.get_flag(RegFlag::N);
     let h_val = cpu.regs.get_flag(RegFlag::H);
     let c_val = cpu.regs.get_flag(RegFlag::C);
@@ -1291,18 +1354,20 @@ fn daa(cpu: &mut Cpu) {
     cpu.regs.set_reg(A, result);
 
     cpu.pc += 1;
+    4
 }
 
 // CPL: Complement A register.
-fn cpl(cpu: &mut Cpu) {
+fn cpl(cpu: &mut Cpu) -> u32 {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_reg(A, cpu.regs.get_reg(A) ^ 0xFF);
     cpu.pc += 1;
+    4
 }
 
 // CCF: Complement carry flag.
-fn ccf(cpu: &mut Cpu) {
+fn ccf(cpu: &mut Cpu) -> u32 {
     cpu.regs.set_flag(RegFlag::N, false);
     cpu.regs.set_flag(RegFlag::H, false);
 
@@ -1312,90 +1377,103 @@ fn ccf(cpu: &mut Cpu) {
         cpu.regs.set_flag(RegFlag::C, true);
     }
     cpu.pc += 1;
+    4
 }
 
 // SCF: Set carry flag.
-fn scf(cpu: &mut Cpu) {
+fn scf(cpu: &mut Cpu) -> u32 {
     cpu.regs.set_flag(RegFlag::N, false);
     cpu.regs.set_flag(RegFlag::H, false);
     cpu.regs.set_flag(RegFlag::C, true);
     cpu.pc += 1;
+    4
 }
 
 // NOP: Do nothing.
-fn nop(cpu: &mut Cpu) {
+fn nop(cpu: &mut Cpu) -> u32 {
     cpu.pc += 1;
+    4
 }
 
 // HALT: Power down CPU until interrupt.
-fn halt(cpu: &mut Cpu) {
+fn halt(cpu: &mut Cpu) -> u32 {
     cpu.is_halted = true;
     cpu.pc += 1;
+    4
 }
 
 // STOP: Halt CPU & LCD display until button pressed.
-fn stop(cpu: &mut Cpu) {
+fn stop(cpu: &mut Cpu) -> u32 {
     cpu.is_stopped = true;
     cpu.pc += 2;
+    4
 }
 
 // DI: Disable interrupts after the instruction after DI is executed.
-fn di(cpu: &mut Cpu) {
+fn di(cpu: &mut Cpu) -> u32 {
     cpu.di_countdown = 2;
     cpu.pc += 1;
+    4
 }
 
 // EI: Enable interrupts after the instruction after EI is executed.
-fn ei(cpu: &mut Cpu) {
+fn ei(cpu: &mut Cpu) -> u32 {
     cpu.ei_countdown = 2;
     cpu.pc += 1;
+    4
 }
 
 // RLCA: Rotate A left; set carry flag to original bit 7 in A.
-fn rlca(cpu: &mut Cpu) {
+fn rlca(cpu: &mut Cpu) -> u32 {
     let original_val = cpu.regs.get_reg(A);
     let rotated_l = rlc_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_l);
     cpu.pc += 1;
+    4
 }
 
 // RLA: Rotate A left through carry flag.
-fn rla(cpu: &mut Cpu) {
+fn rla(cpu: &mut Cpu) -> u32 {
     let original_val = cpu.regs.get_reg(A);
     let rotated_l = rl_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_l);
     cpu.pc += 1;
+    4
 }
 
 // RRCA: Rotate A right; set carry flag to original bit 0 in A.
-fn rrca(cpu: &mut Cpu) {
+fn rrca(cpu: &mut Cpu) -> u32 {
     let original_val = cpu.regs.get_reg(A);
     let rotated_r = rrc_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_r);
     cpu.pc += 1;
+    4
 }
 
 // RRA: Rotate A right through carry flag.
-fn rra(cpu: &mut Cpu) {
+fn rra(cpu: &mut Cpu) -> u32 {
     let original_val = cpu.regs.get_reg(A);
     let rotated_r = rr_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_r);
     cpu.pc += 1;
+    4
 }
 
 // RLC n: Rotate n left; set carry flag to original bit 7 in n.
-fn rlc_n(cpu: &mut Cpu, target: Target) {
+fn rlc_n(cpu: &mut Cpu, target: Target) -> u32 {
     let original_val = cpu.regs.get_reg(target);
     let rotated_l = rlc_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, rotated_l);
     cpu.pc += 2;
+    8
 }
-fn rlc_n_hl(cpu: &mut Cpu) {
+fn rlc_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let rotated_l = rlc_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, rotated_l);
     cpu.pc += 2;
+    16
 }
 fn rlc_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
     let bit_7 = original_val >> 7;
@@ -1408,18 +1486,20 @@ fn rlc_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 }
 
 // RL n: Rotate n left through carry flag.
-fn rl_n(cpu: &mut Cpu, target: Target) {
+fn rl_n(cpu: &mut Cpu, target: Target) -> u32 {
     let original_val = cpu.regs.get_reg(target);
     let rotated_l = rl_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, rotated_l);
     cpu.pc += 2;
+    8
 }
-fn rl_n_hl(cpu: &mut Cpu) {
+fn rl_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let rotated_l = rl_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, rotated_l);
     cpu.pc += 2;
+    16
 }
 fn rl_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
     let bit_7 = original_val >> 7;
@@ -1432,18 +1512,20 @@ fn rl_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 }
 
 // RRC n: Rotate n right; set carry flag to original bit 0 in n.
-fn rrc_n(cpu: &mut Cpu, target: Target) {
+fn rrc_n(cpu: &mut Cpu, target: Target) -> u32 {
     let original_val = cpu.regs.get_reg(target);
     let rotated_r = rrc_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, rotated_r);
     cpu.pc += 2;
+    8
 }
-fn rrc_n_hl(cpu: &mut Cpu) {
+fn rrc_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let rotated_r = rrc_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, rotated_r);
     cpu.pc += 2;
+    16
 }
 fn rrc_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
     let bit_0 = original_val & 0x01;
@@ -1456,18 +1538,20 @@ fn rrc_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 }
 
 // RR n: Rotate n right through carry flag.
-fn rr_n(cpu: &mut Cpu, target: Target) {
+fn rr_n(cpu: &mut Cpu, target: Target) -> u32 {
     let original_val = cpu.regs.get_reg(target);
     let rotated_r = rr_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, rotated_r);
     cpu.pc += 2;
+    8
 }
-fn rr_n_hl(cpu: &mut Cpu) {
+fn rr_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let rotated_r = rr_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, rotated_r);
     cpu.pc += 2;
+    16
 }
 fn rr_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
     let bit_0 = original_val & 0x01;
@@ -1485,18 +1569,20 @@ fn rr_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 }
 
 // SLA n: Shift n left into carry. LSB of n set to 0.
-fn sla_n(cpu: &mut Cpu, target: Target) {
+fn sla_n(cpu: &mut Cpu, target: Target) -> u32 {
     let original_val = cpu.regs.get_reg(target);
     let result = sla_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, result);
     cpu.pc += 2;
+    8
 }
-fn sla_n_hl(cpu: &mut Cpu) {
+fn sla_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let result = sla_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, result);
     cpu.pc += 2;
+    16
 }
 fn sla_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
     let result = original_val << 1;
@@ -1510,18 +1596,20 @@ fn sla_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 }
 
 // SRA n: Shift n right into carry. MSB doesn't change.
-fn sra_n(cpu: &mut Cpu, target: Target) {
+fn sra_n(cpu: &mut Cpu, target: Target) -> u32 {
     let original_val = cpu.regs.get_reg(target);
     let result = sra_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, result);
     cpu.pc += 2;
+    8
 }
-fn sra_n_hl(cpu: &mut Cpu) {
+fn sra_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let result = sra_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, result);
     cpu.pc += 2;
+    16
 }
 fn sra_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
     let result = (original_val >> 1) | (original_val & 0x80);
@@ -1535,18 +1623,20 @@ fn sra_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 }
 
 // SRL n: Shift n right into carry. MSB of n set to 0.
-fn srl_n(cpu: &mut Cpu, target: Target) {
+fn srl_n(cpu: &mut Cpu, target: Target) -> u32 {
     let original_val = cpu.regs.get_reg(target);
     let result = srl_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, result);
     cpu.pc += 2;
+    8
 }
-fn srl_n_hl(cpu: &mut Cpu) {
+fn srl_n_hl(cpu: &mut Cpu) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let result = srl_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, result);
     cpu.pc += 2;
+    16
 }
 fn srl_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
     let result = original_val >> 1;
@@ -1560,12 +1650,14 @@ fn srl_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 }
 
 // BIT b,r: Iff bit b in register r == 0, set Z flag = 1. Else, set Z flag = 0.
-fn bit_b_r(cpu: &mut Cpu, b: usize, target: Target) {
+fn bit_b_r(cpu: &mut Cpu, b: usize, target: Target) -> u32 {
     bit_b_r_helper(cpu, b, cpu.regs.get_reg(target));
+    8
 }
-fn bit_b_r_hl(cpu: &mut Cpu, b: usize) {
+fn bit_b_r_hl(cpu: &mut Cpu, b: usize) -> u32 {
     let target_byte = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
-    bit_b_r_helper(cpu, b, target_byte)
+    bit_b_r_helper(cpu, b, target_byte);
+    16
 }
 fn bit_b_r_helper(cpu: &mut Cpu, b: usize, byte: u8) {
     let is_bit_zero = (byte & (0b1 << b)) == 0;
@@ -1576,56 +1668,65 @@ fn bit_b_r_helper(cpu: &mut Cpu, b: usize, byte: u8) {
 }
 
 // SET b,r: Set bit b in register r.
-fn set_b_r(cpu: &mut Cpu, b: usize, target: Target) {
+fn set_b_r(cpu: &mut Cpu, b: usize, target: Target) -> u32 {
     let byte = cpu.regs.get_reg(target);
     cpu.regs.set_reg(target, byte | (0x01 << b));
     cpu.pc += 2;
+    8
 }
-fn set_b_r_hl(cpu: &mut Cpu, b: usize) {
+fn set_b_r_hl(cpu: &mut Cpu, b: usize) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let byte = cpu.mem_bus.read_byte(address);
     cpu.mem_bus.write_byte(address, byte | (0x01 << b));
     cpu.pc += 2;
+    16
 }
 
 // RES b,r: Reset bit b in register r.
-fn res_b_r(cpu: &mut Cpu, b: usize, target: Target) {
+fn res_b_r(cpu: &mut Cpu, b: usize, target: Target) -> u32 {
     let byte = cpu.regs.get_reg(target);
     cpu.regs.set_reg(target, byte & !(0x01 << b));
     cpu.pc += 2;
+    8
 }
-fn res_b_r_hl(cpu: &mut Cpu, b: usize) {
+fn res_b_r_hl(cpu: &mut Cpu, b: usize) -> u32 {
     let address = cpu.regs.get_virt_reg(HL);
     let byte = cpu.mem_bus.read_byte(address);
     cpu.mem_bus.write_byte(address, byte & !(0x01 << b));
     cpu.pc += 2;
+    16
 }
 
 // JP nn: Jump to address nn.
-fn jp_nn(cpu: &mut Cpu) {
+fn jp_nn(cpu: &mut Cpu) -> u32 {
     let nn = cpu.get_next_2_bytes();
     jp_helper(cpu, nn);
+    12
 }
 
 // JP cc,nn: Iff C/Z flag == true/false, jump to address n.
-fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) {
+fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     jp_cc_helper(cpu, flag, expected_value, false);
+    12
 }
 
 // JP (HL): Jump to address contained in (HL).
-fn jp_hl(cpu: &mut Cpu) {
+fn jp_hl(cpu: &mut Cpu) -> u32 {
     jp_helper(cpu, cpu.regs.get_virt_reg(HL));
+    4
 }
 
 // JR n: Add n to current address & jump to it.
-fn jr_n(cpu: &mut Cpu) {
+fn jr_n(cpu: &mut Cpu) -> u32 {
     let n = cpu.get_next_byte();
     jp_helper(cpu, cpu.pc + (n as u16));
+    8
 }
 
 // JR cc,n: Iff C/Z flag == true/false, add n to current address & jump to it.
-fn jr_cc_n(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) {
+fn jr_cc_n(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     jp_cc_helper(cpu, flag, expected_value, true);
+    8
 }
 
 // Helper function for conditional jumps
@@ -1635,11 +1736,15 @@ fn jp_cc_helper(cpu: &mut Cpu, flag: RegFlag, expected_value: bool, is_jr: bool)
         _ => panic!("jr_cc_n: Cannot use flag {:?}. C or Z flags only.", flag),
     };
     match (is_jr, test_val == expected_value) {
-        (true, true) => jr_n(cpu),
+        (true, true) => {
+            jr_n(cpu);
+        }
         (true, false) => cpu.pc += 2,
-        (false, true) => jp_nn(cpu),
+        (false, true) => {
+            jp_nn(cpu);
+        }
         (false, false) => cpu.pc += 3,
-    }
+    };
 }
 // Helper function for jumps
 fn jp_helper(cpu: &mut Cpu, address: u16) {
@@ -1647,14 +1752,15 @@ fn jp_helper(cpu: &mut Cpu, address: u16) {
 }
 
 // CALL nn: Push address of next instruction onto stack. Jump to address nn.
-fn call_nn(cpu: &mut Cpu) {
+fn call_nn(cpu: &mut Cpu) -> u32 {
     cpu.push_stack(cpu.pc + 3);
     cpu.pc = cpu.get_next_2_bytes();
+    12
 }
 
 // CALL cc,nn: Iff condition cc == true, push address of next instrucion to stack & jump to address
 // nn.
-fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) {
+fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let test_val = match flag {
         RegFlag::Z | RegFlag::C => cpu.regs.get_flag(flag),
         _ => panic!("call_cc_nn: Cannot use flag {:?}. C or Z flags only.", flag),
@@ -1664,21 +1770,24 @@ fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) {
     } else {
         cpu.pc += 3;
     }
+    12
 }
 
 // RST n: Push current address to stack. Jump to address 0x0000 + n.
-fn rst_n(cpu: &mut Cpu, n: u8) {
+fn rst_n(cpu: &mut Cpu, n: u8) -> u32 {
     cpu.push_stack(cpu.pc);
     cpu.pc = n as u16;
+    32
 }
 
 // RET: Pop two bytes from the stack. Jump to that address.
-fn ret(cpu: &mut Cpu) {
+fn ret(cpu: &mut Cpu) -> u32 {
     cpu.pc = cpu.pop_stack();
+    8
 }
 
 // RET cc: Iff condition cc == true, pop two bytes from the stack & jump to that address.
-fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) {
+fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let test_val = match flag {
         RegFlag::Z | RegFlag::C => cpu.regs.get_flag(flag),
         _ => panic!("call_cc_nn: Cannot use flag {:?}. C or Z flags only.", flag),
@@ -1688,12 +1797,14 @@ fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) {
     } else {
         cpu.pc += 1;
     }
+    8
 }
 
 // RETI: Pop two bytes from stack. Jump to the address. Enable interrupts.
-fn reti(cpu: &mut Cpu) {
+fn reti(cpu: &mut Cpu) -> u32 {
     ret(cpu);
     cpu.ei_countdown = 1;
+    8
 }
 
 #[cfg(test)]

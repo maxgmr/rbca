@@ -63,6 +63,17 @@ impl MemoryBus {
         }
     }
 
+    /// Perform one full cycle. Return the PPU t-cycles.
+    // TODO
+    pub fn cycle(&mut self, t_cycles: u32) -> u32 {
+        // Cycle timer.
+        self.io_regs.timer_cycle(t_cycles);
+
+        // Cycle PPU.
+        self.io_regs.ppu.cycle(t_cycles);
+        t_cycles
+    }
+
     /// Match the currently-selected ROM bank.
     fn match_rom_bank(&self) -> &[u8; 0x4000] {
         match self.current_rom_bank {

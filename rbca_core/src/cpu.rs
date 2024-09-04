@@ -1,7 +1,7 @@
 //! All functionality related to the emulated CPU of the Game Boy.
 use std::default::Default;
 
-use crate::{instructions::execute_opcode, MemoryBus, Registers};
+use crate::{instructions::execute_opcode, MemoryBus, Registers, PPU};
 
 const INTERRUPT_FLAG_REGISTER_ADDR: u16 = 0xFF0F;
 const INTERRUPT_ENABLE_REGISTER_ADDR: u16 = 0xFFFF;
@@ -34,38 +34,62 @@ impl Cpu {
         Self::default()
     }
 
-    // TODO temp test function
-    /// Perform one cycle.
-    pub fn cycle(&mut self) {
+    /// Run the [Cpu].
+    pub fn run(&mut self) {
+        'mainloop: loop {
+            let t_cycles = self.cycle();
+            let ppu_ticks = self.mem_bus.cycle(t_cycles);
+        }
+    }
+
+    /// Perform one cycle. Return number of T-cycles taken.
+    pub fn cycle(&mut self) -> u32 {
         self.update_interrupt_countdown();
-        if self.interrupts_enabled && self.handle_interrupt() {
-            return;
+        match self.handle_interrupt() {
+            0 => {}
+            ticks => return ticks,
         }
 
-        let opcode = self.mem_bus.read_byte(self.pc);
-        execute_opcode(self, opcode);
-        // println!("{:#02X} @ {:#04X}", opcode, self.pc);
+        if self.is_halted {
+            4
+        } else {
+            let opcode = self.mem_bus.read_byte(self.pc);
+            execute_opcode(self, opcode)
+            // println!("{:#02X} @ {:#04X}", opcode, self.pc);
+        }
     }
 
     // Handle interrupts
-    fn handle_interrupt(&mut self) -> bool {
-        // If some interrupt is both enabled and allowed...
+    fn handle_interrupt(&mut self) -> u32 {
+        if !self.interrupts_enabled && !self.is_halted {
+            return 0;
+        }
+
         let interrupt_enable_register = self.mem_bus.read_byte(INTERRUPT_ENABLE_REGISTER_ADDR);
         let interrupt_flag_register = self.mem_bus.read_byte(INTERRUPT_FLAG_REGISTER_ADDR);
-        if (interrupt_enable_register & interrupt_flag_register) != 0 {
-            // ...handle interrupts by priority
-            // Top priority: v-blank @ bit 0
-            if (interrupt_enable_register & 0x0001) & (interrupt_flag_register & 0x0001) != 0 {
-                // Push PC to stack & jump to address 0x0040
-                self.push_stack(self.pc);
-                self.pc = 0x0040;
-                // Turn off the VBlank interrupt after PC has been rearranged.
-                self.mem_bus
-                    .write_byte(0xFF0F, self.mem_bus.read_byte(0xFF0F) & !0x0001);
-                return true;
-            }
+        let interrupt_activated = interrupt_enable_register & interrupt_flag_register;
+        if interrupt_activated == 0 {
+            return 0;
         }
-        false
+
+        self.is_halted = false;
+        if !self.interrupts_enabled {
+            return 0;
+        }
+        self.interrupts_enabled = false;
+
+        // Prioritise lowest activated interrupt
+        let offset = interrupt_activated.trailing_zeros();
+        if offset >= 5 {
+            panic!("Invalid interrupt triggered: {:#010b}", interrupt_activated);
+        }
+        self.mem_bus.write_byte(
+            INTERRUPT_FLAG_REGISTER_ADDR,
+            interrupt_flag_register & !(0b1 << offset),
+        );
+        self.push_stack(self.pc);
+        self.pc = 0x0040 | ((offset as u16) << 3);
+        16
     }
 
     fn update_interrupt_countdown(&mut self) {
