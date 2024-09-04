@@ -1,7 +1,10 @@
 //! Functionality related to emulator memory.
 use std::{default::Default, fs::File, io::Read};
 
-use crate::{io_registers::IORegisters, Flags};
+use crate::{
+    io_registers::{IORegisters, If},
+    Flags,
+};
 
 /// Memory bus of the Game Boy.
 #[derive(Debug, Clone)]
@@ -69,8 +72,20 @@ impl MemoryBus {
         // Cycle timer.
         self.io_regs.timer_cycle(t_cycles);
 
+        // TODO check for joypad interrupts
+
         // Cycle PPU.
         self.io_regs.ppu.cycle(t_cycles);
+        // Set IF register to accomodate any PPU-triggered interrupts.
+        self.io_regs
+            .interrupt_flags
+            .set(If::Lcd, self.io_regs.ppu.interrupt_activated);
+        self.io_regs.ppu.interrupt_activated = false;
+
+        // TODO cycle sound
+
+        // TODO check for serial interrupts
+
         t_cycles
     }
 

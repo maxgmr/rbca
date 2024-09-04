@@ -18,7 +18,8 @@ pub struct IORegisters {
     timer_counter: u8,
     timer_modulo: u8,
     timer_control: Flags,
-    interrupt_flags: Flags,
+    /// IF (interrupt flags) register.
+    pub interrupt_flags: Flags,
     // TODO audio
     audio: [u8; 0x11],
     // TODO wave pattern
@@ -237,7 +238,7 @@ impl FlagsEnum for Tac {
 
 /// Interrupt flags enum. Controls whether the different interrupt handlers are being requested.
 #[derive(Debug, Copy, Clone)]
-enum If {
+pub enum If {
     /// Joypad interrupt handler.
     Joypad,
     /// Serial interrupt handler.

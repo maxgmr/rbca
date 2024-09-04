@@ -34,14 +34,6 @@ impl Cpu {
         Self::default()
     }
 
-    /// Run the [Cpu].
-    pub fn run(&mut self) {
-        'mainloop: loop {
-            let t_cycles = self.cycle();
-            let ppu_ticks = self.mem_bus.cycle(t_cycles);
-        }
-    }
-
     /// Perform one cycle. Return number of T-cycles taken.
     pub fn cycle(&mut self) -> u32 {
         self.update_interrupt_countdown();
@@ -55,7 +47,6 @@ impl Cpu {
         } else {
             let opcode = self.mem_bus.read_byte(self.pc);
             execute_opcode(self, opcode)
-            // println!("{:#02X} @ {:#04X}", opcode, self.pc);
         }
     }
 
