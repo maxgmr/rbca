@@ -24,7 +24,6 @@ pub struct IORegisters {
     audio: [u8; 0x11],
     // TODO wave pattern
     wave_pattern: [u8; 0x10],
-    // TODO graphics
     /// Picture processing unit.
     pub ppu: PPU,
     disable_boot_rom: u8,
