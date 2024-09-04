@@ -1,6 +1,6 @@
 use std::default::Default;
 
-use crate::{Flags, FlagsEnum, GPU};
+use crate::{Flags, FlagsEnum, PPU};
 
 const DISABLE_BOOT_ROM: bool = true;
 
@@ -20,7 +20,7 @@ pub struct IORegisters {
     // TODO wave pattern
     wave_pattern: [u8; 0x10],
     // TODO graphics
-    gpu: GPU,
+    ppu: PPU,
     disable_boot_rom: u8,
     // TODO CGB only
     vram_dma: [u8; 0x05],
@@ -49,7 +49,7 @@ impl IORegisters {
             // TODO wave pattern
             wave_pattern: [0x00; 0x10],
             // TODO graphics
-            gpu: GPU::new(),
+            ppu: PPU::new(),
             disable_boot_rom: if DISABLE_BOOT_ROM { 1 } else { 0 },
             // TODO
             vram_dma: [0x00; 0x05],
@@ -74,7 +74,7 @@ impl IORegisters {
             0x000F => self.interrupt_flags.read_byte(),
             0x0010..=0x0026 => self.audio[address as usize - 0x0010],
             0x0030..=0x003F => self.wave_pattern[address as usize - 0x0030],
-            0x0040..=0x004F => self.gpu.read_byte(address - 0x0040),
+            0x0040..=0x004F => self.ppu.read_byte(address - 0x0040),
             0x0050 => self.disable_boot_rom,
             0x0051..=0x0055 => self.vram_dma[address as usize - 0x0051],
             0x0068..=0x006B => self.bg_obj_palettes[address as usize - 0x0068],
@@ -97,7 +97,7 @@ impl IORegisters {
             0x000F => self.interrupt_flags.write_byte(byte),
             0x0010..=0x0026 => self.audio[address as usize - 0x0010] = byte,
             0x0030..=0x003F => self.wave_pattern[address as usize - 0x0030] = byte,
-            0x0040..=0x004F => self.gpu.write_byte(address - 0x0040, byte),
+            0x0040..=0x004F => self.ppu.write_byte(address - 0x0040, byte),
             0x0050 => self.disable_boot_rom = byte,
             0x0051..=0x0055 => self.vram_dma[address as usize - 0x0051] = byte,
             0x0068..=0x006B => self.bg_obj_palettes[address as usize - 0x0068] = byte,
