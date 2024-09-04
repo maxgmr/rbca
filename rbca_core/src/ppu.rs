@@ -12,7 +12,7 @@ pub const DISPLAY_HEIGHT: usize = 144;
 pub struct PPU {
     /// Set this to true to signal to memory bus to set the right IF register bit.
     pub interrupt_activated: bool,
-    // Clock to keep track of timing while in PPU mode.
+    // Clock to keep track of timing while in a given PPU mode.
     mode_clock: u32,
     // [0xFF40]
     lcd_control: Flags,
@@ -118,29 +118,66 @@ impl PPU {
         }
     }
 
-    /// Perform one full cycle.
-    // TODO
-    pub fn cycle(&mut self, t_cycles: u32) {
+    /// Advance PPU state equal to the number of t-cycles the CPU advanced.
+    pub fn cycle(&mut self, t_cycles: u32, tile_map: &[u8; 0x0400], tile_data: &[u8; 0x2000]) {
         if !self.lcd_control.get(Lcdc::LcdPpuEnable) {
             return;
         }
 
-        match self.mode() {
+        self.mode_clock += t_cycles;
+
+        match self.get_mode() {
             // OAM scan. Search for OBJs which overlap this line. Scanline active. OAM (except by
             // DMA) inaccessible.
-            2 => {}
+            2 => {
+                if self.mode_clock >= 80 {
+                    // Enter drawing pixels mode
+                    self.mode_clock = 0;
+                    self.set_mode(3);
+                }
+            }
             // Drawing pixels. Send pixels to the LCD. OAM (except by DMA) & VRAM inaccessible.
-            3 => {}
+            3 => {
+                if self.mode_clock >= 172 {
+                    // Enter HBlank mode
+                    self.mode_clock = 0;
+                    self.set_mode(0);
+                }
+            }
             // HBlank. After the last HBlank, push the screen data to the canvas.
-            0 => {}
+            0 => {
+                if self.mode_clock >= 204 {
+                    self.mode_clock = 0;
+                    self.lcd_y_coord += 1;
+
+                    if self.lcd_y_coord as usize == (DISPLAY_HEIGHT - 1) {
+                        // Lines done. Enter VBlank mode
+                        self.set_mode(1);
+                    } else {
+                        // Still more lines. Go to next line.
+                        self.set_mode(2);
+                    }
+                }
+            }
             // VBlank. Wait until next frame.
-            1 => {}
+            1 => {
+                if self.mode_clock >= 456 {
+                    self.mode_clock = 0;
+                    self.lcd_y_coord += 1;
+
+                    if self.lcd_y_coord > 153 {
+                        // Restart scanning modes
+                        self.set_mode(2);
+                        self.lcd_y_coord = 0;
+                    }
+                }
+            }
             _ => {}
         }
     }
 
     /// Get the mode of the PPU.
-    pub fn mode(&self) -> u8 {
+    pub fn get_mode(&self) -> u8 {
         (if self.lcd_status.get(Stat::PpuModeBit1) {
             0x02
         } else {
@@ -150,6 +187,29 @@ impl PPU {
         } else {
             0x00
         })
+    }
+
+    /// Set the mode of the PPU.
+    pub fn set_mode(&mut self, value: u8) {
+        self.lcd_status.set(Stat::PpuModeBit1, (value & 0b10) != 0);
+        self.lcd_status.set(Stat::PpuModeBit0, (value & 0b01) != 0);
+    }
+
+    /// Get the start address of the tile map.
+    pub fn tile_map_start_addr(&self) -> u16 {
+        if self.lcd_control.get(Lcdc::BGTileMapArea) {
+            0x9C00
+        } else {
+            0x9800
+        }
+    }
+    /// Get the start address of the tile data.
+    pub fn tile_data_start_addr(&self) -> u16 {
+        if self.lcd_control.get(Lcdc::BGWindowTileDataArea) {
+            0x8000
+        } else {
+            0x8800
+        }
     }
 }
 impl Default for PPU {

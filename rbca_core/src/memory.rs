@@ -67,7 +67,6 @@ impl MemoryBus {
     }
 
     /// Perform one full cycle. Return the PPU t-cycles.
-    // TODO
     pub fn cycle(&mut self, t_cycles: u32) -> u32 {
         // Cycle timer.
         self.io_regs.timer_cycle(t_cycles);
@@ -75,7 +74,19 @@ impl MemoryBus {
         // TODO check for joypad interrupts
 
         // Cycle PPU.
-        self.io_regs.ppu.cycle(t_cycles);
+        // Set appropriate tile map from VRAM.
+        let map_start = self.io_regs.ppu.tile_map_start_addr() as usize;
+        // Set appropriate tile data from VRAM.
+        let data_start = self.io_regs.ppu.tile_data_start_addr() as usize;
+        self.io_regs.ppu.cycle(
+            t_cycles,
+            &self.vram[map_start..(map_start + 0x0400)]
+                .try_into()
+                .unwrap(),
+            &self.vram[data_start..(data_start + 0x2000)]
+                .try_into()
+                .unwrap(),
+        );
         // Set IF register to accomodate any PPU-triggered interrupts.
         self.io_regs
             .interrupt_flags
@@ -110,6 +121,7 @@ impl MemoryBus {
     }
 
     /// Read the byte at the given address.
+    // TODO enforce read restrictions
     pub fn read_byte(&self, address: u16) -> u8 {
         match address {
             0x0000..=0x3FFF => self.cart_rom_0[address as usize],
@@ -135,6 +147,7 @@ impl MemoryBus {
     }
 
     /// Write a byte to a given address.
+    // TODO enforce write restrictions
     pub fn write_byte(&mut self, address: u16, byte: u8) {
         match address {
             0x0000..=0x3FFF => self.cart_rom_0[address as usize] = byte,
