@@ -141,7 +141,7 @@ impl PPU {
 
     /// Get the mode of the PPU.
     pub fn mode(&self) -> u8 {
-        0x00 | if self.lcd_status.get(Stat::PpuModeBit1) {
+        (if self.lcd_status.get(Stat::PpuModeBit1) {
             0x02
         } else {
             0x00
@@ -149,7 +149,7 @@ impl PPU {
             0x01
         } else {
             0x00
-        }
+        })
     }
 }
 impl Default for PPU {

@@ -1,7 +1,7 @@
 use std::env;
 
 use color_eyre::eyre::{self, eyre};
-use rbca_core::{Cpu, DISPLAY_HEIGHT, DISPLAY_WIDTH};
+use rbca_core::Cpu;
 
 mod display;
 

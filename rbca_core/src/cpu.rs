@@ -1,7 +1,7 @@
 //! All functionality related to the emulated CPU of the Game Boy.
 use std::default::Default;
 
-use crate::{instructions::execute_opcode, MemoryBus, Registers, PPU};
+use crate::{instructions::execute_opcode, MemoryBus, Registers};
 
 const INTERRUPT_FLAG_REGISTER_ADDR: u16 = 0xFF0F;
 const INTERRUPT_ENABLE_REGISTER_ADDR: u16 = 0xFFFF;
