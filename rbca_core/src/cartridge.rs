@@ -4,6 +4,12 @@ use std::{fmt::Display, fs::File, io::Read};
 
 const BYTES_IN_KIB: u32 = 128;
 
+const NIN_LOGO: [u8; 48] = [
+    0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
+    0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
+    0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E,
+];
+
 /// A Game Boy cartridge.
 #[derive(Debug, Clone)]
 pub struct Cartridge {
@@ -68,6 +74,16 @@ impl Cartridge {
     /// Get the logo shown at startup.
     pub fn nin_logo(&self) -> &[u8] {
         &self.data[0x0104..=0x0133]
+    }
+
+    /// Verify accuracy of Nintendo logo. Return true iff the logo is accurate.
+    pub fn validate_logo(&self) -> bool {
+        for i in 0..48 {
+            if self.data[(0x0104 + (i as u16)) as usize] != NIN_LOGO[i as usize] {
+                return false;
+            }
+        }
+        true
     }
 
     /// Get the title of the game.
@@ -141,12 +157,12 @@ impl Cartridge {
 
     /// Validate checksum. Returns None if checksum passes, else returns the calculated checksum if
     /// it fails.
-    pub fn validate_checksum(&self) -> Option<u16> {
-        let mut checksum: u16 = 0;
+    pub fn validate_checksum(&self) -> Option<u8> {
+        let mut checksum: u8 = 0;
         for i in 0x0134..=0x014C {
-            checksum = checksum.wrapping_sub((self.data[i] as u16).wrapping_sub(1));
+            checksum = checksum.wrapping_sub(self.data[i]).wrapping_sub(1);
         }
-        if (self.checksum() as u16) == (checksum & 0x00FF) {
+        if self.checksum() == checksum {
             None
         } else {
             Some(checksum)
@@ -166,7 +182,8 @@ impl Cartridge {
 \tType      {}
 \tROM Size  {:#08X} ({}) bytes
 \tRAM Size  {:#08X} ({}) bytes
-\tChecksum  {}",
+\tChecksum  {}
+\tLogo      {}",
             self.title(),
             self.cart_features(),
             self.rom_size(),
@@ -174,9 +191,14 @@ impl Cartridge {
             self.ram_size(),
             self.ram_size(),
             if let Some(val) = self.validate_checksum() {
-                format!("Failed! ({:#08X} != {:#08X})", self.checksum(), val)
+                format!("Failed! ({:#04X} != {:#04X})", self.checksum(), val)
             } else {
                 String::from("OK!")
+            },
+            if self.validate_logo() {
+                String::from("OK!")
+            } else {
+                String::from("Invalid!")
             }
         )
     }
