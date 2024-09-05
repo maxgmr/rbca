@@ -2219,7 +2219,7 @@ fn jp_nn(cpu: &mut Cpu) -> u32 {
     cycles
 }
 
-// JP cc,nn: Iff C/Z flag == true/false, jump to address n.
+// JP cc,nn: Iff C/Z flag == true/false, jump to address nn.
 fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let size = 3;
     let cycles = 12;
@@ -2227,7 +2227,17 @@ fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let instruction_string = format!("JP {},nn", cc_print(flag, expected_value));
     debug_print(cpu, size, cycles, &instruction_string);
 
-    jp_cc_helper(cpu, flag, expected_value, false);
+    let test_val = match flag {
+        RegFlag::Z | RegFlag::C => cpu.regs.get_flag(flag),
+        _ => panic!("jr_cc_n: Cannot use flag {:?}. C or Z flags only.", flag),
+    };
+
+    if test_val == expected_value {
+        let nn = cpu.get_next_2_bytes();
+        jp_helper(cpu, nn);
+    } else {
+        cpu.pc += size;
+    }
     cycles
 }
 
@@ -2264,27 +2274,20 @@ fn jr_cc_n(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let instruction_string = format!("JR {},n", cc_print(flag, expected_value));
     debug_print(cpu, size, cycles, &instruction_string);
 
-    jp_cc_helper(cpu, flag, expected_value, true);
-    cycles
-}
-
-// Helper function for conditional jumps
-fn jp_cc_helper(cpu: &mut Cpu, flag: RegFlag, expected_value: bool, is_jr: bool) {
     let test_val = match flag {
         RegFlag::Z | RegFlag::C => cpu.regs.get_flag(flag),
         _ => panic!("jr_cc_n: Cannot use flag {:?}. C or Z flags only.", flag),
     };
-    match (is_jr, test_val == expected_value) {
-        (true, true) => {
-            jr_n(cpu);
-        }
-        (true, false) => cpu.pc += 2,
-        (false, true) => {
-            jp_nn(cpu);
-        }
-        (false, false) => cpu.pc += 3,
-    };
+
+    if test_val == expected_value {
+        let n = cpu.get_next_byte();
+        jp_helper(cpu, cpu.pc + (n as u16));
+    } else {
+        cpu.pc += size;
+    }
+    cycles
 }
+
 // Helper function for jumps
 fn jp_helper(cpu: &mut Cpu, address: u16) {
     cpu.pc = address;

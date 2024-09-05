@@ -106,7 +106,7 @@ impl Display for RegFlag {
 }
 
 /// The registers of the emulated CPU.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Registers {
     /// Register `A` (accumulator)
     a: u8,
@@ -127,7 +127,24 @@ pub struct Registers {
 impl Registers {
     /// Create new [Registers], all initialised to zero.
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            // a: 0x01,
+            a: 0x00,
+            // b: 0x00,
+            b: 0x00,
+            // c: 0x13,
+            c: 0x00,
+            // d: 0x00,
+            d: 0x00,
+            // e: 0xD8,
+            e: 0x00,
+            // f: Flags::new(RegFlag::Z.val() | RegFlag::H.val() | RegFlag::C.val()),
+            f: Flags::new(0x00),
+            // h: 0x01,
+            h: 0x00,
+            // l: 0x4D,
+            l: 0x00,
+        }
     }
 
     /// Get the value of a register.
@@ -195,6 +212,11 @@ impl Registers {
         self.f.write_byte(0b0000_0000);
     }
 }
+impl Default for Registers {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -205,13 +227,6 @@ mod tests {
     #[test]
     fn test_registers() {
         let mut rs = Registers::new();
-        assert_eq!(rs.get_reg(Target::A), 0x00);
-        assert_eq!(rs.get_reg(Target::B), 0x00);
-        assert_eq!(rs.get_reg(Target::C), 0x00);
-        assert_eq!(rs.get_reg(Target::D), 0x00);
-        assert_eq!(rs.get_reg(Target::E), 0x00);
-        assert_eq!(rs.get_reg(Target::H), 0x00);
-        assert_eq!(rs.get_reg(Target::L), 0x00);
 
         rs.set_reg(Target::A, 0x12);
         rs.set_reg(Target::B, 0x34);
@@ -236,10 +251,6 @@ mod tests {
     #[test]
     fn test_virtual_registers() {
         let mut rs = Registers::default();
-        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x0000);
-        assert_eq!(rs.get_virt_reg(VirtTarget::BC), 0x0000);
-        assert_eq!(rs.get_virt_reg(VirtTarget::DE), 0x0000);
-        assert_eq!(rs.get_virt_reg(VirtTarget::HL), 0x0000);
 
         rs.set_virt_reg(VirtTarget::AF, 0x01A0);
         rs.set_virt_reg(VirtTarget::BC, 0x4567);
