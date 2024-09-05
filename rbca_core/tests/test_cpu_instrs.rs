@@ -19,15 +19,12 @@ fn test_cpu_01() {
     let mut t_cycles = 0;
     loop {
         let t_start = Instant::now();
-        // println!(" ");
         t_cycles += cpu.cycle();
-        // println!("SP: {:#06X}, PC: {:#06X}", cpu.sp, cpu.pc);
-        // println!("{}", cpu.regs.regs_string());
-        // println!("{}", cpu.regs.flags_string());
+        println!("{} | {}", cpu.regs.regs_string(), cpu.regs.flags_string());
         // thread::sleep(Duration::from_millis(1));
         if t_cycles >= 17476 {
             t_cycles %= 17476;
-            while t_start.elapsed().as_millis() < 16 {}
+            while t_start.elapsed().as_millis() < 8 {}
         }
     }
 }

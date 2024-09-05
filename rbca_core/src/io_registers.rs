@@ -21,7 +21,7 @@ pub struct IORegisters {
     /// IF (interrupt flags) register.
     pub interrupt_flags: Flags,
     // TODO audio
-    audio: [u8; 0x11],
+    audio: [u8; 0x17],
     // TODO wave pattern
     wave_pattern: [u8; 0x10],
     /// Picture processing unit.
@@ -52,7 +52,7 @@ impl IORegisters {
             // No interrupt flags requested by default.
             interrupt_flags: Flags::new(0b0000_0000),
             // TODO audio
-            audio: [0x00; 0x11],
+            audio: [0x00; 0x17],
             // TODO wave pattern
             wave_pattern: [0x00; 0x10],
             // TODO graphics
