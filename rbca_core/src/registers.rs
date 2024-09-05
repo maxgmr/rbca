@@ -1,5 +1,5 @@
 //! All functionality related to the registers of the emulated CPU.
-use std::default::Default;
+use std::{default::Default, fmt::Display};
 
 use strum_macros::EnumIter;
 
@@ -23,6 +23,23 @@ pub enum Target {
     /// Register `L`
     L,
 }
+impl Display for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::A => "A",
+                Self::B => "B",
+                Self::C => "C",
+                Self::D => "D",
+                Self::E => "E",
+                Self::H => "H",
+                Self::L => "L",
+            }
+        )
+    }
+}
 
 /// Enum to define the virtual register target of a function.
 #[derive(Debug, Copy, Clone, EnumIter)]
@@ -35,6 +52,20 @@ pub enum VirtTarget {
     DE,
     /// Virtual register `HL`
     HL,
+}
+impl Display for VirtTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::AF => "AF",
+                Self::BC => "BC",
+                Self::DE => "DE",
+                Self::HL => "HL",
+            }
+        )
+    }
 }
 
 /// The bit masks for the different flags of register `F`.
@@ -57,6 +88,20 @@ impl FlagsEnum for RegFlag {
             Self::H => 0b0010_0000,
             Self::C => 0b0001_0000,
         }
+    }
+}
+impl Display for RegFlag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Z => "Z",
+                Self::N => "N",
+                Self::H => "H",
+                Self::C => "C",
+            }
+        )
     }
 }
 
