@@ -1,3 +1,8 @@
+use std::{
+    thread,
+    time::{Duration, Instant},
+};
+
 use rbca_core::Cpu;
 
 #[test]
@@ -10,6 +15,9 @@ fn test_cpu_01() {
     println!("{}", cpu_cart.header_info());
 
     loop {
-        let _t_cycles = cpu.cycle();
+        let t_start = Instant::now();
+        let mut t_cycles = 0;
+        t_cycles += cpu.cycle();
+        thread::sleep(Duration::from_millis(10));
     }
 }

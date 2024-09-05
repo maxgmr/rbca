@@ -264,7 +264,7 @@ impl PPU {
                 if self.lcd_control.get(Lcdc::BGWindowTileDataArea) || tile_num > 0x7F {
                     (tile_num as u16) << 4
                 } else {
-                    0x1000 | ((tile_num as u16) * 16)
+                    0x1000 | ((tile_num as u16) << 4)
                 };
 
             // Each line of the tile occupies 2 bytes.

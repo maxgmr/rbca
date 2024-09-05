@@ -208,6 +208,12 @@ impl MemoryBus {
         self.cart_rom_3
             .copy_from_slice(&padded_data[0xC000..=0xFFFF]);
 
+        // Load boot ROM
+        // TODO handle relative paths
+        if let Some(boot_rom) = cart.boot_rom_data() {
+            self.cart_rom_0[..0x0100].copy_from_slice(boot_rom)
+        }
+
         self.cart = Some(cart);
     }
 

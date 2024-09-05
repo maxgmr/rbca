@@ -5,9 +5,6 @@ use sdl2::{
     EventPump, Sdl, VideoSubsystem,
 };
 
-const BG_RGB: (u8, u8, u8) = (0xBE, 0xCE, 0x9A);
-const FG_RGB: (u8, u8, u8) = (0x31, 0x3D, 0x19);
-
 const SCALE: u32 = 5;
 
 const WINDOW_WIDTH: u32 = (DISPLAY_WIDTH as u32) * SCALE;
@@ -18,9 +15,10 @@ pub struct Display {
     video_subsystem: VideoSubsystem,
     canvas: Canvas<Window>,
     event_pump: EventPump,
-    display_arr: [bool; DISPLAY_WIDTH * DISPLAY_HEIGHT],
-    // TODO test
-    px_coords: (u32, u32),
+    // 3 bytes per pixel; RGB24 encoding
+    framebuffer: [u8; 3 * DISPLAY_WIDTH * DISPLAY_HEIGHT],
+    // 4 bytes per pixel; RGBA24 encoding
+    framebuffer_a: [u8; 4 * DISPLAY_WIDTH * DISPLAY_HEIGHT],
 }
 impl Display {
     pub fn new() -> eyre::Result<Self> {
@@ -51,9 +49,8 @@ impl Display {
             video_subsystem,
             canvas,
             event_pump,
-            display_arr: [false; DISPLAY_WIDTH * DISPLAY_HEIGHT],
-            // TODO test
-            px_coords: (DISPLAY_WIDTH as u32 / 2, DISPLAY_HEIGHT as u32 / 2),
+            framebuffer: [0x00; 3 * DISPLAY_WIDTH * DISPLAY_HEIGHT],
+            framebuffer_a: [0x00; 4 * DISPLAY_WIDTH * DISPLAY_HEIGHT],
         })
     }
 
@@ -68,34 +65,6 @@ impl Display {
                     } => {
                         break 'main_loop;
                     }
-                    // TODO test
-                    Event::KeyDown {
-                        keycode: Some(Keycode::W),
-                        ..
-                    } => {
-                        self.px_coords = (self.px_coords.0, self.px_coords.1 - 1);
-                    }
-                    // TODO test
-                    Event::KeyDown {
-                        keycode: Some(Keycode::S),
-                        ..
-                    } => {
-                        self.px_coords = (self.px_coords.0, self.px_coords.1 + 1);
-                    }
-                    // TODO test
-                    Event::KeyDown {
-                        keycode: Some(Keycode::A),
-                        ..
-                    } => {
-                        self.px_coords = (self.px_coords.0 - 1, self.px_coords.1);
-                    }
-                    // TODO test
-                    Event::KeyDown {
-                        keycode: Some(Keycode::D),
-                        ..
-                    } => {
-                        self.px_coords = (self.px_coords.0 + 1, self.px_coords.1);
-                    }
                     _ => {}
                 }
             }
@@ -106,31 +75,21 @@ impl Display {
 
     fn draw_screen(&mut self) -> eyre::Result<()> {
         // Clear canvas
-        self.canvas
-            .set_draw_color(Color::RGB(BG_RGB.0, BG_RGB.1, BG_RGB.2));
+        self.canvas.set_draw_color(Color::RGB(0xB8, 0xD7, 0x81));
         self.canvas.clear();
 
-        // TODO test
-        for i in 0..(DISPLAY_HEIGHT * DISPLAY_WIDTH) {
-            let x = (i % DISPLAY_WIDTH) as u32;
-            let y = (i / DISPLAY_HEIGHT) as u32;
-            self.display_arr[i] = (x == self.px_coords.0) && (y == self.px_coords.1);
-        }
-
         // TODO get display here
-        self.canvas
-            .set_draw_color(Color::RGB(FG_RGB.0, FG_RGB.1, FG_RGB.2));
-        for (i, pixel) in self.display_arr.iter().enumerate() {
-            if *pixel {
-                // Convert index to 2D [x,y] position
-                let x = (i % DISPLAY_WIDTH) as u32;
-                let y = (i / DISPLAY_HEIGHT) as u32;
-
-                // Draw scaled-up rectangle @ [x,y]
-                let rect = Rect::new((x * SCALE) as i32, (y * SCALE) as i32, SCALE, SCALE);
-                self.canvas.fill_rect(rect).unwrap();
-            }
-        }
+        // for (i, pixel) in self.display_arr.iter().enumerate() {
+        //     if *pixel {
+        //         // Convert index to 2D [x,y] position
+        //         let x = (i % DISPLAY_WIDTH) as u32;
+        //         let y = (i / DISPLAY_HEIGHT) as u32;
+        //
+        //         // Draw scaled-up rectangle @ [x,y]
+        //         let rect = Rect::new((x * SCALE) as i32, (y * SCALE) as i32, SCALE, SCALE);
+        //         self.canvas.fill_rect(rect).unwrap();
+        //     }
+        // }
         self.canvas.present();
 
         Ok(())

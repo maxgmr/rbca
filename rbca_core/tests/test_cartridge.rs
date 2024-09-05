@@ -11,7 +11,6 @@ fn test_cart_info() {
     for arg in &args[1..] {
         cpu.mem_bus.load_cart(arg);
         if cpu.mem_bus.cart().is_some() {
-            println!("ping!");
             println!("{}", cpu.mem_bus.cart().unwrap().header_info());
         }
     }
