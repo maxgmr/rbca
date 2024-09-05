@@ -70,21 +70,19 @@ impl Cartridge {
         &self.data[0x0104..=0x0133]
     }
 
-    /// Get the title of the game (16-byte size for older cartridges).
-    pub fn title_16(&self) -> &str {
+    /// Get the title of the game.
+    pub fn title(&self) -> &str {
         self.title_helper(0x0143)
     }
-    /// Get the title of the game (15-byte size for newer DMG cartridges).
-    pub fn title_15(&self) -> &str {
-        self.title_helper(0x0142)
-    }
     /// Get the title of the game (11-byte size for CGB & later cartridges).
-    pub fn title_11(&self) -> &str {
+    pub fn title_cgb(&self) -> &str {
         self.title_helper(0x013E)
     }
     fn title_helper(&self, end_index: u16) -> &str {
-        std::str::from_utf8(&self.data[0x0134..=(end_index as usize)])
-            .expect("Invalid UTF-8 sequence.")
+        match std::str::from_utf8(&self.data[0x0134..=(end_index as usize)]) {
+            Ok(val) => val,
+            _ => std::str::from_utf8(&self.data[0x0132..=(end_index as usize - 1)]).unwrap_or(""),
+        }
     }
 
     /// Get the manufacturer code.
@@ -141,9 +139,46 @@ impl Cartridge {
         self.data[0x014D]
     }
 
+    /// Validate checksum. Returns None if checksum passes, else returns the calculated checksum if
+    /// it fails.
+    pub fn validate_checksum(&self) -> Option<u16> {
+        let mut checksum: u16 = 0;
+        for i in 0x0134..=0x014C {
+            checksum = checksum.wrapping_sub((self.data[i] as u16).wrapping_sub(1));
+        }
+        if (self.checksum() as u16) == (checksum & 0x00FF) {
+            None
+        } else {
+            Some(checksum)
+        }
+    }
+
     /// Get the global checksum.
     pub fn global_checksum(&self) -> u16 {
         ((self.data[0x014E] as u16) << 8) | (self.data[0x014F] as u16)
+    }
+
+    /// Get some header info formatted as a nice String.
+    pub fn header_info(&self) -> String {
+        format!(
+            "Cart loaded!
+\tTitle     {}
+\tType      {}
+\tROM Size  {:#08X} ({}) bytes
+\tRAM Size  {:#08X} ({}) bytes
+\tChecksum  {}",
+            self.title(),
+            self.cart_features(),
+            self.rom_size(),
+            self.rom_size(),
+            self.ram_size(),
+            self.ram_size(),
+            if let Some(val) = self.validate_checksum() {
+                format!("Failed! ({:#08X} != {:#08X})", self.checksum(), val)
+            } else {
+                String::from("OK!")
+            }
+        )
     }
 }
 
