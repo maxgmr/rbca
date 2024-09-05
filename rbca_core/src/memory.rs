@@ -192,14 +192,21 @@ impl MemoryBus {
             }
         };
 
+        let mut padded_data: [u8; 0x10000] = [0x00; 0x10000];
+        if cart.data().len() >= padded_data.len() {
+            padded_data.copy_from_slice(&cart.data()[0x0000..=0xFFFF]);
+        } else {
+            padded_data[..cart.data().len()].copy_from_slice(cart.data());
+        }
+
         self.cart_rom_0
-            .copy_from_slice(&cart.data()[0x0000..=0x3FFF]);
+            .copy_from_slice(&padded_data[0x0000..=0x3FFF]);
         self.cart_rom_1
-            .copy_from_slice(&cart.data()[0x4000..=0x7FFF]);
+            .copy_from_slice(&padded_data[0x4000..=0x7FFF]);
         self.cart_rom_2
-            .copy_from_slice(&cart.data()[0x8000..=0xBFFF]);
+            .copy_from_slice(&padded_data[0x8000..=0xBFFF]);
         self.cart_rom_3
-            .copy_from_slice(&cart.data()[0xC000..=0xFFFF]);
+            .copy_from_slice(&padded_data[0xC000..=0xFFFF]);
 
         self.cart = Some(cart);
     }

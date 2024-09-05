@@ -2,6 +2,7 @@ use std::env;
 
 use rbca_core::Cpu;
 
+// Example usage: cargo t info -- ../roms/zelda.gb --nocapture
 #[test]
 fn test_cart_info() {
     let args: Vec<_> = env::args().collect();

@@ -18,7 +18,7 @@ pub struct Cartridge {
     ///  The boot ROM.
     boot_rom_data: Option<[u8; 0x100]>,
     /// The raw binary data stored on the cartridge.
-    data: [u8; 0x10000],
+    data: Vec<u8>,
     /// The hardware present on the cartridge.
     cart_features: CartFeatures,
 }
@@ -32,23 +32,19 @@ impl Cartridge {
         {
             return None;
         }
-        let mut padded_data: [u8; 0x10000] = [0x00; 0x10000];
-        // TODO some carts are too big!
-        padded_data[..data.len()].copy_from_slice(&data);
-
         let boot_rom_data = Self::load_boot_rom();
 
-        let cart_features = CartFeatures::from_data(&padded_data);
+        let cart_features = CartFeatures::from_data(&data);
 
         Some(Self {
             boot_rom_data,
-            data: padded_data,
+            data,
             cart_features,
         })
     }
 
     /// Get the data stored on the cartridge.
-    pub fn data(&self) -> &[u8; 0x10000] {
+    pub fn data(&self) -> &[u8] {
         &self.data
     }
 
@@ -240,7 +236,7 @@ pub struct CartFeatures {
 }
 impl CartFeatures {
     /// Read the [CartFeatures] from the cartridge header.
-    fn from_data(data: &[u8; 0x10000]) -> Self {
+    fn from_data(data: &[u8]) -> Self {
         let mut cf = Self {
             rom_only: false,
             rom: false,
