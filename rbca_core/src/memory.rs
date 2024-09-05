@@ -184,7 +184,13 @@ impl MemoryBus {
 
     /// Load a [Cartridge] from a given file path.
     pub fn load_cart(&mut self, filepath: &str) {
-        let cart = Cartridge::from_file(filepath);
+        let cart = match Cartridge::from_file(filepath) {
+            Some(cart) => cart,
+            _ => {
+                self.cart = None;
+                return;
+            }
+        };
 
         self.cart_rom_0
             .copy_from_slice(&cart.data()[0x0000..=0x3FFF]);
@@ -196,6 +202,11 @@ impl MemoryBus {
             .copy_from_slice(&cart.data()[0xC000..=0xFFFF]);
 
         self.cart = Some(cart);
+    }
+
+    /// Get the loaded [Cartridge].
+    pub fn cart(&self) -> Option<&Cartridge> {
+        self.cart.as_ref()
     }
 }
 impl Default for MemoryBus {

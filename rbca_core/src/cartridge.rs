@@ -2,6 +2,8 @@
 
 use std::{fmt::Display, fs::File, io::Read};
 
+const BOOT_ROM_PATH: &str = "../dmg-boot.bin";
+
 const BYTES_IN_KIB: u32 = 128;
 
 const NIN_LOGO: [u8; 48] = [
@@ -22,23 +24,27 @@ pub struct Cartridge {
 }
 impl Cartridge {
     /// Load a cartridge by loading a binary file at the given path.
-    pub fn from_file(filepath: &str) -> Self {
+    pub fn from_file(filepath: &str) -> Option<Self> {
         let mut data = vec![];
-        File::open(filepath)
+        if File::open(filepath)
             .and_then(|mut f| f.read_to_end(&mut data))
-            .expect("Could not read file.");
+            .is_err()
+        {
+            return None;
+        }
         let mut padded_data: [u8; 0x10000] = [0x00; 0x10000];
+        // TODO some carts are too big!
         padded_data[..data.len()].copy_from_slice(&data);
 
         let boot_rom_data = Self::load_boot_rom();
 
         let cart_features = CartFeatures::from_data(&padded_data);
 
-        Self {
+        Some(Self {
             boot_rom_data,
             data: padded_data,
             cart_features,
-        }
+        })
     }
 
     /// Get the data stored on the cartridge.
@@ -59,7 +65,7 @@ impl Cartridge {
     /// Attempt to load the boot ROM.
     fn load_boot_rom() -> Option<[u8; 0x0100]> {
         let mut data = vec![];
-        if File::open("dmg-boot.bin")
+        if File::open(BOOT_ROM_PATH)
             .and_then(|mut f| f.read_to_end(&mut data))
             .is_err()
         {
@@ -177,18 +183,19 @@ impl Cartridge {
     /// Get some header info formatted as a nice String.
     pub fn header_info(&self) -> String {
         format!(
-            "Cart loaded!
+            "Cart Info
 \tTitle     {}
 \tType      {}
-\tROM Size  {:#08X} ({}) bytes
-\tRAM Size  {:#08X} ({}) bytes
+\tROM Size  {} KiB ({:#X} bytes)
+\tRAM Size  {} KiB ({:#X} bytes)
 \tChecksum  {}
-\tLogo      {}",
+\tLogo      {}
+\tBoot ROM  {}",
             self.title(),
             self.cart_features(),
+            self.rom_size() / BYTES_IN_KIB,
             self.rom_size(),
-            self.rom_size(),
-            self.ram_size(),
+            self.ram_size() / BYTES_IN_KIB,
             self.ram_size(),
             if let Some(val) = self.validate_checksum() {
                 format!("Failed! ({:#04X} != {:#04X})", self.checksum(), val)
@@ -199,6 +206,11 @@ impl Cartridge {
                 String::from("OK!")
             } else {
                 String::from("Invalid!")
+            },
+            if self.boot_rom_data.is_some() {
+                String::from("OK!")
+            } else {
+                String::from("None")
             }
         )
     }
