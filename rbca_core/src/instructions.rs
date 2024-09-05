@@ -2290,7 +2290,7 @@ fn call_nn(cpu: &mut Cpu) -> u32 {
 // CALL cc,nn: Iff condition cc == true, push address of next instrucion to stack & jump to address
 // nn.
 fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
-    let size = 1;
+    let size = 3;
     let cycles = 4;
     let test_val = match flag {
         RegFlag::Z | RegFlag::C => cpu.regs.get_flag(flag),

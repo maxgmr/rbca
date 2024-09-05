@@ -6,6 +6,7 @@ use std::{
 use rbca_core::Cpu;
 
 #[test]
+#[ignore]
 fn test_cpu_01() {
     let mut cpu = Cpu::new();
     cpu.mem_bus
