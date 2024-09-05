@@ -14,7 +14,7 @@ const VBLANK_CYCLES: u32 = 456;
 
 const MAX_SCANLINES: u8 = 153;
 
-/// Picture processing unit.
+/// Pixel processing unit.
 #[derive(Debug, Clone)]
 pub struct PPU {
     /// Data output of screen.
