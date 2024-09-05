@@ -1,10 +1,7 @@
 //! Functionality related to emulator memory.
 use std::{default::Default, fs::File, io::Read};
 
-use crate::{
-    io_registers::{IORegisters, If},
-    Flags,
-};
+use crate::{io_registers::IORegisters, Flags};
 
 /// Memory bus of the Game Boy.
 #[derive(Debug, Clone)]
@@ -74,24 +71,28 @@ impl MemoryBus {
         // TODO check for joypad interrupts
 
         // Cycle PPU.
-        // Set appropriate tile map from VRAM.
-        let map_start = self.io_regs.ppu.tile_map_start_addr() as usize;
+        // Set appropriate tile maps from VRAM.
+        let bg_map_start = self.io_regs.ppu.bg_map_start() as usize;
+        let win_map_start = self.io_regs.ppu.win_map_start() as usize;
         // Set appropriate tile data from VRAM.
-        let data_start = self.io_regs.ppu.tile_data_start_addr() as usize;
+        let tile_data_start = self.io_regs.ppu.tile_data_start() as usize;
         self.io_regs.ppu.cycle(
             t_cycles,
-            &self.vram[map_start..(map_start + 0x0400)]
+            &self.vram[bg_map_start..(bg_map_start + 0x0400)]
                 .try_into()
                 .unwrap(),
-            &self.vram[data_start..(data_start + 0x2000)]
+            &self.vram[win_map_start..(win_map_start + 0x0400)]
+                .try_into()
+                .unwrap(),
+            &self.vram[tile_data_start..(tile_data_start + 0x2000)]
                 .try_into()
                 .unwrap(),
         );
         // Set IF register to accomodate any PPU-triggered interrupts.
-        self.io_regs
-            .interrupt_flags
-            .set(If::Lcd, self.io_regs.ppu.interrupt_activated);
-        self.io_regs.ppu.interrupt_activated = false;
+        self.io_regs.interrupt_flags.write_byte(
+            self.io_regs.interrupt_flags.read_byte() | self.io_regs.ppu.interrupt_flags.read_byte(),
+        );
+        self.io_regs.ppu.interrupt_flags.write_byte(0b0000_0000);
 
         // TODO cycle sound
 
@@ -187,10 +188,17 @@ impl MemoryBus {
         File::open(filepath)
             .and_then(|mut f| f.read_to_end(&mut data))
             .expect("Could not read file.");
-        self.cart_rom_0.copy_from_slice(&data[0x0000..=0x3FFF]);
-        self.cart_rom_1.copy_from_slice(&data[0x4000..=0x7FFF]);
-        self.cart_rom_2.copy_from_slice(&data[0x8000..=0xBFFF]);
-        self.cart_rom_3.copy_from_slice(&data[0xC000..=0xFFFF]);
+        let mut padded_data: [u8; 0x10000] = [0x00; 0x10000];
+        padded_data[..data.len()].copy_from_slice(&data);
+
+        self.cart_rom_0
+            .copy_from_slice(&padded_data[0x0000..=0x3FFF]);
+        self.cart_rom_1
+            .copy_from_slice(&padded_data[0x4000..=0x7FFF]);
+        self.cart_rom_2
+            .copy_from_slice(&padded_data[0x8000..=0xBFFF]);
+        self.cart_rom_3
+            .copy_from_slice(&padded_data[0xC000..=0xFFFF]);
         self.rom = Some(data);
     }
 }
