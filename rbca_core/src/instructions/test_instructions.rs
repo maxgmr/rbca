@@ -44,6 +44,16 @@ fn test_bit_b_r() {
     let mut cpu = Cpu::default();
     cpu.mem_bus.write_byte(0b0101_0101_0101_0101, 0b1010_1010);
 
+    let data = [0xCB, 0x7C];
+    cpu.load(0x0000, &data);
+    cpu.regs.set_reg(H, 0x9F);
+    cpu.regs.reset_flags();
+    cpu.pc = 0x0000;
+
+    cpu.cycle();
+    assert_eq!(cpu.pc, 0x0002);
+    assert!(!cpu.regs.get_flag(RegFlag::Z));
+
     for target in Target::iter() {
         cpu.regs.reset_flags();
         cpu.regs.set_reg(target, 0b0101_0101);

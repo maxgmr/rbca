@@ -132,10 +132,7 @@ impl MemoryBus {
             0xC000..=0xDFFF => self.wram[address as usize - 0xC000],
             0xE000..=0xFDFF => self.wram_echo[address as usize - 0xE000],
             0xFE00..=0xFE9F => self.oam[address as usize - 0xFE00],
-            // TODO should probably not just instantly panic- maybe warning?
-            0xFEA0..=0xFEFF => {
-                panic!("Attempted to read unusable memory address {:#04X}", address)
-            }
+            0xFEA0..=0xFEFF => 0xFF,
             0xFF00..=0xFF7F => self.io_regs.read_byte(address - 0xFF00),
             0xFF80..=0xFFFE => self.hram[address as usize - 0xFF80],
             0xFFFF => self.ie_reg.read_byte(),
@@ -163,13 +160,9 @@ impl MemoryBus {
                 }
             }
             // Writing to wram_echo is prohibited
-            0xE000..=0xFDFF => panic!("Illegal write attempt to Echo RAM @ {:#04X}", address),
+            0xE000..=0xFDFF => {}
             0xFE00..=0xFE9F => self.oam[address as usize - 0xFE00] = byte,
-            // TODO should probably not just instantly panic- maybe warning?
-            0xFEA0..=0xFEFF => panic!(
-                "Attempted to write to unusable memory address {:#04X}",
-                address
-            ),
+            0xFEA0..=0xFEFF => {}
             0xFF00..=0xFF7F => self.io_regs.write_byte(address - 0xFF00, byte),
             0xFF80..=0xFFFE => self.hram[address as usize - 0xFF80] = byte,
             0xFFFF => self.ie_reg.write_byte(byte),

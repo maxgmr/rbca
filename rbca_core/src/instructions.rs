@@ -2257,12 +2257,12 @@ fn jp_hl(cpu: &mut Cpu) -> u32 {
 fn jr_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 4;
-    let n = cpu.get_next_byte();
+    let n = cpu.get_next_byte() as i8;
 
     let instruction_string = "JR n";
     debug_print(cpu, size, cycles, instruction_string);
 
-    jp_helper(cpu, cpu.pc + (n as u16));
+    jp_helper(cpu, ((cpu.pc as u32 as i32) + (n as i32)) as u16);
     cycles
 }
 
@@ -2280,8 +2280,8 @@ fn jr_cc_n(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     };
 
     if test_val == expected_value {
-        let n = cpu.get_next_byte();
-        jp_helper(cpu, cpu.pc + (n as u16));
+        let n = cpu.get_next_byte() as i8;
+        jp_helper(cpu, ((cpu.pc as u32 as i32) + (n as i32)) as u16);
     } else {
         cpu.pc += size;
     }

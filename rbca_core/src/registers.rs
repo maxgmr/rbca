@@ -211,6 +211,31 @@ impl Registers {
     pub fn reset_flags(&mut self) {
         self.f.write_byte(0b0000_0000);
     }
+
+    /// Get print-friendly regs string.
+    pub fn regs_string(&self) -> String {
+        format!(
+            "A: {:#04X}, B: {:#04X}, C: {:#04X}, D: {:#04X}, E: {:#04X}, H: {:#04X}, L: {:#04X}",
+            &self.get_reg(Target::A),
+            &self.get_reg(Target::B),
+            &self.get_reg(Target::C),
+            &self.get_reg(Target::D),
+            &self.get_reg(Target::E),
+            &self.get_reg(Target::H),
+            &self.get_reg(Target::L),
+        )
+    }
+
+    /// Get print-friendly flags string.
+    pub fn flags_string(&self) -> String {
+        format!(
+            "Z: {}, N: {}, H: {}, C: {}",
+            &self.get_flag(RegFlag::Z),
+            &self.get_flag(RegFlag::N),
+            &self.get_flag(RegFlag::H),
+            &self.get_flag(RegFlag::C)
+        )
+    }
 }
 impl Default for Registers {
     fn default() -> Self {

@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use rbca_core::Cpu;
+use rbca_core::{Cpu, RegFlag};
 
 // Example usage: cargo t 01 -- --nocapture --ignored
 #[test]
@@ -16,10 +16,18 @@ fn test_cpu_01() {
     let cpu_cart = cpu.mem_bus.cart.as_ref().unwrap();
     println!("{}", cpu_cart.header_info());
 
+    let mut t_cycles = 0;
     loop {
         let t_start = Instant::now();
-        let mut t_cycles = 0;
+        // println!(" ");
         t_cycles += cpu.cycle();
-        thread::sleep(Duration::from_millis(10));
+        // println!("SP: {:#06X}, PC: {:#06X}", cpu.sp, cpu.pc);
+        // println!("{}", cpu.regs.regs_string());
+        // println!("{}", cpu.regs.flags_string());
+        // thread::sleep(Duration::from_millis(1));
+        if t_cycles >= 17476 {
+            t_cycles %= 17476;
+            while t_start.elapsed().as_millis() < 16 {}
+        }
     }
 }

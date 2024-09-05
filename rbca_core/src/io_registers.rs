@@ -86,7 +86,7 @@ impl IORegisters {
             0x0051..=0x0055 => self.vram_dma[address as usize - 0x0051],
             0x0068..=0x006B => self.bg_obj_palettes[address as usize - 0x0068],
             0x0070 => self.wram_bank_select,
-            _ => panic!("Illegal read at address {:#04X}", address),
+            _ => 0xFF,
         }
     }
 
@@ -109,7 +109,7 @@ impl IORegisters {
             0x0051..=0x0055 => self.vram_dma[address as usize - 0x0051] = byte,
             0x0068..=0x006B => self.bg_obj_palettes[address as usize - 0x0068] = byte,
             0x0070 => self.wram_bank_select = byte,
-            _ => panic!("Illegal write at address {:#04X}", address),
+            _ => {}
         }
     }
 
