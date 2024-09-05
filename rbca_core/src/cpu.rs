@@ -137,7 +137,7 @@ impl Default for Cpu {
     fn default() -> Self {
         Self {
             regs: Registers::default(),
-            pc: u16::default(),
+            pc: 0x0000,
             sp: 0xFFFE,
             mem_bus: MemoryBus::new(),
             is_halted: false,

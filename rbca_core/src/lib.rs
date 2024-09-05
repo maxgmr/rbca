@@ -2,6 +2,7 @@
 #![warn(missing_docs)]
 
 mod boot;
+mod cartridge;
 mod cpu;
 mod flags;
 mod ie_register;
@@ -13,6 +14,7 @@ mod registers;
 
 // Re-exports
 pub use boot::{DMG_BOOT, DMG_BOOT_SIZE};
+pub use cartridge::Cartridge;
 pub use cpu::Cpu;
 pub use flags::*;
 pub use memory::MemoryBus;

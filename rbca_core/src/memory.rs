@@ -1,13 +1,13 @@
 //! Functionality related to emulator memory.
-use std::{default::Default, fs::File, io::Read};
+use std::default::Default;
 
-use crate::{io_registers::IORegisters, Flags};
+use crate::{io_registers::IORegisters, Cartridge, Flags};
 
 /// Memory bus of the Game Boy.
 #[derive(Debug, Clone)]
 pub struct MemoryBus {
-    /// The ROM loaded from the computer.
-    pub rom: Option<Vec<u8>>,
+    /// The [Cartridge] loaded from the computer.
+    pub cart: Option<Cartridge>,
     /// [0x0000-0x3FFF] Cartridge ROM bank 0. Usually a fixed bank.
     pub cart_rom_0: [u8; 0x4000],
     /// [0x4000-0x7FFF] Switchable cartridge ROM bank 1.
@@ -45,7 +45,7 @@ impl MemoryBus {
     /// Create a new [MemoryBus].
     pub fn new() -> Self {
         Self {
-            rom: None,
+            cart: None,
             cart_rom_0: [0x00; 0x4000],
             cart_rom_1: [0x00; 0x4000],
             cart_rom_2: [0x00; 0x4000],
@@ -182,24 +182,20 @@ impl MemoryBus {
         self.write_byte(start_address + 1, (value >> 8) as u8);
     }
 
-    /// Load a ROM given a path.
-    pub fn load_rom(&mut self, filepath: &str) {
-        let mut data = vec![];
-        File::open(filepath)
-            .and_then(|mut f| f.read_to_end(&mut data))
-            .expect("Could not read file.");
-        let mut padded_data: [u8; 0x10000] = [0x00; 0x10000];
-        padded_data[..data.len()].copy_from_slice(&data);
+    /// Load a [Cartridge] from a given file path.
+    pub fn load_cart(&mut self, filepath: &str) {
+        let cart = Cartridge::from_file(filepath);
 
         self.cart_rom_0
-            .copy_from_slice(&padded_data[0x0000..=0x3FFF]);
+            .copy_from_slice(&cart.data()[0x0000..=0x3FFF]);
         self.cart_rom_1
-            .copy_from_slice(&padded_data[0x4000..=0x7FFF]);
+            .copy_from_slice(&cart.data()[0x4000..=0x7FFF]);
         self.cart_rom_2
-            .copy_from_slice(&padded_data[0x8000..=0xBFFF]);
+            .copy_from_slice(&cart.data()[0x8000..=0xBFFF]);
         self.cart_rom_3
-            .copy_from_slice(&padded_data[0xC000..=0xFFFF]);
-        self.rom = Some(data);
+            .copy_from_slice(&cart.data()[0xC000..=0xFFFF]);
+
+        self.cart = Some(cart);
     }
 }
 impl Default for MemoryBus {
