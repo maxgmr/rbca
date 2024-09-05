@@ -813,8 +813,8 @@ fn ld_a_vr(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let value = cpu.mem_bus.read_byte(address);
     ld_a_n_helper(cpu, value);
 
-    let instruction_string = "LD A,{target}";
-    debug_print(cpu, size, cycles, instruction_string);
+    let instruction_string = format!("LD A,{target}");
+    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
