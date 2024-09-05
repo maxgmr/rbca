@@ -732,6 +732,16 @@ fn debug_print(cpu: &Cpu, size: u16, cycles: u32, instruction_string: &str) {
     }
 }
 
+fn cc_print(flag: RegFlag, expected_value: bool) -> String {
+    match (flag, expected_value) {
+        (RegFlag::Z, false) => "NZ".to_string(),
+        (RegFlag::Z, true) => "Z".to_string(),
+        (RegFlag::C, false) => "NC".to_string(),
+        (RegFlag::C, true) => "C".to_string(),
+        _ => String::new(),
+    }
+}
+
 // ----------------------------------------------------
 // FUNCTIONS
 // ----------------------------------------------------
@@ -2201,10 +2211,11 @@ fn jp_nn(cpu: &mut Cpu) -> u32 {
     let size = 3;
     let cycles = 12;
     let nn = cpu.get_next_2_bytes();
-    jp_helper(cpu, nn);
 
     let instruction_string = "JP nn";
     debug_print(cpu, size, cycles, instruction_string);
+
+    jp_helper(cpu, nn);
     cycles
 }
 
@@ -2212,10 +2223,11 @@ fn jp_nn(cpu: &mut Cpu) -> u32 {
 fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let size = 3;
     let cycles = 12;
-    jp_cc_helper(cpu, flag, expected_value, false);
 
-    let instruction_string = "JP cc,nn";
-    debug_print(cpu, size, cycles, instruction_string);
+    let instruction_string = format!("JP {},nn", cc_print(flag, expected_value));
+    debug_print(cpu, size, cycles, &instruction_string);
+
+    jp_cc_helper(cpu, flag, expected_value, false);
     cycles
 }
 
@@ -2223,10 +2235,11 @@ fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
 fn jp_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
-    jp_helper(cpu, cpu.regs.get_virt_reg(HL));
 
     let instruction_string = "JP (HL)";
     debug_print(cpu, size, cycles, instruction_string);
+
+    jp_helper(cpu, cpu.regs.get_virt_reg(HL));
     cycles
 }
 
@@ -2235,10 +2248,11 @@ fn jr_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 4;
     let n = cpu.get_next_byte();
-    jp_helper(cpu, cpu.pc + (n as u16));
 
     let instruction_string = "JR n";
     debug_print(cpu, size, cycles, instruction_string);
+
+    jp_helper(cpu, cpu.pc + (n as u16));
     cycles
 }
 
@@ -2246,10 +2260,11 @@ fn jr_n(cpu: &mut Cpu) -> u32 {
 fn jr_cc_n(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let size = 2;
     let cycles = 8;
-    jp_cc_helper(cpu, flag, expected_value, true);
 
-    let instruction_string = "JR cc,n";
-    debug_print(cpu, size, cycles, instruction_string);
+    let instruction_string = format!("JR {},n", cc_print(flag, expected_value));
+    debug_print(cpu, size, cycles, &instruction_string);
+
+    jp_cc_helper(cpu, flag, expected_value, true);
     cycles
 }
 
@@ -2292,6 +2307,10 @@ fn call_nn(cpu: &mut Cpu) -> u32 {
 fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let size = 3;
     let cycles = 4;
+
+    let instruction_string = format!("CALL {},nn", cc_print(flag, expected_value));
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let test_val = match flag {
         RegFlag::Z | RegFlag::C => cpu.regs.get_flag(flag),
         _ => panic!("call_cc_nn: Cannot use flag {:?}. C or Z flags only.", flag),
@@ -2303,8 +2322,6 @@ fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
         cpu.pc += size;
     }
 
-    let instruction_string = "CALL cc,nn";
-    debug_print(cpu, size, cycles, instruction_string);
     cycles
 }
 
@@ -2335,6 +2352,10 @@ fn ret(cpu: &mut Cpu) -> u32 {
 fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let size = 1;
     let cycles = 8;
+
+    let instruction_string = format!("RET {}", cc_print(flag, expected_value));
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let test_val = match flag {
         RegFlag::Z | RegFlag::C => cpu.regs.get_flag(flag),
         _ => panic!("call_cc_nn: Cannot use flag {:?}. C or Z flags only.", flag),
@@ -2345,8 +2366,6 @@ fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
         cpu.pc += 1;
     }
 
-    let instruction_string = "RET cc";
-    debug_print(cpu, size, cycles, instruction_string);
     cycles
 }
 
@@ -2354,11 +2373,12 @@ fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
 fn reti(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
-    cpu.pc = cpu.pop_stack();
-    cpu.ei_countdown = 1;
 
     let instruction_string = "RETI";
     debug_print(cpu, size, cycles, instruction_string);
+
+    cpu.pc = cpu.pop_stack();
+    cpu.ei_countdown = 1;
     cycles
 }
 

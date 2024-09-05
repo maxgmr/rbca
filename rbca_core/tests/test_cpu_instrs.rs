@@ -5,6 +5,7 @@ use std::{
 
 use rbca_core::Cpu;
 
+// Example usage: cargo t 01 -- --nocapture --ignored
 #[test]
 #[ignore]
 fn test_cpu_01() {
