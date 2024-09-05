@@ -1,6 +1,6 @@
 //! Functionality related to Game Boy cartridges.
 
-use std::{fs::File, io::Read};
+use std::{fmt::Display, fs::File, io::Read};
 
 const BYTES_IN_KIB: u32 = 128;
 
@@ -293,6 +293,66 @@ impl CartFeatures {
             _ => {}
         };
         cf
+    }
+}
+impl Display for CartFeatures {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut str_vec: Vec<&'static str> = vec![];
+        if self.rom_only {
+            str_vec.push("ROM ONLY");
+        }
+        if self.rom {
+            str_vec.push("ROM");
+        }
+        if self.mbc1 {
+            str_vec.push("MBC1");
+        }
+        if self.mbc2 {
+            str_vec.push("MBC2");
+        }
+        if self.mbc3 {
+            str_vec.push("MBC3");
+        }
+        if self.mbc5 {
+            str_vec.push("MBC5");
+        }
+        if self.mbc6 {
+            str_vec.push("MBC6");
+        }
+        if self.mbc7 {
+            str_vec.push("MBC7");
+        }
+        if self.ram {
+            str_vec.push("RAM");
+        }
+        if self.battery {
+            str_vec.push("BATTERY");
+        }
+        if self.mmm01 {
+            str_vec.push("MMM01");
+        }
+        if self.timer {
+            str_vec.push("TIMER");
+        }
+        if self.rumble {
+            str_vec.push("RUMBLE");
+        }
+        if self.sensor {
+            str_vec.push("SENSOR");
+        }
+        if self.pocket_camera {
+            str_vec.push("POCKET CAMERA");
+        }
+        if self.bandai_tama5 {
+            str_vec.push("BANDAI TAMA5");
+        }
+        if self.huc3 {
+            str_vec.push("HuC3");
+        }
+        if self.huc1 {
+            str_vec.push("HuC1");
+        }
+        write!(f, "{}", str_vec.join("+"))
     }
 }
 
