@@ -779,10 +779,10 @@ fn cc_print(flag: RegFlag, expected_value: bool) -> String {
 fn ld_nn_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
-    cpu.mem_bus.write_byte(cpu.pc + 1, cpu.regs.get_reg(target));
     let instruction_string = format!("LD {target},n");
-
     debug_print(cpu, size, cycles, &instruction_string);
+
+    cpu.mem_bus.write_byte(cpu.pc + 1, cpu.regs.get_reg(target));
     cpu.pc += size;
     cycles
 }
@@ -791,45 +791,49 @@ fn ld_nn_n(cpu: &mut Cpu, target: Target) -> u32 {
 fn ld_r1_r2(cpu: &mut Cpu, r1: Target, r2: Target) -> u32 {
     let size = 1;
     let cycles = 4;
-    cpu.regs.set_reg(r1, cpu.regs.get_reg(r2));
-
     let instruction_string = format!("LD {r1},{r2}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    cpu.regs.set_reg(r1, cpu.regs.get_reg(r2));
+
     cpu.pc += size;
     cycles
 }
 fn ld_r1_hl(cpu: &mut Cpu, r1: Target) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = format!("LD {r1},(HL)");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let value = cpu.mem_bus.read_byte(address);
     cpu.regs.set_reg(r1, value);
 
-    let instruction_string = format!("LD {r1},(HL)");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn ld_hl_r2(cpu: &mut Cpu, r2: Target) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = format!("LD (HL),{r2}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(r2));
 
-    let instruction_string = format!("LD (HL),{r2}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn ld_hl_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 12;
+    let instruction_string = "LD (HL),n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let value = cpu.get_next_byte();
     cpu.mem_bus.write_byte(address, value);
 
-    let instruction_string = "LD (HL),n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -838,35 +842,38 @@ fn ld_hl_n(cpu: &mut Cpu) -> u32 {
 fn ld_a_vr(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = format!("LD A,{target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let address = cpu.regs.get_virt_reg(target);
     let value = cpu.mem_bus.read_byte(address);
     ld_a_n_helper(cpu, value);
 
-    let instruction_string = format!("LD A,{target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn ld_a_nn(cpu: &mut Cpu) -> u32 {
     let size = 3;
     let cycles = 16;
+    let instruction_string = "LD A,nn";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.get_next_2_bytes();
     let value = cpu.mem_bus.read_byte(address);
     ld_a_n_helper(cpu, value);
 
-    let instruction_string = "LD A,nn";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
 fn ld_a_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = "LD A,n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let value = cpu.get_next_byte();
     ld_a_n_helper(cpu, value);
 
-    let instruction_string = "LD A,n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -878,32 +885,35 @@ fn ld_a_n_helper(cpu: &mut Cpu, value: u8) {
 fn ld_r_a(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 1;
     let cycles = 4;
-    cpu.regs.set_reg(target, cpu.regs.get_reg(A));
-
     let instruction_string = format!("LD {target},A");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    cpu.regs.set_reg(target, cpu.regs.get_reg(A));
+
     cpu.pc += size;
     cycles
 }
 fn ld_vr_a(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = format!("LD {target},A");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let address = cpu.regs.get_virt_reg(target);
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
 
-    let instruction_string = format!("LD {target},A");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn ld_nn_a(cpu: &mut Cpu) -> u32 {
     let size = 3;
     let cycles = 16;
+    let instruction_string = "LD nn,A";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.get_next_2_bytes();
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
 
-    let instruction_string = "LD nn,A";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -912,11 +922,12 @@ fn ld_nn_a(cpu: &mut Cpu) -> u32 {
 fn ld_a_c(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = "LD A,(C)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = 0xFF00 | (cpu.regs.get_reg(C) as u16);
     cpu.regs.set_reg(A, cpu.mem_bus.read_byte(address));
 
-    let instruction_string = "LD A,(C)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -925,11 +936,12 @@ fn ld_a_c(cpu: &mut Cpu) -> u32 {
 fn ld_c_a(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = "LD (C),A";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = 0xFF00 | (cpu.regs.get_reg(C) as u16);
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
 
-    let instruction_string = "LD (C),A";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -938,10 +950,11 @@ fn ld_c_a(cpu: &mut Cpu) -> u32 {
 fn ld_a_hld(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
-    ld_a_hl_helper(cpu, false);
-
     let instruction_string = "LD A,(HLD)";
     debug_print(cpu, size, cycles, instruction_string);
+
+    ld_a_hl_helper(cpu, false);
+
     cpu.pc += size;
     cycles
 }
@@ -950,10 +963,11 @@ fn ld_a_hld(cpu: &mut Cpu) -> u32 {
 fn ld_hld_a(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
-    ld_hl_a_helper(cpu, false);
-
     let instruction_string = "LD (HLD),A";
     debug_print(cpu, size, cycles, instruction_string);
+
+    ld_hl_a_helper(cpu, false);
+
     cpu.pc += size;
     cycles
 }
@@ -962,10 +976,11 @@ fn ld_hld_a(cpu: &mut Cpu) -> u32 {
 fn ld_a_hli(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
-    ld_a_hl_helper(cpu, true);
-
     let instruction_string = "LD A,(HLI)";
     debug_print(cpu, size, cycles, instruction_string);
+
+    ld_a_hl_helper(cpu, true);
+
     cpu.pc += size;
     cycles
 }
@@ -974,10 +989,11 @@ fn ld_a_hli(cpu: &mut Cpu) -> u32 {
 fn ld_hli_a(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
-    ld_hl_a_helper(cpu, true);
-
     let instruction_string = "LD (HLI),A";
     debug_print(cpu, size, cycles, instruction_string);
+
+    ld_hl_a_helper(cpu, true);
+
     cpu.pc += size;
     cycles
 }
@@ -1001,11 +1017,12 @@ fn ld_hl_a_helper(cpu: &mut Cpu, is_inc: bool) {
 fn ldh_n_a(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 12;
+    let instruction_string = "LDH (n),A";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = 0xFF00 | (cpu.get_next_byte() as u16);
     cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
 
-    let instruction_string = "LDH (n),A";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1014,11 +1031,12 @@ fn ldh_n_a(cpu: &mut Cpu) -> u32 {
 fn ldh_a_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 12;
+    let instruction_string = "LDH A,(n)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = 0xFF00 | (cpu.get_next_byte() as u16);
     cpu.regs.set_reg(A, cpu.mem_bus.read_byte(address));
 
-    let instruction_string = "LDH A,(n)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1027,22 +1045,24 @@ fn ldh_a_n(cpu: &mut Cpu) -> u32 {
 fn ld_n_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let size = 3;
     let cycles = 12;
+    let instruction_string = format!("LD {target},n");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let nn = cpu.get_next_2_bytes();
     cpu.regs.set_virt_reg(target, nn);
 
-    let instruction_string = format!("LD {target},n");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn ld_n_nn_sp(cpu: &mut Cpu) -> u32 {
     let size = 3;
     let cycles = 12;
+    let instruction_string = "LD SP,nn";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let nn = cpu.get_next_2_bytes();
     cpu.sp = nn;
 
-    let instruction_string = "LD SP,nn";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1051,10 +1071,11 @@ fn ld_n_nn_sp(cpu: &mut Cpu) -> u32 {
 fn ld_sp_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
-    cpu.sp = cpu.regs.get_virt_reg(HL);
-
     let instruction_string = "LD SP,HL";
     debug_print(cpu, size, cycles, instruction_string);
+
+    cpu.sp = cpu.regs.get_virt_reg(HL);
+
     cpu.pc += size;
     cycles
 }
@@ -1067,11 +1088,12 @@ fn ld_sp_hl(cpu: &mut Cpu) -> u32 {
 fn ld_hl_sp_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 12;
+    let instruction_string = "LD HL,SP+n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let result = sp_n_helper(cpu);
     cpu.regs.set_virt_reg(HL, result);
 
-    let instruction_string = "LD HL,SP+n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1101,11 +1123,12 @@ fn sp_n_helper(cpu: &mut Cpu) -> u16 {
 fn ld_nn_sp(cpu: &mut Cpu) -> u32 {
     let size = 3;
     let cycles = 20;
+    let instruction_string = "LD (nn),SP";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.get_next_2_bytes();
     cpu.mem_bus.write_2_bytes(address, cpu.sp);
 
-    let instruction_string = "LD (nn),SP";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1114,10 +1137,11 @@ fn ld_nn_sp(cpu: &mut Cpu) -> u32 {
 fn push_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let size = 1;
     let cycles = 16;
-    cpu.push_stack(cpu.regs.get_virt_reg(target));
-
     let instruction_string = format!("PUSH {target}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    cpu.push_stack(cpu.regs.get_virt_reg(target));
+
     cpu.pc += size;
     cycles
 }
@@ -1126,11 +1150,12 @@ fn push_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
 fn pop_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let size = 1;
     let cycles = 12;
+    let instruction_string = format!("POP {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let popped_val = cpu.pop_stack();
     cpu.regs.set_virt_reg(target, popped_val);
 
-    let instruction_string = format!("POP {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1139,32 +1164,35 @@ fn pop_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
 fn add_a_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 1;
     let cycles = 4;
-    add_a_n_helper(cpu, cpu.regs.get_reg(target), false);
-
     let instruction_string = format!("ADD A,{target}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    add_a_n_helper(cpu, cpu.regs.get_reg(target), false);
+
     cpu.pc += size;
     cycles
 }
 fn add_a_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = "ADD A,(HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
     add_a_n_helper(cpu, n, false);
 
-    let instruction_string = "ADD A,(HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
 fn add_a_n_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = "ADD A,n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.get_next_byte();
     add_a_n_helper(cpu, n, false);
 
-    let instruction_string = "ADD A,n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1194,32 +1222,35 @@ fn add_a_n_helper(cpu: &mut Cpu, n: u8, use_carry: bool) {
 fn adc_a_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 1;
     let cycles = 4;
-    add_a_n_helper(cpu, cpu.regs.get_reg(target), true);
-
     let instruction_string = format!("ADC A,{target}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    add_a_n_helper(cpu, cpu.regs.get_reg(target), true);
+
     cpu.pc += size;
     cycles
 }
 fn adc_a_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = "ADC A,(HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
     add_a_n_helper(cpu, n, true);
 
-    let instruction_string = "ADC A,(HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
 fn adc_a_n_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = "ADC A,n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.get_next_byte();
     add_a_n_helper(cpu, n, true);
 
-    let instruction_string = "ADC A,n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1228,32 +1259,35 @@ fn adc_a_n_n(cpu: &mut Cpu) -> u32 {
 fn sub_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 1;
     let cycles = 4;
-    sub_n_helper(cpu, cpu.regs.get_reg(target), false);
-
     let instruction_string = format!("SUB {target}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    sub_n_helper(cpu, cpu.regs.get_reg(target), false);
+
     cpu.pc += size;
     cycles
 }
 fn sub_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = "SUB (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
     sub_n_helper(cpu, n, false);
 
-    let instruction_string = "SUB (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
 fn sub_n_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = "SUB n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.get_next_byte();
     sub_n_helper(cpu, n, false);
 
-    let instruction_string = "SUB n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1281,32 +1315,35 @@ fn sub_n_helper(cpu: &mut Cpu, n: u8, use_borrow: bool) {
 fn sbc_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 1;
     let cycles = 4;
-    sub_n_helper(cpu, cpu.regs.get_reg(target), true);
-
     let instruction_string = format!("SBC A,{target}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    sub_n_helper(cpu, cpu.regs.get_reg(target), true);
+
     cpu.pc += size;
     cycles
 }
 fn sbc_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = "SBC A,(HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
     sub_n_helper(cpu, n, true);
 
-    let instruction_string = "SBC A,(HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
 fn sbc_n_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = "SBC A,n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.get_next_byte();
     sub_n_helper(cpu, n, true);
 
-    let instruction_string = "SBC A,n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1315,33 +1352,36 @@ fn sbc_n_n(cpu: &mut Cpu) -> u32 {
 fn and_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 1;
     let cycles = 4;
-    and_n_helper(cpu, cpu.regs.get_reg(target));
-
     let instruction_string = format!("AND {target}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    and_n_helper(cpu, cpu.regs.get_reg(target));
+
     cpu.pc += size;
     cycles
 }
 fn and_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = "AND (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let n = cpu.mem_bus.read_byte(address);
     and_n_helper(cpu, n);
 
-    let instruction_string = "AND (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
 fn and_n_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = "AND n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.get_next_byte();
     and_n_helper(cpu, n);
 
-    let instruction_string = "AND n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1359,33 +1399,36 @@ fn and_n_helper(cpu: &mut Cpu, n: u8) {
 fn or_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 1;
     let cycles = 4;
-    or_n_helper(cpu, cpu.regs.get_reg(target));
-
     let instruction_string = format!("OR {target}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    or_n_helper(cpu, cpu.regs.get_reg(target));
+
     cpu.pc += size;
     cycles
 }
 fn or_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = "OR (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let n = cpu.mem_bus.read_byte(address);
     or_n_helper(cpu, n);
 
-    let instruction_string = "OR (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
 fn or_n_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = "OR n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.get_next_byte();
     or_n_helper(cpu, n);
 
-    let instruction_string = "OR n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1402,33 +1445,36 @@ fn or_n_helper(cpu: &mut Cpu, n: u8) {
 fn xor_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 1;
     let cycles = 4;
-    xor_n_helper(cpu, cpu.regs.get_reg(target));
-
     let instruction_string = format!("XOR {target}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    xor_n_helper(cpu, cpu.regs.get_reg(target));
+
     cpu.pc += size;
     cycles
 }
 fn xor_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = "XOR (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let n = cpu.mem_bus.read_byte(address);
     xor_n_helper(cpu, n);
 
-    let instruction_string = "XOR (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
 fn xor_n_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = "XOR n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.get_next_byte();
     xor_n_helper(cpu, n);
 
-    let instruction_string = "XOR n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1445,33 +1491,36 @@ fn xor_n_helper(cpu: &mut Cpu, n: u8) {
 fn cp_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 1;
     let cycles = 4;
-    cp_n_helper(cpu, cpu.regs.get_reg(target));
-
     let instruction_string = format!("CP {target}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    cp_n_helper(cpu, cpu.regs.get_reg(target));
+
     cpu.pc += size;
     cycles
 }
 fn cp_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = "CP (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let n = cpu.mem_bus.read_byte(address);
     cp_n_helper(cpu, n);
 
-    let instruction_string = "CP (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
 fn cp_n_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = "CP n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n = cpu.get_next_byte();
     cp_n_helper(cpu, n);
 
-    let instruction_string = "CP n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1485,6 +1534,9 @@ fn cp_n_helper(cpu: &mut Cpu, n: u8) {
 fn inc_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 1;
     let cycles = 4;
+    let instruction_string = format!("INC {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let reg_val = cpu.regs.get_reg(target);
     let result = reg_val.wrapping_add(1);
 
@@ -1492,14 +1544,15 @@ fn inc_n(cpu: &mut Cpu, target: Target) -> u32 {
 
     cpu.regs.set_reg(target, result);
 
-    let instruction_string = format!("INC {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn inc_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 12;
+    let instruction_string = "INC (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let val = cpu.mem_bus.read_byte(address);
     let result = val.wrapping_add(1);
@@ -1508,8 +1561,6 @@ fn inc_n_hl(cpu: &mut Cpu) -> u32 {
 
     cpu.mem_bus.write_byte(address, result);
 
-    let instruction_string = "INC (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1523,6 +1574,9 @@ fn inc_n_set_flags(cpu: &mut Cpu, val: u8, result: u8) {
 fn dec_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 1;
     let cycles = 4;
+    let instruction_string = format!("DEC {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let reg_val = cpu.regs.get_reg(target);
     let result = reg_val.wrapping_sub(1);
 
@@ -1530,14 +1584,15 @@ fn dec_n(cpu: &mut Cpu, target: Target) -> u32 {
 
     cpu.regs.set_reg(target, result);
 
-    let instruction_string = format!("DEC {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn dec_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 12;
+    let instruction_string = "DEC (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let val = cpu.mem_bus.read_byte(address);
     let result = val.wrapping_sub(1);
@@ -1546,8 +1601,6 @@ fn dec_n_hl(cpu: &mut Cpu) -> u32 {
 
     cpu.mem_bus.write_byte(address, result);
 
-    let instruction_string = "DEC (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1561,20 +1614,22 @@ fn dec_n_set_flags(cpu: &mut Cpu, val: u8, result: u8) {
 fn add_hl_n(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let size = 1;
     let cycles = 8;
-    add_hl_n_helper(cpu, cpu.regs.get_virt_reg(target));
-
     let instruction_string = format!("ADD HL,{target}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    add_hl_n_helper(cpu, cpu.regs.get_virt_reg(target));
+
     cpu.pc += size;
     cycles
 }
 fn add_hl_n_sp(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
-    add_hl_n_helper(cpu, cpu.sp);
-
     let instruction_string = "ADD HL,SP";
     debug_print(cpu, size, cycles, instruction_string);
+
+    add_hl_n_helper(cpu, cpu.sp);
+
     cpu.pc += size;
     cycles
 }
@@ -1595,11 +1650,12 @@ fn add_hl_n_helper(cpu: &mut Cpu, n: u16) {
 fn add_sp_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = "ADD SP,n";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let result = sp_n_helper(cpu);
     cpu.sp = result;
 
-    let instruction_string = "ADD SP,n";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1608,21 +1664,23 @@ fn add_sp_n(cpu: &mut Cpu) -> u32 {
 fn inc_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = format!("INC {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let val = cpu.regs.get_virt_reg(target);
     cpu.regs.set_virt_reg(target, val.wrapping_add(1));
 
-    let instruction_string = format!("INC {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn inc_nn_sp(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
-    cpu.sp = cpu.sp.wrapping_add(1);
-
     let instruction_string = "INC SP";
     debug_print(cpu, size, cycles, instruction_string);
+
+    cpu.sp = cpu.sp.wrapping_add(1);
+
     cpu.pc += size;
     cycles
 }
@@ -1631,21 +1689,23 @@ fn inc_nn_sp(cpu: &mut Cpu) -> u32 {
 fn dec_nn(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     let size = 1;
     let cycles = 8;
+    let instruction_string = format!("DEC {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let val = cpu.regs.get_virt_reg(target);
     cpu.regs.set_virt_reg(target, val.wrapping_sub(1));
 
-    let instruction_string = format!("DEC {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn dec_nn_sp(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
-    cpu.sp = cpu.sp.wrapping_sub(1);
-
     let instruction_string = "DEC SP";
     debug_print(cpu, size, cycles, instruction_string);
+
+    cpu.sp = cpu.sp.wrapping_sub(1);
+
     cpu.pc += size;
     cycles
 }
@@ -1654,25 +1714,27 @@ fn dec_nn_sp(cpu: &mut Cpu) -> u32 {
 fn swap_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = format!("SWAP {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let val = cpu.regs.get_reg(target);
     let result = swap_n_helper(cpu, val);
     cpu.regs.set_reg(target, result);
 
-    let instruction_string = format!("SWAP {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn swap_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = "SWAP (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let val = cpu.mem_bus.read_byte(address);
     let result = swap_n_helper(cpu, val);
     cpu.mem_bus.write_byte(address, result);
 
-    let instruction_string = "SWAP (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1699,6 +1761,9 @@ fn swap_n_helper(cpu: &mut Cpu, val: u8) -> u8 {
 fn daa(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
+    let instruction_string = "DAA";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let n_val = cpu.regs.get_flag(RegFlag::N);
     let h_val = cpu.regs.get_flag(RegFlag::H);
     let c_val = cpu.regs.get_flag(RegFlag::C);
@@ -1728,8 +1793,6 @@ fn daa(cpu: &mut Cpu) -> u32 {
 
     cpu.regs.set_reg(A, result);
 
-    let instruction_string = "DAA";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1738,12 +1801,13 @@ fn daa(cpu: &mut Cpu) -> u32 {
 fn cpl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
+    let instruction_string = "CPL";
+    debug_print(cpu, size, cycles, instruction_string);
+
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_reg(A, cpu.regs.get_reg(A) ^ 0xFF);
 
-    let instruction_string = "CPL";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1752,6 +1816,9 @@ fn cpl(cpu: &mut Cpu) -> u32 {
 fn ccf(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
+    let instruction_string = "CCF";
+    debug_print(cpu, size, cycles, instruction_string);
+
     cpu.regs.set_flag(RegFlag::N, false);
     cpu.regs.set_flag(RegFlag::H, false);
 
@@ -1761,8 +1828,6 @@ fn ccf(cpu: &mut Cpu) -> u32 {
         cpu.regs.set_flag(RegFlag::C, true);
     }
 
-    let instruction_string = "CCF";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1771,12 +1836,13 @@ fn ccf(cpu: &mut Cpu) -> u32 {
 fn scf(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
+    let instruction_string = "SCF";
+    debug_print(cpu, size, cycles, instruction_string);
+
     cpu.regs.set_flag(RegFlag::N, false);
     cpu.regs.set_flag(RegFlag::H, false);
     cpu.regs.set_flag(RegFlag::C, true);
 
-    let instruction_string = "SCF";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1785,9 +1851,9 @@ fn scf(cpu: &mut Cpu) -> u32 {
 fn nop(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
-
     let instruction_string = "NOP";
     debug_print(cpu, size, cycles, instruction_string);
+
     cpu.pc += size;
     cycles
 }
@@ -1796,10 +1862,11 @@ fn nop(cpu: &mut Cpu) -> u32 {
 fn halt(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
-    cpu.is_halted = true;
-
     let instruction_string = "HALT";
     debug_print(cpu, size, cycles, instruction_string);
+
+    cpu.is_halted = true;
+
     cpu.pc += size;
     cycles
 }
@@ -1808,10 +1875,11 @@ fn halt(cpu: &mut Cpu) -> u32 {
 fn stop(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 4;
-    cpu.is_stopped = true;
-
     let instruction_string = "STOP";
     debug_print(cpu, size, cycles, instruction_string);
+
+    cpu.is_stopped = true;
+
     cpu.pc += size;
     cycles
 }
@@ -1820,10 +1888,11 @@ fn stop(cpu: &mut Cpu) -> u32 {
 fn di(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
-    cpu.di_countdown = 2;
-
     let instruction_string = "DI";
     debug_print(cpu, size, cycles, instruction_string);
+
+    cpu.di_countdown = 2;
+
     cpu.pc += size;
     cycles
 }
@@ -1832,10 +1901,11 @@ fn di(cpu: &mut Cpu) -> u32 {
 fn ei(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
-    cpu.ei_countdown = 2;
-
     let instruction_string = "EI";
     debug_print(cpu, size, cycles, instruction_string);
+
+    cpu.ei_countdown = 2;
+
     cpu.pc += size;
     cycles
 }
@@ -1844,12 +1914,13 @@ fn ei(cpu: &mut Cpu) -> u32 {
 fn rlca(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
+    let instruction_string = "RLCA";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let original_val = cpu.regs.get_reg(A);
     let rotated_l = rlc_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_l);
 
-    let instruction_string = "RLCA";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1858,12 +1929,13 @@ fn rlca(cpu: &mut Cpu) -> u32 {
 fn rla(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
+    let instruction_string = "RLA";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let original_val = cpu.regs.get_reg(A);
     let rotated_l = rl_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_l);
 
-    let instruction_string = "RLA";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1872,12 +1944,13 @@ fn rla(cpu: &mut Cpu) -> u32 {
 fn rrca(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
+    let instruction_string = "RRCA";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let original_val = cpu.regs.get_reg(A);
     let rotated_r = rrc_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_r);
 
-    let instruction_string = "RRCA";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1886,12 +1959,13 @@ fn rrca(cpu: &mut Cpu) -> u32 {
 fn rra(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
+    let instruction_string = "RRA";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let original_val = cpu.regs.get_reg(A);
     let rotated_r = rr_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_r);
 
-    let instruction_string = "RRA";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1900,25 +1974,27 @@ fn rra(cpu: &mut Cpu) -> u32 {
 fn rlc_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = format!("RLC {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let original_val = cpu.regs.get_reg(target);
     let rotated_l = rlc_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, rotated_l);
 
-    let instruction_string = format!("RLC {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn rlc_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = "RLC (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let rotated_l = rlc_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, rotated_l);
 
-    let instruction_string = "RLC (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1936,25 +2012,27 @@ fn rlc_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 fn rl_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = format!("RL {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let original_val = cpu.regs.get_reg(target);
     let rotated_l = rl_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, rotated_l);
 
-    let instruction_string = format!("RL {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn rl_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = "RL (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let rotated_l = rl_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, rotated_l);
 
-    let instruction_string = "RL (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -1972,25 +2050,27 @@ fn rl_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 fn rrc_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = format!("RRC {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let original_val = cpu.regs.get_reg(target);
     let rotated_r = rrc_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, rotated_r);
 
-    let instruction_string = format!("RRC {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn rrc_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = "RRC (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let rotated_r = rrc_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, rotated_r);
 
-    let instruction_string = "RRC (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -2008,25 +2088,27 @@ fn rrc_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 fn rr_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = format!("RR {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let original_val = cpu.regs.get_reg(target);
     let rotated_r = rr_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, rotated_r);
 
-    let instruction_string = format!("RR {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn rr_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = "RR (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let rotated_r = rr_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, rotated_r);
 
-    let instruction_string = "RR (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -2049,25 +2131,27 @@ fn rr_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 fn sla_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = format!("SLA {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let original_val = cpu.regs.get_reg(target);
     let result = sla_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, result);
 
-    let instruction_string = format!("SLA {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn sla_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = "SLA (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let result = sla_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, result);
 
-    let instruction_string = "SLA (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -2086,25 +2170,27 @@ fn sla_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 fn sra_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = format!("SRA {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let original_val = cpu.regs.get_reg(target);
     let result = sra_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, result);
 
-    let instruction_string = format!("SRA {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn sra_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = "SRA (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let result = sra_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, result);
 
-    let instruction_string = "SRA (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -2123,25 +2209,27 @@ fn sra_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 fn srl_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = format!("SRL {target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let original_val = cpu.regs.get_reg(target);
     let result = srl_n_helper(cpu, original_val);
     cpu.regs.set_reg(target, result);
 
-    let instruction_string = format!("SRL {target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn srl_n_hl(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = "SRL (HL)";
+    debug_print(cpu, size, cycles, instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let original_val = cpu.mem_bus.read_byte(address);
     let result = srl_n_helper(cpu, original_val);
     cpu.mem_bus.write_byte(address, result);
 
-    let instruction_string = "SRL (HL)";
-    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -2160,21 +2248,23 @@ fn srl_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 fn bit_b_r(cpu: &mut Cpu, b: usize, target: Target) -> u32 {
     let size = 2;
     let cycles = 4;
-    bit_b_r_helper(cpu, b, cpu.regs.get_reg(target));
-
     let instruction_string = format!("BIT {b},{target}");
     debug_print(cpu, size, cycles, &instruction_string);
+
+    bit_b_r_helper(cpu, b, cpu.regs.get_reg(target));
+
     cpu.pc += size;
     cycles
 }
 fn bit_b_r_hl(cpu: &mut Cpu, b: usize) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = format!("BIT {b},(HL)");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let target_byte = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
     bit_b_r_helper(cpu, b, target_byte);
 
-    let instruction_string = format!("BIT {b},(HL)");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -2189,23 +2279,25 @@ fn bit_b_r_helper(cpu: &mut Cpu, b: usize, byte: u8) {
 fn set_b_r(cpu: &mut Cpu, b: usize, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = format!("SET {b},{target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let byte = cpu.regs.get_reg(target);
     cpu.regs.set_reg(target, byte | (0x01 << b));
 
-    let instruction_string = format!("SET {b},{target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn set_b_r_hl(cpu: &mut Cpu, b: usize) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = format!("SET {b},(HL)");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let byte = cpu.mem_bus.read_byte(address);
     cpu.mem_bus.write_byte(address, byte | (0x01 << b));
 
-    let instruction_string = format!("SET {b},(HL)");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -2214,23 +2306,25 @@ fn set_b_r_hl(cpu: &mut Cpu, b: usize) -> u32 {
 fn res_b_r(cpu: &mut Cpu, b: usize, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
+    let instruction_string = format!("RES {b},{target}");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let byte = cpu.regs.get_reg(target);
     cpu.regs.set_reg(target, byte & !(0x01 << b));
 
-    let instruction_string = format!("RES {b},{target}");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
 fn res_b_r_hl(cpu: &mut Cpu, b: usize) -> u32 {
     let size = 2;
     let cycles = 16;
+    let instruction_string = format!("RES {b},(HL)");
+    debug_print(cpu, size, cycles, &instruction_string);
+
     let address = cpu.regs.get_virt_reg(HL);
     let byte = cpu.mem_bus.read_byte(address);
     cpu.mem_bus.write_byte(address, byte & !(0x01 << b));
 
-    let instruction_string = format!("RES {b},(HL)");
-    debug_print(cpu, size, cycles, &instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -2239,10 +2333,10 @@ fn res_b_r_hl(cpu: &mut Cpu, b: usize) -> u32 {
 fn jp_nn(cpu: &mut Cpu) -> u32 {
     let size = 3;
     let cycles = 12;
-    let nn = cpu.get_next_2_bytes();
-
     let instruction_string = "JP nn";
     debug_print(cpu, size, cycles, instruction_string);
+
+    let nn = cpu.get_next_2_bytes();
 
     jp_helper(cpu, nn);
     cycles
@@ -2252,7 +2346,6 @@ fn jp_nn(cpu: &mut Cpu) -> u32 {
 fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let size = 3;
     let cycles = 12;
-
     let instruction_string = format!("JP {},nn", cc_print(flag, expected_value));
     debug_print(cpu, size, cycles, &instruction_string);
 
@@ -2274,7 +2367,6 @@ fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
 fn jp_hl(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 4;
-
     let instruction_string = "JP (HL)";
     debug_print(cpu, size, cycles, instruction_string);
 
@@ -2286,10 +2378,10 @@ fn jp_hl(cpu: &mut Cpu) -> u32 {
 fn jr_n(cpu: &mut Cpu) -> u32 {
     let size = 2;
     let cycles = 4;
-    let n = cpu.get_next_byte() as i8;
-
     let instruction_string = "JR n";
     debug_print(cpu, size, cycles, instruction_string);
+
+    let n = cpu.get_next_byte() as i8;
 
     cpu.pc += size;
     jp_helper(cpu, ((cpu.pc as u32 as i32) + (n as i32)) as u16);
@@ -2300,7 +2392,6 @@ fn jr_n(cpu: &mut Cpu) -> u32 {
 fn jr_cc_n(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let size = 2;
     let cycles = 8;
-
     let instruction_string = format!("JR {},n", cc_print(flag, expected_value));
     debug_print(cpu, size, cycles, &instruction_string);
 
@@ -2328,10 +2419,11 @@ fn jp_helper(cpu: &mut Cpu, address: u16) {
 fn call_nn(cpu: &mut Cpu) -> u32 {
     let size = 3;
     let cycles = 12;
-    cpu.push_stack(cpu.pc + 3);
-
     let instruction_string = "CALL nn";
     debug_print(cpu, size, cycles, instruction_string);
+
+    cpu.push_stack(cpu.pc + 3);
+
     cpu.pc = cpu.get_next_2_bytes();
     cycles
 }
@@ -2341,7 +2433,6 @@ fn call_nn(cpu: &mut Cpu) -> u32 {
 fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let size = 3;
     let cycles = 4;
-
     let instruction_string = format!("CALL {},nn", cc_print(flag, expected_value));
     debug_print(cpu, size, cycles, &instruction_string);
 
@@ -2363,7 +2454,6 @@ fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
 fn rst_n(cpu: &mut Cpu, n: u8) -> u32 {
     let size = 1;
     let cycles = 32;
-
     let instruction_string = "RST n";
     debug_print(cpu, size, cycles, instruction_string);
 
@@ -2378,9 +2468,9 @@ fn rst_n(cpu: &mut Cpu, n: u8) -> u32 {
 fn ret(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
-
     let instruction_string = "RET";
     debug_print(cpu, size, cycles, instruction_string);
+
     cpu.pc = cpu.pop_stack();
     cycles
 }
@@ -2389,7 +2479,6 @@ fn ret(cpu: &mut Cpu) -> u32 {
 fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let size = 1;
     let cycles = 8;
-
     let instruction_string = format!("RET {}", cc_print(flag, expected_value));
     debug_print(cpu, size, cycles, &instruction_string);
 
@@ -2410,7 +2499,6 @@ fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
 fn reti(cpu: &mut Cpu) -> u32 {
     let size = 1;
     let cycles = 8;
-
     let instruction_string = "RETI";
     debug_print(cpu, size, cycles, instruction_string);
 
