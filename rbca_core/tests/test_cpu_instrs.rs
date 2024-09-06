@@ -71,11 +71,14 @@ fn test_common(rom_name: &str) {
     loop {
         last_state.update(&cpu);
         let t_start = Instant::now();
-        t_cycles += cpu.cycle();
+        let cycles = cpu.cycle();
+        cpu.mem_bus.cycle(cycles);
+        t_cycles += cycles;
+        total_cycles += cycles as u128;
+
         if DEBUG_INSTRUCTIONS {
             println!("blargg_out: {blargg_out}");
         }
-        total_cycles += cpu.cycle() as u128;
 
         // breakpoints
         if BREAKPOINTS & is_breakpoint(&cpu, &last_state, total_cycles) {
