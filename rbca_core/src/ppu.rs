@@ -389,18 +389,18 @@ impl PPU {
     }
     fn map_start_helper(value: bool) -> u16 {
         if value {
-            0x9C00
+            0x1C00
         } else {
-            0x9800
+            0x1800
         }
     }
 
     /// Get the start address of the tile data.
     pub fn tile_data_start(&self) -> u16 {
         if self.lcd_control.get(Lcdc::BGWindowTileDataArea) {
-            0x8000
+            0x0000
         } else {
-            0x8800
+            0x0800
         }
     }
 }
