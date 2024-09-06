@@ -16,13 +16,17 @@ use text_io::read;
 fn test_common(rom_name: &str) {
     // const BREAKPOINTS: bool = true;
     const BREAKPOINTS: bool = false;
+    const STEP_FORWARD: bool = true;
+    // const STEP_FORWARD: bool = false;
     // const SLOW: bool = true;
     const SLOW: bool = false;
-    const WAIT_MS: u64 = 10;
+    const WAIT_MS: u64 = 50;
 
     #[allow(unused_variables)]
     fn is_breakpoint(cpu: &Cpu, last_state: &CpuState, total_cycles: u128) -> bool {
-        cpu.regs.get_reg(D) != last_state.regs.get_reg(D)
+        cpu.pc > 0x020F
+        // cpu.pc == 0x0064
+        // cpu.regs.get_reg(D) != last_state.regs.get_reg(D)
         // (cpu.regs.get_flag(RegFlag::C) != last_state.regs.get_flag(RegFlag::C)) || (cpu.pc > 0xC000)
     }
 
@@ -62,6 +66,7 @@ fn test_common(rom_name: &str) {
     cpu.regs.set_flag(RegFlag::C, true);
 
     let mut last_state = CpuState::save_state(&cpu);
+    let mut last_break: bool = false;
 
     let mut t_cycles = 0;
     let mut total_cycles: u128 = 0;
@@ -72,18 +77,11 @@ fn test_common(rom_name: &str) {
         last_state.update(&cpu);
         let t_start = Instant::now();
         let cycles = cpu.cycle();
-        cpu.mem_bus.cycle(cycles);
         t_cycles += cycles;
         total_cycles += cycles as u128;
 
         if DEBUG_INSTRUCTIONS {
-            println!("blargg_out: {blargg_out}");
-        }
-
-        // breakpoints
-        if BREAKPOINTS & is_breakpoint(&cpu, &last_state, total_cycles) {
-            println!(" - BREAK - ");
-            let _: String = read!();
+            println!("{blargg_out}");
         }
 
         // blargg output
@@ -94,6 +92,17 @@ fn test_common(rom_name: &str) {
                 print!("{c}");
             }
             cpu.mem_bus.write_byte(0xFF02, 0x00);
+        }
+
+        // breakpoints
+        if BREAKPOINTS && is_breakpoint(&cpu, &last_state, total_cycles) {
+            last_break = true;
+            println!(" - BREAK - ");
+            let _: String = read!();
+        } else if BREAKPOINTS && STEP_FORWARD && last_break {
+            last_break = false;
+            println!(" - STEP FORWARD - ");
+            let _: String = read!();
         }
 
         if SLOW {
