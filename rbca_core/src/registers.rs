@@ -106,7 +106,7 @@ impl Display for RegFlag {
 }
 
 /// The registers of the emulated CPU.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Registers {
     /// Register `A` (accumulator)
     a: u8,

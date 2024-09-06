@@ -1,5 +1,5 @@
 /// For single-byte I/O registers whose bits act like flags.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Flags {
     byte: u8,
 }
