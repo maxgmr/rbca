@@ -1964,19 +1964,19 @@ fn test_ra() {
     cpu.regs.reset_flags();
     cpu.regs.set_reg(A, 0x00);
     cpu.cycle();
-    assert!(cpu.regs.get_flag(RegFlag::Z));
+    assert!(!cpu.regs.get_flag(RegFlag::Z));
 
     cpu.regs.reset_flags();
     cpu.cycle();
-    assert!(cpu.regs.get_flag(RegFlag::Z));
+    assert!(!cpu.regs.get_flag(RegFlag::Z));
 
     cpu.regs.reset_flags();
     cpu.cycle();
-    assert!(cpu.regs.get_flag(RegFlag::Z));
+    assert!(!cpu.regs.get_flag(RegFlag::Z));
 
     cpu.regs.reset_flags();
     cpu.cycle();
-    assert!(cpu.regs.get_flag(RegFlag::Z));
+    assert!(!cpu.regs.get_flag(RegFlag::Z));
 }
 
 #[test]

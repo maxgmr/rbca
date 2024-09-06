@@ -1921,6 +1921,7 @@ fn rlca(cpu: &mut Cpu) -> u32 {
     let original_val = cpu.regs.get_reg(A);
     let rotated_l = rlc_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_l);
+    cpu.regs.set_flag(RegFlag::Z, false);
 
     cpu.pc += size;
     cycles
@@ -1936,6 +1937,7 @@ fn rla(cpu: &mut Cpu) -> u32 {
     let original_val = cpu.regs.get_reg(A);
     let rotated_l = rl_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_l);
+    cpu.regs.set_flag(RegFlag::Z, false);
 
     cpu.pc += size;
     cycles
@@ -1951,6 +1953,7 @@ fn rrca(cpu: &mut Cpu) -> u32 {
     let original_val = cpu.regs.get_reg(A);
     let rotated_r = rrc_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_r);
+    cpu.regs.set_flag(RegFlag::Z, false);
 
     cpu.pc += size;
     cycles
@@ -1966,6 +1969,7 @@ fn rra(cpu: &mut Cpu) -> u32 {
     let original_val = cpu.regs.get_reg(A);
     let rotated_r = rr_n_helper(cpu, original_val);
     cpu.regs.set_reg(A, rotated_r);
+    cpu.regs.set_flag(RegFlag::Z, false);
 
     cpu.pc += size;
     cycles
