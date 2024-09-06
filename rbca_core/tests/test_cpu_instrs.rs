@@ -13,8 +13,8 @@ use rbca_core::{
 use text_io::read;
 
 fn test_common(rom_name: &str) {
-    const BREAKPOINTS: bool = true;
-    // const BREAKPOINTS: bool = false;
+    // const BREAKPOINTS: bool = true;
+    const BREAKPOINTS: bool = false;
     // const SLOW: bool = true;
     const SLOW: bool = false;
     const WAIT_MS: u64 = 10;
