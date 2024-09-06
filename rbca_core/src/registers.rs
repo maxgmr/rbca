@@ -196,6 +196,8 @@ impl Registers {
         *first_register = ((value & 0xFF00) >> 8) as u8;
         if target != VirtTarget::AF {
             *second_register = (value & 0x00FF) as u8;
+        } else {
+            *second_register = (value & 0x00F0) as u8;
         }
     }
 
@@ -279,11 +281,11 @@ mod tests {
     fn test_virtual_registers() {
         let mut rs = Registers::default();
 
-        rs.set_virt_reg(VirtTarget::AF, 0x01A0);
+        rs.set_virt_reg(VirtTarget::AF, 0x01A1);
         rs.set_virt_reg(VirtTarget::BC, 0x4567);
         rs.set_virt_reg(VirtTarget::DE, 0x89AB);
         rs.set_virt_reg(VirtTarget::HL, 0xCDEF);
-        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x0100);
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0x01A0);
         assert_eq!(rs.get_virt_reg(VirtTarget::BC), 0x4567);
         assert_eq!(rs.get_virt_reg(VirtTarget::DE), 0x89AB);
         assert_eq!(rs.get_virt_reg(VirtTarget::HL), 0xCDEF);
@@ -292,12 +294,12 @@ mod tests {
         assert_eq!(rs.c, 0x67);
         assert_eq!(rs.d, 0x89);
         assert_eq!(rs.e, 0xAB);
-        assert_eq!(rs.f.read_byte(), 0x00);
+        assert_eq!(rs.f.read_byte(), 0xA0);
         assert_eq!(rs.h, 0xCD);
         assert_eq!(rs.l, 0xEF);
 
         rs.a = 0xFF;
-        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0xFF00);
+        assert_eq!(rs.get_virt_reg(VirtTarget::AF), 0xFFA0);
     }
 
     #[test]

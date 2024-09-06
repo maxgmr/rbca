@@ -246,7 +246,7 @@ fn test_push_pop_nn() {
 
     cpu.cycle();
     assert_eq!(cpu.sp, 0xFFFC);
-    assert_eq!(cpu.regs.get_virt_reg(AF), 0x5600);
+    assert_eq!(cpu.regs.get_virt_reg(AF), 0x5670);
 
     cpu.cycle();
     assert_eq!(cpu.sp, 0xFFFA);
@@ -269,7 +269,7 @@ fn test_push_pop_nn() {
 
     cpu.cycle();
     assert_eq!(cpu.sp, 0xFFFE);
-    assert_eq!(cpu.regs.get_virt_reg(DE), 0xFE00);
+    assert_eq!(cpu.regs.get_virt_reg(DE), 0xFED0);
 }
 
 #[test]
