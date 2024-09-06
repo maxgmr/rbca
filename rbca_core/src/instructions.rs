@@ -5,7 +5,8 @@ use crate::{
     VirtTarget::{self, AF, BC, DE, HL},
 };
 
-const DEBUG: bool = true;
+/// Toggle debug printing.
+pub const DEBUG: bool = false;
 
 /// Execute a given opcode. Return the amount of cycles the instruction takes.
 pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) -> u32 {

@@ -8,7 +8,8 @@ use common::CpuState;
 
 use rbca_core::{
     Cpu, RegFlag,
-    Target::{self, A, B, C, D, E, H, L},
+    Target::{A, B, C, D, E, H, L},
+    DEBUG_INSTRUCTIONS,
 };
 use text_io::read;
 
@@ -19,6 +20,7 @@ fn test_common(rom_name: &str) {
     const SLOW: bool = false;
     const WAIT_MS: u64 = 10;
 
+    #[allow(unused_variables)]
     fn is_breakpoint(cpu: &Cpu, last_state: &CpuState, total_cycles: u128) -> bool {
         cpu.regs.get_reg(D) != last_state.regs.get_reg(D)
         // (cpu.regs.get_flag(RegFlag::C) != last_state.regs.get_flag(RegFlag::C)) || (cpu.pc > 0xC000)
@@ -70,7 +72,9 @@ fn test_common(rom_name: &str) {
         last_state.update(&cpu);
         let t_start = Instant::now();
         t_cycles += cpu.cycle();
-        println!("[{}]blargg_out: {}", blargg_out.len(), blargg_out);
+        if DEBUG_INSTRUCTIONS {
+            println!("blargg_out: {blargg_out}");
+        }
         total_cycles += cpu.cycle() as u128;
 
         // breakpoints
@@ -83,6 +87,9 @@ fn test_common(rom_name: &str) {
         if cpu.mem_bus.read_byte(0xFF02) == 0x81 {
             let c: char = cpu.mem_bus.read_byte(0xFF01).into();
             blargg_out.push(c);
+            if !DEBUG_INSTRUCTIONS {
+                print!("{c}");
+            }
             cpu.mem_bus.write_byte(0xFF02, 0x00);
         }
 
@@ -112,4 +119,52 @@ fn test_cpu_02() {
 #[ignore]
 fn test_cpu_03() {
     test_common("03-op sp,hl.gb");
+}
+
+#[test]
+#[ignore]
+fn test_cpu_04() {
+    test_common("04-op r,imm.gb");
+}
+
+#[test]
+#[ignore]
+fn test_cpu_05() {
+    test_common("05-op rp.gb");
+}
+
+#[test]
+#[ignore]
+fn test_cpu_06() {
+    test_common("06-ld r,r.gb");
+}
+
+#[test]
+#[ignore]
+fn test_cpu_07() {
+    test_common("07-jr,jp,call,ret,rst.gb");
+}
+
+#[test]
+#[ignore]
+fn test_cpu_08() {
+    test_common("08-misc instrs.gb");
+}
+
+#[test]
+#[ignore]
+fn test_cpu_09() {
+    test_common("09-op r,r.gb");
+}
+
+#[test]
+#[ignore]
+fn test_cpu_10() {
+    test_common("10-bit ops.gb");
+}
+
+#[test]
+#[ignore]
+fn test_cpu_11() {
+    test_common("11-op a,(hl).gb");
 }
