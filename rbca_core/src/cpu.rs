@@ -37,17 +37,18 @@ impl Cpu {
     /// Perform one cycle. Return number of T-cycles taken.
     pub fn cycle(&mut self) -> u32 {
         self.update_interrupt_countdown();
-        match self.handle_interrupt() {
-            0 => {}
-            ticks => return ticks,
-        }
+        let interrupt = self.handle_interrupt();
 
-        if self.is_halted {
+        let t_cycles: u32 = if interrupt != 0 {
+            interrupt
+        } else if self.is_halted {
             4
         } else {
             let opcode = self.mem_bus.read_byte(self.pc);
             execute_opcode(self, opcode)
-        }
+        };
+
+        self.mem_bus.cycle(t_cycles)
     }
 
     // Handle interrupts
