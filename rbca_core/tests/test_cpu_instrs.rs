@@ -20,7 +20,8 @@ fn test_common(rom_name: &str) {
     const WAIT_MS: u64 = 10;
 
     fn is_breakpoint(cpu: &Cpu, last_state: &CpuState, total_cycles: u128) -> bool {
-        (cpu.regs.get_flag(RegFlag::C) != last_state.regs.get_flag(RegFlag::C)) || (cpu.pc > 0xC000)
+        cpu.regs.get_reg(D) != last_state.regs.get_reg(D)
+        // (cpu.regs.get_flag(RegFlag::C) != last_state.regs.get_flag(RegFlag::C)) || (cpu.pc > 0xC000)
     }
 
     let mut cpu = Cpu::new();
@@ -49,10 +50,14 @@ fn test_common(rom_name: &str) {
     cpu.regs.set_reg(A, 0x01);
     cpu.regs.set_reg(B, 0x00);
     cpu.regs.set_reg(C, 0x13);
-    cpu.regs.set_reg(D, 0xC0);
+    cpu.regs.set_reg(D, 0x00);
     cpu.regs.set_reg(E, 0xD8);
     cpu.regs.set_reg(H, 0x01);
     cpu.regs.set_reg(L, 0x4D);
+    cpu.regs.set_flag(RegFlag::Z, true);
+    cpu.regs.set_flag(RegFlag::N, false);
+    cpu.regs.set_flag(RegFlag::H, true);
+    cpu.regs.set_flag(RegFlag::C, true);
 
     let mut last_state = CpuState::save_state(&cpu);
 

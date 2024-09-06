@@ -338,32 +338,31 @@ fn test_rst_n() {
 #[test]
 fn test_ld_nn_n() {
     let mut cpu = Cpu::new();
-    cpu.regs.set_reg(B, 0x0E);
-    cpu.regs.set_reg(C, 0x16);
-    cpu.regs.set_reg(D, 0x1E);
-    cpu.regs.set_reg(E, 0x26);
-    cpu.regs.set_reg(H, 0x2E);
-    cpu.regs.set_reg(L, 0x06);
-    cpu.mem_bus.write_byte(0x0000, 0x06);
+    let data = [
+        0x06, 0x01, 0x0E, 0x23, 0x16, 0x45, 0x1E, 0x67, 0x26, 0x89, 0x2E, 0xAB,
+    ];
+    cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
+    cpu.regs.set_reg(B, 0x00);
+    cpu.regs.set_reg(C, 0x00);
+    cpu.regs.set_reg(D, 0x00);
+    cpu.regs.set_reg(E, 0x00);
+    cpu.regs.set_reg(H, 0x00);
+    cpu.regs.set_reg(L, 0x00);
+
     cpu.cycle();
-    cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x0E);
+    assert_eq!(cpu.regs.get_reg(B), 0x01);
     cpu.cycle();
-    cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x16);
+    assert_eq!(cpu.regs.get_reg(C), 0x23);
     cpu.cycle();
-    cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x1E);
+    assert_eq!(cpu.regs.get_reg(D), 0x45);
     cpu.cycle();
-    cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x26);
+    assert_eq!(cpu.regs.get_reg(E), 0x67);
     cpu.cycle();
-    cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x2E);
+    assert_eq!(cpu.regs.get_reg(H), 0x89);
     cpu.cycle();
-    cpu.pc -= 1;
-    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x06);
+    assert_eq!(cpu.regs.get_reg(L), 0xAB);
+    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x00);
 }
 
 #[test]

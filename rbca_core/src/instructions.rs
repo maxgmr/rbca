@@ -775,14 +775,14 @@ fn cc_print(flag: RegFlag, expected_value: bool) -> String {
 // FUNCTIONS
 // ----------------------------------------------------
 
-// LD nn,n: Set 8-bit immediate value n = nn.
+// LD nn,n: Set nn = 8-bit immediate value n.
 fn ld_nn_n(cpu: &mut Cpu, target: Target) -> u32 {
     let size = 2;
     let cycles = 8;
     let instruction_string = format!("LD {target},n");
     debug_print(cpu, size, cycles, &instruction_string);
 
-    cpu.mem_bus.write_byte(cpu.pc + 1, cpu.regs.get_reg(target));
+    cpu.regs.set_reg(target, cpu.mem_bus.read_byte(cpu.pc + 1));
     cpu.pc += size;
     cycles
 }
