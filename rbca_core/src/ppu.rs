@@ -123,7 +123,8 @@ impl PPU {
             0x0001 => self.lcd_status.write_byte(value),
             0x0002 => self.bg_view_y = value,
             0x0003 => self.bg_view_x = value,
-            0x0004 => self.lcd_y_coord = value,
+            // LCD Y coord is read only
+            0x0004 => {}
             0x0005 => {
                 self.ly_compare = value;
                 self.check_lyc_ly();
@@ -362,19 +363,20 @@ impl PPU {
 
     /// Get the mode of the PPU.
     pub fn get_mode(&self) -> u8 {
-        (if self.lcd_status.get(Stat::PpuModeBit1) {
-            0x02
+        ((if self.lcd_status.get(Stat::PpuModeBit1) {
+            1
         } else {
-            0x00
-        } | if self.lcd_status.get(Stat::PpuModeBit0) {
-            0x01
-        } else {
-            0x00
-        })
+            0
+        }) << 1)
+            | (if self.lcd_status.get(Stat::PpuModeBit0) {
+                1
+            } else {
+                0
+            })
     }
 
     /// Set the mode of the PPU.
-    pub fn set_mode(&mut self, value: u8) {
+    fn set_mode(&mut self, value: u8) {
         self.lcd_status.set(Stat::PpuModeBit1, (value & 0b10) != 0);
         self.lcd_status.set(Stat::PpuModeBit0, (value & 0b01) != 0);
     }
@@ -566,5 +568,30 @@ impl FlagsEnum for Cpd1 {
             Cpd1::G4 => 0b0000_0010,
             Cpd1::G3 => 0b0000_0001,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_mode() {
+        let mut ppu = PPU::new();
+        ppu.lcd_status.set(Stat::PpuModeBit1, true);
+        ppu.lcd_status.set(Stat::PpuModeBit0, true);
+        assert_eq!(ppu.get_mode(), 3);
+
+        ppu.lcd_status.set(Stat::PpuModeBit1, true);
+        ppu.lcd_status.set(Stat::PpuModeBit0, false);
+        assert_eq!(ppu.get_mode(), 2);
+
+        ppu.lcd_status.set(Stat::PpuModeBit1, false);
+        ppu.lcd_status.set(Stat::PpuModeBit0, true);
+        assert_eq!(ppu.get_mode(), 1);
+
+        ppu.lcd_status.set(Stat::PpuModeBit1, false);
+        ppu.lcd_status.set(Stat::PpuModeBit0, false);
+        assert_eq!(ppu.get_mode(), 0);
     }
 }
