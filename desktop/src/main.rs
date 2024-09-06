@@ -16,7 +16,7 @@ fn main() -> eyre::Result<()> {
 
     // Load ROM
     let mut cpu = Cpu::new();
-    cpu.mem_bus.load_cart(&args[1]);
+    cpu.mem_bus.load_cart(&args[1], true);
 
     // Create desktop UI
     let mut desktop = Display::new()?;

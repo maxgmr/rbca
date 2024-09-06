@@ -11,3 +11,4 @@ strum_macros = "0.26"
 
 [dev-dependencies]
 pretty_assertions = "1.4"
+text_io = "0.1"

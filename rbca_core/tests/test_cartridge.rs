@@ -1,3 +1,5 @@
+#![cfg(test)]
+
 use std::env;
 
 use rbca_core::Cpu;
@@ -9,7 +11,7 @@ fn test_cart_info() {
 
     let mut cpu = Cpu::new();
     for arg in &args[1..] {
-        cpu.mem_bus.load_cart(arg);
+        cpu.mem_bus.load_cart(arg, true);
         if cpu.mem_bus.cart().is_some() {
             println!("{}", cpu.mem_bus.cart().unwrap().header_info());
         }

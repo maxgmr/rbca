@@ -156,34 +156,34 @@ fn test_jumps() {
     cpu.cycle();
     assert_eq!(cpu.pc, 0x2050);
 
-    // (Testing JR n) Add 0x28 to address and jump to 0x2078.
+    // (Testing JR n) Add 0x28 to address and jump to 0x207A.
     let data_7 = [0x18, 0x28];
     cpu.load(0x2050, &data_7);
     cpu.cycle();
-    assert_eq!(cpu.pc, 0x2078);
+    assert_eq!(cpu.pc, 0x207A);
 
     // (Testing JR ~cc,n) Don't do these jumps; conditions not met. Then, jump to 0x3000.
     let data_8 = [
         0x20, 0xFF, 0x28, 0xFF, 0x30, 0xFF, 0x38, 0xFF, 0xC3, 0x00, 0x30,
     ];
-    cpu.load(0x2078, &data_8);
+    cpu.load(0x207A, &data_8);
     cpu.regs.reset_flags();
 
     cpu.regs.set_flag(RegFlag::Z, true);
     cpu.cycle();
-    assert_eq!(cpu.pc, 0x2078 + 2);
+    assert_eq!(cpu.pc, 0x207A + 2);
 
     cpu.regs.set_flag(RegFlag::Z, false);
     cpu.cycle();
-    assert_eq!(cpu.pc, 0x2078 + 4);
+    assert_eq!(cpu.pc, 0x207A + 4);
 
     cpu.regs.set_flag(RegFlag::C, true);
     cpu.cycle();
-    assert_eq!(cpu.pc, 0x2078 + 6);
+    assert_eq!(cpu.pc, 0x207A + 6);
 
     cpu.regs.set_flag(RegFlag::C, false);
     cpu.cycle();
-    assert_eq!(cpu.pc, 0x2078 + 8);
+    assert_eq!(cpu.pc, 0x207A + 8);
 
     cpu.cycle();
     assert_eq!(cpu.pc, 0x3000);
@@ -192,26 +192,39 @@ fn test_jumps() {
     let data_9 = [0x20, 0x10];
     cpu.load(0x3000, &data_9);
     let data_10 = [0x28, 0x10];
-    cpu.load(0x3010, &data_10);
+    cpu.load(0x3012, &data_10);
     let data_11 = [0x30, 0x10];
-    cpu.load(0x3020, &data_11);
+    cpu.load(0x3024, &data_11);
     let data_12 = [0x38, 0x10];
-    cpu.load(0x3030, &data_12);
+    cpu.load(0x3036, &data_12);
     cpu.regs.reset_flags();
 
     cpu.cycle();
-    assert_eq!(cpu.pc, 0x3010);
+    assert_eq!(cpu.pc, 0x3012);
 
     cpu.regs.set_flag(RegFlag::Z, true);
     cpu.cycle();
-    assert_eq!(cpu.pc, 0x3020);
+    assert_eq!(cpu.pc, 0x3024);
 
     cpu.cycle();
-    assert_eq!(cpu.pc, 0x3030);
+    assert_eq!(cpu.pc, 0x3036);
 
     cpu.regs.set_flag(RegFlag::C, true);
     cpu.cycle();
-    assert_eq!(cpu.pc, 0x3040);
+    assert_eq!(cpu.pc, 0x3048);
+
+    // Test negative jumps (-5 & -113)
+    let data_13 = [0x20, 0xFB];
+    cpu.load(0x3048, &data_13);
+    let data_14 = [0x18, 0x8F];
+    cpu.load(0x3045, &data_14);
+    cpu.regs.reset_flags();
+
+    cpu.cycle();
+    assert_eq!(cpu.pc, 0x3045);
+
+    cpu.cycle();
+    assert_eq!(cpu.pc, 0x2FD6);
 }
 
 #[test]
@@ -263,21 +276,21 @@ fn test_push_pop_nn() {
 fn test_rst_n() {
     let mut cpu = Cpu::new();
     cpu.pc = 0xB000;
-    // Push 0xB000 to stack, jump to 0x0000.
+    // Push 0xB001 to stack, jump to 0x0000.
     cpu.mem_bus.write_byte(0xB000, 0xC7);
-    // Push 0x0000 to stack, jump to 0x0008.
+    // Push 0x0001 to stack, jump to 0x0008.
     cpu.mem_bus.write_byte(0x0000, 0xCF);
-    // Push 0x0008 to stack, jump to 0x0010.
+    // Push 0x0009 to stack, jump to 0x0010.
     cpu.mem_bus.write_byte(0x0008, 0xD7);
-    // Push 0x0010 to stack, jump to 0x0018.
+    // Push 0x0011 to stack, jump to 0x0018.
     cpu.mem_bus.write_byte(0x0010, 0xDF);
-    // Push 0x0018 to stack, jump to 0x0020.
+    // Push 0x0019 to stack, jump to 0x0020.
     cpu.mem_bus.write_byte(0x0018, 0xE7);
-    // Push 0x0020 to stack, jump to 0x0028.
+    // Push 0x0021 to stack, jump to 0x0028.
     cpu.mem_bus.write_byte(0x0020, 0xEF);
-    // Push 0x0028 to stack, jump to 0x0030.
+    // Push 0x0029 to stack, jump to 0x0030.
     cpu.mem_bus.write_byte(0x0028, 0xF7);
-    // Push 0x0030 to stack, jump to 0x0038.
+    // Push 0x0031 to stack, jump to 0x0038.
     cpu.mem_bus.write_byte(0x0030, 0xFF);
     assert_eq!(cpu.sp, 0xFFFE);
 
@@ -313,13 +326,13 @@ fn test_rst_n() {
     assert_eq!(cpu.sp, 0xFFEE);
     assert_eq!(cpu.pc, 0x0038);
 
-    assert_eq!(cpu.pop_stack(), 0x0030);
-    assert_eq!(cpu.pop_stack(), 0x0028);
-    assert_eq!(cpu.pop_stack(), 0x0020);
-    assert_eq!(cpu.pop_stack(), 0x0018);
-    assert_eq!(cpu.pop_stack(), 0x0010);
-    assert_eq!(cpu.pop_stack(), 0x0008);
-    assert_eq!(cpu.pop_stack(), 0x0000);
+    assert_eq!(cpu.pop_stack(), 0x0031);
+    assert_eq!(cpu.pop_stack(), 0x0029);
+    assert_eq!(cpu.pop_stack(), 0x0021);
+    assert_eq!(cpu.pop_stack(), 0x0019);
+    assert_eq!(cpu.pop_stack(), 0x0011);
+    assert_eq!(cpu.pop_stack(), 0x0009);
+    assert_eq!(cpu.pop_stack(), 0x0001);
 }
 
 #[test]

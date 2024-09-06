@@ -99,12 +99,19 @@ impl PPU {
             0x0003 => self.bg_view_x,
             0x0004 => self.lcd_y_coord,
             0x0005 => self.ly_compare,
-            // 0x0006 => oam dma transfer???
+            // OAM DMA transfer is write only
+            0x0006 => 0x00,
             0x0007 => self.bg_palette.read_byte(),
             0x0008 => self.obj_palette_0.read_byte(),
             0x0009 => self.obj_palette_1.read_byte(),
             0x000A => self.win_y,
             0x000B => self.win_x,
+            0x000C => 0xFF,
+            // CGB only - prepare speed switch
+            0x000D => 0xFF,
+            0x000E => 0xFF,
+            // CGB only
+            0x000F => 0xFF,
             _ => unimplemented!("Unimplemented PPU address: {:#04X}", address),
         }
     }
@@ -121,12 +128,17 @@ impl PPU {
                 self.ly_compare = value;
                 self.check_lyc_ly();
             }
-            // 0x0006 => oam dma transfer???
             0x0007 => self.bg_palette.write_byte(value),
             0x0008 => self.obj_palette_0.write_byte(value),
             0x0009 => self.obj_palette_1.write_byte(value),
             0x000A => self.win_y = value,
             0x000B => self.win_x = value,
+            0x000C => {}
+            // CGB only - prepare speed switch
+            0x000D => {}
+            0x000E => {}
+            // CGB only
+            0x000F => {}
             _ => unimplemented!("Unimplemented PPU address: {:#04X}", address),
         }
     }

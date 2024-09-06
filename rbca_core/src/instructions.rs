@@ -714,20 +714,49 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) -> u32 {
     }
 }
 
-fn debug_print(cpu: &Cpu, size: u16, cycles: u32, instruction_string: &str) {
+fn debug_print(cpu: &Cpu, size: u16, _cycles: u32, instruction_string: &str) {
     if DEBUG {
-        let opcode_vec: Vec<String> = (0..size)
-            .map(|i| format!("{:#04X}", cpu.mem_bus.read_byte(cpu.pc + i)))
-            .collect();
+        let mut data = format!("{:#04X}", cpu.mem_bus.read_byte(cpu.pc));
+        if size > 1 {
+            data.push_str(&format!(" {:#04X}", cpu.mem_bus.read_byte(cpu.pc + 1)));
+        }
+        if size > 2 {
+            data.push_str(&format!(" {:#04X}", cpu.mem_bus.read_byte(cpu.pc + 2)));
+        }
+
+        let flags: [char; 4] = [
+            if cpu.regs.get_flag(RegFlag::Z) {
+                'Z'
+            } else {
+                '-'
+            },
+            if cpu.regs.get_flag(RegFlag::N) {
+                'N'
+            } else {
+                '-'
+            },
+            if cpu.regs.get_flag(RegFlag::H) {
+                'H'
+            } else {
+                '-'
+            },
+            if cpu.regs.get_flag(RegFlag::C) {
+                'C'
+            } else {
+                '-'
+            },
+        ];
 
         println!(
-            "data: {:<16}  pc: {:<07}  instr: {:<20}  Size: {:<2}  Cycles: {:<3}",
-            // "{}\t\t\t@ {:#04X}\t{}\t\tSize {}\tCycles {}",
-            opcode_vec.join(" "),
-            format!("{:#06X}", cpu.pc),
+            "{:#06X} | {:<14} | {:<10} | A: {:02X} F: {} BC: {:04X} DE: {:04X} HL: {:04X}",
+            cpu.pc,
+            data,
             instruction_string,
-            size,
-            cycles,
+            cpu.regs.get_reg(A),
+            flags.iter().collect::<String>(),
+            cpu.regs.get_virt_reg(BC),
+            cpu.regs.get_virt_reg(DE),
+            cpu.regs.get_virt_reg(HL),
         );
     }
 }
@@ -1961,7 +1990,7 @@ fn rrc_n_hl(cpu: &mut Cpu) -> u32 {
     cpu.mem_bus.write_byte(address, rotated_r);
 
     let instruction_string = "RRC (HL)";
-    debug_print(cpu, size, cycles, &instruction_string);
+    debug_print(cpu, size, cycles, instruction_string);
     cpu.pc += size;
     cycles
 }
@@ -2262,6 +2291,7 @@ fn jr_n(cpu: &mut Cpu) -> u32 {
     let instruction_string = "JR n";
     debug_print(cpu, size, cycles, instruction_string);
 
+    cpu.pc += size;
     jp_helper(cpu, ((cpu.pc as u32 as i32) + (n as i32)) as u16);
     cycles
 }
@@ -2281,6 +2311,7 @@ fn jr_cc_n(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
 
     if test_val == expected_value {
         let n = cpu.get_next_byte() as i8;
+        cpu.pc += size;
         jp_helper(cpu, ((cpu.pc as u32 as i32) + (n as i32)) as u16);
     } else {
         cpu.pc += size;
@@ -2305,7 +2336,7 @@ fn call_nn(cpu: &mut Cpu) -> u32 {
     cycles
 }
 
-// CALL cc,nn: Iff condition cc == true, push address of next instrucion to stack & jump to address
+// CALL cc,nn: Iff condition cc == true, push address of next instruction to stack & jump to address
 // nn.
 fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
     let size = 3;
@@ -2332,10 +2363,13 @@ fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> u32 {
 fn rst_n(cpu: &mut Cpu, n: u8) -> u32 {
     let size = 1;
     let cycles = 32;
-    cpu.push_stack(cpu.pc);
 
     let instruction_string = "RST n";
     debug_print(cpu, size, cycles, instruction_string);
+
+    cpu.pc += size;
+    cpu.push_stack(cpu.pc);
+
     cpu.pc = n as u16;
     cycles
 }

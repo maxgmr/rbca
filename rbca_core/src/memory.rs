@@ -163,6 +163,8 @@ impl MemoryBus {
             0xE000..=0xFDFF => {}
             0xFE00..=0xFE9F => self.oam[address as usize - 0xFE00] = byte,
             0xFEA0..=0xFEFF => {}
+            // OAM DMA transfer
+            0xFF46 => self.oam_dma_transfer(byte),
             0xFF00..=0xFF7F => self.io_regs.write_byte(address - 0xFF00, byte),
             0xFF80..=0xFFFE => self.hram[address as usize - 0xFF80] = byte,
             0xFFFF => self.ie_reg.write_byte(byte),
@@ -176,7 +178,7 @@ impl MemoryBus {
     }
 
     /// Load a [Cartridge] from a given file path.
-    pub fn load_cart(&mut self, filepath: &str) {
+    pub fn load_cart(&mut self, filepath: &str, use_boot_rom: bool) {
         let cart = match Cartridge::from_file(filepath) {
             Some(cart) => cart,
             _ => {
@@ -202,7 +204,7 @@ impl MemoryBus {
             .copy_from_slice(&padded_data[0xC000..=0xFFFF]);
 
         // Load boot ROM
-        // TODO handle relative paths
+        // TODO
         if let Some(boot_rom) = cart.boot_rom_data() {
             self.cart_rom_0[..0x0100].copy_from_slice(boot_rom)
         }
@@ -213,6 +215,15 @@ impl MemoryBus {
     /// Get the loaded [Cartridge].
     pub fn cart(&self) -> Option<&Cartridge> {
         self.cart.as_ref()
+    }
+
+    /// Perform DMA transfer from ROM/RAM to OAM.
+    fn oam_dma_transfer(&mut self, byte: u8) {
+        let transfer_source_addr = (byte as u16) << 8;
+        for i in 0..0xA0 {
+            let current_byte = self.read_byte(transfer_source_addr + i);
+            self.write_byte(0xFE00 + i, current_byte);
+        }
     }
 }
 impl Default for MemoryBus {
