@@ -25,3 +25,6 @@ dmg-boot.bin
 
 # log files
 rbca_core/*_LOG
+
+# correct logdbg logs
+logdbg/correct_logs/*
