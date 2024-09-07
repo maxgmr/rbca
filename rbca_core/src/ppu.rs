@@ -184,9 +184,11 @@ impl PPU {
             0 => {
                 if self.mode_clock >= HBLANK_CYCLES {
                     self.mode_clock %= HBLANK_CYCLES;
-                    self.lcd_y_coord += 1;
 
-                    if self.lcd_y_coord as usize == (DISPLAY_HEIGHT - 1) {
+                    self.lcd_y_coord += 1;
+                    println!("{}", self.lcd_y_coord as usize);
+
+                    if self.lcd_y_coord as usize == DISPLAY_HEIGHT {
                         // Lines done. Set VBlank interrupt & enter VBlank mode
                         self.interrupt_flags.set(If::VBlank, true);
                         if self.lcd_status.get(Stat::Mode1IntSelect) {
@@ -573,7 +575,17 @@ impl FlagsEnum for Cpd1 {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
+
+    const BL_BG_MAP: [u8; 0x0400] = [0x00; 0x0400];
+    const BL_WIN_MAP: [u8; 0x0400] = [0x00; 0x0400];
+    const BL_TILE_DATA: [u8; 0x2000] = [0x00; 0x2000];
+
+    fn cycle_bl(ppu: &mut PPU, t_cycles: u32) {
+        ppu.cycle(t_cycles, &BL_BG_MAP, &BL_WIN_MAP, &BL_TILE_DATA);
+    }
 
     #[test]
     fn test_get_mode() {
@@ -593,5 +605,76 @@ mod tests {
         ppu.lcd_status.set(Stat::PpuModeBit1, false);
         ppu.lcd_status.set(Stat::PpuModeBit0, false);
         assert_eq!(ppu.get_mode(), 0);
+    }
+
+    #[test]
+    fn test_cycle_timing() {
+        let mut ppu = PPU::new();
+        // Check Y coord == 0
+        assert_eq!(ppu.read_byte(0x0004), 0x00);
+        // Enable LCD & PPU
+        ppu.write_byte(0x00, 0b1000_0000 | ppu.read_byte(0x0000));
+        // Set mode to OAM (2)
+        ppu.write_byte(0x0001, 0b0000_0010 | ppu.read_byte(0x0001));
+        ppu.write_byte(0x0001, !0b0000_0001 & ppu.read_byte(0x0001));
+        // Advance 70 cycles
+        cycle_bl(&mut ppu, 70);
+        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 2);
+        // Advance 10 cycles (total = 80), so should be in draw mode (3)
+        cycle_bl(&mut ppu, 10);
+        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 3);
+        // Advance 100 cycles, so should remain in draw mode (3)
+        cycle_bl(&mut ppu, 100);
+        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 3);
+        assert_eq!(ppu.read_byte(0x0004), 0x00);
+        // Advance 73 cycles without penalties, so should be in hblank mode (0)
+        cycle_bl(&mut ppu, 73);
+        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 0);
+        assert_eq!(ppu.read_byte(0x0004), 0x00);
+        assert_eq!(ppu.mode_clock, 1);
+        // Advance 203 cycles, so should be back in OAM mode with line advanced (2)
+        cycle_bl(&mut ppu, 203);
+        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 2);
+        assert_eq!(ppu.read_byte(0x0004), 0x01);
+        assert_eq!(ppu.mode_clock, 0);
+        // Advance another line
+        cycle_bl(&mut ppu, 80);
+        cycle_bl(&mut ppu, 289);
+        cycle_bl(&mut ppu, 87);
+        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 2);
+        assert_eq!(ppu.read_byte(0x0004), 0x02);
+        assert_eq!(ppu.mode_clock, 0);
+        // Advance to last line
+        for i in 0..141 {
+            cycle_bl(&mut ppu, 80);
+            cycle_bl(&mut ppu, 289);
+            cycle_bl(&mut ppu, 87);
+            assert_eq!(ppu.read_byte(0x0004), 0x03 + i);
+            assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 2);
+        }
+        // Advance past last line, should be in VBlank mode (1)
+        cycle_bl(&mut ppu, 80);
+        cycle_bl(&mut ppu, 289);
+        cycle_bl(&mut ppu, 87);
+        assert_eq!(ppu.read_byte(0x0004), 144);
+        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 1);
+        // Advance partway through first VBlank line
+        cycle_bl(&mut ppu, 455);
+        assert_eq!(ppu.read_byte(0x0004), 144);
+        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 1);
+        // Go to next VBlank line (line 145)
+        cycle_bl(&mut ppu, 1);
+        assert_eq!(ppu.read_byte(0x0004), 145);
+        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 1);
+        // Go to end of VBlank lines
+        for i in 0..8 {
+            cycle_bl(&mut ppu, 456);
+            assert_eq!(ppu.read_byte(0x0004), 146 + i);
+            assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 1);
+        }
+        // Go to end of line 153 & start next frame
+        cycle_bl(&mut ppu, 456);
+        assert_eq!(ppu.read_byte(0x0004), 0);
+        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 2);
     }
 }
