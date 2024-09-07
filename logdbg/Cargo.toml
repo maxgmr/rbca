@@ -1,0 +1,10 @@
+[package]
+name = "logdbg"
+version = "0.1.0"
+edition = "2021"
+authors = ["Max Gilmour"]
+repository = "https://github.com/maxgmr/rbca"
+
+[dependencies]
+clap = "4.5"
+pretty_assertions = "1.4"
