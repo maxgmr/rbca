@@ -2,6 +2,8 @@ use std::default::Default;
 
 use crate::{io_registers::If, Flags, FlagsEnum};
 
+const LY_STUBBED: bool = true;
+
 /// Width of the Game Boy display in pixels.
 pub const DISPLAY_WIDTH: usize = 160;
 /// Height of the Game Boy display in pixels.
@@ -67,6 +69,9 @@ pub struct PPU {
 impl PPU {
     /// Create a new PPU.
     pub fn new() -> Self {
+        if LY_STUBBED {
+            println!("WARNING: rbca is currently LY-stubbed. This means that any read to LY (0xFF44) will return 0x90.");
+        }
         Self {
             data_output: [0x00; DISPLAY_WIDTH * DISPLAY_HEIGHT * 3],
             interrupt_flags: Flags::new(0b0000_0000),
@@ -97,7 +102,13 @@ impl PPU {
             0x0001 => self.lcd_status.read_byte(),
             0x0002 => self.bg_view_y,
             0x0003 => self.bg_view_x,
-            0x0004 => self.lcd_y_coord,
+            0x0004 => {
+                if LY_STUBBED {
+                    0x90
+                } else {
+                    self.lcd_y_coord
+                }
+            }
             0x0005 => self.ly_compare,
             // OAM DMA transfer is write only
             0x0006 => 0x00,
@@ -186,7 +197,6 @@ impl PPU {
                     self.mode_clock %= HBLANK_CYCLES;
 
                     self.lcd_y_coord += 1;
-                    println!("{}", self.lcd_y_coord as usize);
 
                     if self.lcd_y_coord as usize == DISPLAY_HEIGHT {
                         // Lines done. Set VBlank interrupt & enter VBlank mode

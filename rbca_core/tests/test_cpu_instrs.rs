@@ -14,8 +14,8 @@ use rbca_core::{
 use text_io::read;
 
 fn test_common(rom_name: &str) {
-    const BREAKPOINTS: bool = true;
-    // const BREAKPOINTS: bool = false;
+    // const BREAKPOINTS: bool = true;
+    const BREAKPOINTS: bool = false;
     const STEP_FORWARD: bool = true;
     // const STEP_FORWARD: bool = false;
     // const SLOW: bool = true;
@@ -134,8 +134,7 @@ fn test_common(rom_name: &str) {
         if BREAKPOINTS && last_break {
             last_break = false;
             last_step_forward = true;
-            println!("{total_steps}");
-            println!(" - BREAK - ");
+            println!(" - BREAK @ {total_steps} - ");
             let _: String = read!();
         } else if BREAKPOINTS && last_step_forward {
             last_step_forward = false;
