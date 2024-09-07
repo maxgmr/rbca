@@ -22,3 +22,6 @@ Cargo.lock
 
 # Boot ROM (for copyright reasons)
 dmg-boot.bin
+
+# log files
+rbca_core/*_LOG
