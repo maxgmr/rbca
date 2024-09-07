@@ -206,6 +206,11 @@ impl Registers {
         self.f.get(flag)
     }
 
+    /// Get the flags as a byte.
+    pub fn get_flag_byte(&self) -> u8 {
+        self.f.read_byte()
+    }
+
     /// Set flag.
     pub fn set_flag(&mut self, flag: RegFlag, value: bool) {
         self.f.set(flag, value)
