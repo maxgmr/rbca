@@ -12,7 +12,7 @@ pub use empty::CartEmpty;
 
 const BOOT_ROM_PATH: &str = "../dmg-boot.bin";
 
-const BYTES_IN_KIB: u32 = 128;
+const BYTES_IN_KIB: u32 = 1024;
 
 const LOGO: [u8; 48] = [
     0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
@@ -29,7 +29,7 @@ pub fn load_cartridge<P: AsRef<Utf8Path>>(filepath: P) -> Box<dyn Cartridge> {
 
     let cart_features = CartFeatures::from_data(&file_buf);
     if cart_features.mbc1 {
-        Box::new(mbc1::CartMBC1::new(file_buf, cart_features))
+        Box::new(mbc1::CartMBC1::new(file_buf))
     } else {
         Box::new(rom_only::CartRomOnly::new(file_buf, cart_features))
     }
@@ -94,6 +94,7 @@ pub trait Cartridge: Debug {
     fn title_cgb(&self) -> &str {
         self.title_helper(0x013E)
     }
+    /// Helper for title functions.
     fn title_helper(&self, end_index: u16) -> &str {
         match std::str::from_utf8(&self.rom()[0x0134..=(end_index as usize)]) {
             Ok(val) => val,
@@ -160,10 +161,7 @@ pub trait Cartridge: Debug {
     /// Validate checksum. Return None if checksum passes. Otherwise, return the incorrect checksum
     /// that was produced.
     fn validate_checksum(&self) -> Option<u8> {
-        let mut checksum: u8 = 0;
-        for i in 0x0134..=0x014C {
-            checksum = checksum.wrapping_sub(self.rom()[i]).wrapping_sub(1);
-        }
+        let checksum = checksum_fn(self.rom());
         if self.checksum() == checksum {
             // Checksum OK!
             None
@@ -208,8 +206,30 @@ pub trait Cartridge: Debug {
     }
 }
 
+/// The function used to calculate the header checksum.
+pub fn checksum_fn(rom: &[u8]) -> u8 {
+    let mut checksum: u8 = 0;
+    #[allow(clippy::needless_range_loop)]
+    for i in 0x0134..=0x014C {
+        checksum = checksum.wrapping_sub(rom[i]).wrapping_sub(1);
+    }
+    checksum
+}
+
+/// The different states of the CGB header flag.
+pub enum CgbFlag {
+    /// DMG cartridge. Compatible with DMG & CGB.
+    Dmg,
+    /// Cartridge with CGB enhancements that is backwards-compatible with DMG.
+    CgbBkwd,
+    /// Cartridge that works on CGB only.
+    Cgb,
+    /// Unknown PGB mode.
+    Pgb,
+}
+
 /// All the different hardware features a cartridge can have.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct CartFeatures {
     pub rom_only: bool,
     pub rom: bool,
@@ -415,40 +435,4 @@ impl Display for CartFeatures {
         }
         write!(f, "{}", str_vec.join("+"))
     }
-}
-impl Default for CartFeatures {
-    fn default() -> Self {
-        Self {
-            rom_only: false,
-            rom: false,
-            mbc1: false,
-            mbc2: false,
-            mbc3: false,
-            mbc5: false,
-            mbc6: false,
-            mbc7: false,
-            ram: false,
-            battery: false,
-            mmm01: false,
-            timer: false,
-            rumble: false,
-            sensor: false,
-            pocket_camera: false,
-            bandai_tama5: false,
-            huc3: false,
-            huc1: false,
-        }
-    }
-}
-
-/// The different states of the CGB header flag.
-pub enum CgbFlag {
-    /// DMG cartridge. Compatible with DMG & CGB.
-    Dmg,
-    /// Cartridge with CGB enhancements that is backwards-compatible with DMG.
-    CgbBkwd,
-    /// Cartridge that works on CGB only.
-    Cgb,
-    /// Unknown PGB mode.
-    Pgb,
 }

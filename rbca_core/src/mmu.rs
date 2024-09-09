@@ -223,3 +223,6 @@ impl FlagsEnum for If {
         }
     }
 }
+
+#[cfg(test)]
+mod test_mmu;
