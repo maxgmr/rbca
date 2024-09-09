@@ -372,7 +372,7 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) -> u32 {
 
         // CB-Opcodes
         0xCB => {
-            let ext_opcode = cpu.mem_bus.read_byte(cpu.pc + 1);
+            let ext_opcode = cpu.mmu.read_byte(cpu.pc + 1);
             match ext_opcode {
                 // SWAP n
                 0x37 => swap_n(cpu, A),
@@ -717,12 +717,12 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8) -> u32 {
 
 fn debug_print(cpu: &Cpu, size: u16, _cycles: u32, instruction_string: &str) {
     if DEBUG {
-        let mut data = format!("{:#04X}", cpu.mem_bus.read_byte(cpu.pc));
+        let mut data = format!("{:#04X}", cpu.mmu.read_byte(cpu.pc));
         if size > 1 {
-            data.push_str(&format!(" {:#04X}", cpu.mem_bus.read_byte(cpu.pc + 1)));
+            data.push_str(&format!(" {:#04X}", cpu.mmu.read_byte(cpu.pc + 1)));
         }
         if size > 2 {
-            data.push_str(&format!(" {:#04X}", cpu.mem_bus.read_byte(cpu.pc + 2)));
+            data.push_str(&format!(" {:#04X}", cpu.mmu.read_byte(cpu.pc + 2)));
         }
 
         let flags: [char; 4] = [
@@ -783,7 +783,7 @@ fn ld_nn_n(cpu: &mut Cpu, target: Target) -> u32 {
     let instruction_string = format!("LD {target},n");
     debug_print(cpu, size, cycles, &instruction_string);
 
-    cpu.regs.set_reg(target, cpu.mem_bus.read_byte(cpu.pc + 1));
+    cpu.regs.set_reg(target, cpu.mmu.read_byte(cpu.pc + 1));
     cpu.pc += size;
     cycles
 }
@@ -807,7 +807,7 @@ fn ld_r1_hl(cpu: &mut Cpu, r1: Target) -> u32 {
     debug_print(cpu, size, cycles, &instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let value = cpu.mem_bus.read_byte(address);
+    let value = cpu.mmu.read_byte(address);
     cpu.regs.set_reg(r1, value);
 
     cpu.pc += size;
@@ -820,7 +820,7 @@ fn ld_hl_r2(cpu: &mut Cpu, r2: Target) -> u32 {
     debug_print(cpu, size, cycles, &instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(r2));
+    cpu.mmu.write_byte(address, cpu.regs.get_reg(r2));
 
     cpu.pc += size;
     cycles
@@ -833,7 +833,7 @@ fn ld_hl_n(cpu: &mut Cpu) -> u32 {
 
     let address = cpu.regs.get_virt_reg(HL);
     let value = cpu.get_next_byte();
-    cpu.mem_bus.write_byte(address, value);
+    cpu.mmu.write_byte(address, value);
 
     cpu.pc += size;
     cycles
@@ -847,7 +847,7 @@ fn ld_a_vr(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     debug_print(cpu, size, cycles, &instruction_string);
 
     let address = cpu.regs.get_virt_reg(target);
-    let value = cpu.mem_bus.read_byte(address);
+    let value = cpu.mmu.read_byte(address);
     ld_a_n_helper(cpu, value);
 
     cpu.pc += size;
@@ -860,7 +860,7 @@ fn ld_a_nn(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.get_next_2_bytes();
-    let value = cpu.mem_bus.read_byte(address);
+    let value = cpu.mmu.read_byte(address);
     ld_a_n_helper(cpu, value);
 
     cpu.pc += size;
@@ -901,7 +901,7 @@ fn ld_vr_a(cpu: &mut Cpu, target: VirtTarget) -> u32 {
     debug_print(cpu, size, cycles, &instruction_string);
 
     let address = cpu.regs.get_virt_reg(target);
-    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
+    cpu.mmu.write_byte(address, cpu.regs.get_reg(A));
 
     cpu.pc += size;
     cycles
@@ -913,7 +913,7 @@ fn ld_nn_a(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.get_next_2_bytes();
-    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
+    cpu.mmu.write_byte(address, cpu.regs.get_reg(A));
 
     cpu.pc += size;
     cycles
@@ -927,7 +927,7 @@ fn ld_a_c(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = 0xFF00 | (cpu.regs.get_reg(C) as u16);
-    cpu.regs.set_reg(A, cpu.mem_bus.read_byte(address));
+    cpu.regs.set_reg(A, cpu.mmu.read_byte(address));
 
     cpu.pc += size;
     cycles
@@ -941,7 +941,7 @@ fn ld_c_a(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = 0xFF00 | (cpu.regs.get_reg(C) as u16);
-    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
+    cpu.mmu.write_byte(address, cpu.regs.get_reg(A));
 
     cpu.pc += size;
     cycles
@@ -1001,14 +1001,14 @@ fn ld_hli_a(cpu: &mut Cpu) -> u32 {
 
 fn ld_a_hl_helper(cpu: &mut Cpu, is_inc: bool) {
     let address = cpu.regs.get_virt_reg(HL);
-    cpu.regs.set_reg(A, cpu.mem_bus.read_byte(address));
+    cpu.regs.set_reg(A, cpu.mmu.read_byte(address));
 
     let new_val = if is_inc { address + 1 } else { address - 1 };
     cpu.regs.set_virt_reg(HL, new_val);
 }
 fn ld_hl_a_helper(cpu: &mut Cpu, is_inc: bool) {
     let address = cpu.regs.get_virt_reg(HL);
-    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
+    cpu.mmu.write_byte(address, cpu.regs.get_reg(A));
 
     let new_val = if is_inc { address + 1 } else { address - 1 };
     cpu.regs.set_virt_reg(HL, new_val);
@@ -1022,7 +1022,7 @@ fn ldh_n_a(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = 0xFF00 | (cpu.get_next_byte() as u16);
-    cpu.mem_bus.write_byte(address, cpu.regs.get_reg(A));
+    cpu.mmu.write_byte(address, cpu.regs.get_reg(A));
 
     cpu.pc += size;
     cycles
@@ -1036,7 +1036,7 @@ fn ldh_a_n(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = 0xFF00 | (cpu.get_next_byte() as u16);
-    cpu.regs.set_reg(A, cpu.mem_bus.read_byte(address));
+    cpu.regs.set_reg(A, cpu.mmu.read_byte(address));
 
     cpu.pc += size;
     cycles
@@ -1128,7 +1128,7 @@ fn ld_nn_sp(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.get_next_2_bytes();
-    cpu.mem_bus.write_2_bytes(address, cpu.sp);
+    cpu.mmu.write_2_bytes(address, cpu.sp);
 
     cpu.pc += size;
     cycles
@@ -1179,7 +1179,7 @@ fn add_a_n_hl(cpu: &mut Cpu) -> u32 {
     let instruction_string = "ADD A,(HL)";
     debug_print(cpu, size, cycles, instruction_string);
 
-    let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
+    let n = cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL));
     add_a_n_helper(cpu, n, false);
 
     cpu.pc += size;
@@ -1237,7 +1237,7 @@ fn adc_a_n_hl(cpu: &mut Cpu) -> u32 {
     let instruction_string = "ADC A,(HL)";
     debug_print(cpu, size, cycles, instruction_string);
 
-    let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
+    let n = cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL));
     add_a_n_helper(cpu, n, true);
 
     cpu.pc += size;
@@ -1274,7 +1274,7 @@ fn sub_n_hl(cpu: &mut Cpu) -> u32 {
     let instruction_string = "SUB (HL)";
     debug_print(cpu, size, cycles, instruction_string);
 
-    let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
+    let n = cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL));
     sub_n_helper(cpu, n, false);
 
     cpu.pc += size;
@@ -1330,7 +1330,7 @@ fn sbc_n_hl(cpu: &mut Cpu) -> u32 {
     let instruction_string = "SBC A,(HL)";
     debug_print(cpu, size, cycles, instruction_string);
 
-    let n = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
+    let n = cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL));
     sub_n_helper(cpu, n, true);
 
     cpu.pc += size;
@@ -1368,7 +1368,7 @@ fn and_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let n = cpu.mem_bus.read_byte(address);
+    let n = cpu.mmu.read_byte(address);
     and_n_helper(cpu, n);
 
     cpu.pc += size;
@@ -1415,7 +1415,7 @@ fn or_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let n = cpu.mem_bus.read_byte(address);
+    let n = cpu.mmu.read_byte(address);
     or_n_helper(cpu, n);
 
     cpu.pc += size;
@@ -1461,7 +1461,7 @@ fn xor_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let n = cpu.mem_bus.read_byte(address);
+    let n = cpu.mmu.read_byte(address);
     xor_n_helper(cpu, n);
 
     cpu.pc += size;
@@ -1507,7 +1507,7 @@ fn cp_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let n = cpu.mem_bus.read_byte(address);
+    let n = cpu.mmu.read_byte(address);
     cp_n_helper(cpu, n);
 
     cpu.pc += size;
@@ -1555,12 +1555,12 @@ fn inc_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let val = cpu.mem_bus.read_byte(address);
+    let val = cpu.mmu.read_byte(address);
     let result = val.wrapping_add(1);
 
     inc_n_set_flags(cpu, val, result);
 
-    cpu.mem_bus.write_byte(address, result);
+    cpu.mmu.write_byte(address, result);
 
     cpu.pc += size;
     cycles
@@ -1595,12 +1595,12 @@ fn dec_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let val = cpu.mem_bus.read_byte(address);
+    let val = cpu.mmu.read_byte(address);
     let result = val.wrapping_sub(1);
 
     dec_n_set_flags(cpu, val, result);
 
-    cpu.mem_bus.write_byte(address, result);
+    cpu.mmu.write_byte(address, result);
 
     cpu.pc += size;
     cycles
@@ -1732,9 +1732,9 @@ fn swap_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let val = cpu.mem_bus.read_byte(address);
+    let val = cpu.mmu.read_byte(address);
     let result = swap_n_helper(cpu, val);
-    cpu.mem_bus.write_byte(address, result);
+    cpu.mmu.write_byte(address, result);
 
     cpu.pc += size;
     cycles
@@ -1996,9 +1996,9 @@ fn rlc_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let original_val = cpu.mem_bus.read_byte(address);
+    let original_val = cpu.mmu.read_byte(address);
     let rotated_l = rlc_n_helper(cpu, original_val);
-    cpu.mem_bus.write_byte(address, rotated_l);
+    cpu.mmu.write_byte(address, rotated_l);
 
     cpu.pc += size;
     cycles
@@ -2034,9 +2034,9 @@ fn rl_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let original_val = cpu.mem_bus.read_byte(address);
+    let original_val = cpu.mmu.read_byte(address);
     let rotated_l = rl_n_helper(cpu, original_val);
-    cpu.mem_bus.write_byte(address, rotated_l);
+    cpu.mmu.write_byte(address, rotated_l);
 
     cpu.pc += size;
     cycles
@@ -2072,9 +2072,9 @@ fn rrc_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let original_val = cpu.mem_bus.read_byte(address);
+    let original_val = cpu.mmu.read_byte(address);
     let rotated_r = rrc_n_helper(cpu, original_val);
-    cpu.mem_bus.write_byte(address, rotated_r);
+    cpu.mmu.write_byte(address, rotated_r);
 
     cpu.pc += size;
     cycles
@@ -2110,9 +2110,9 @@ fn rr_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let original_val = cpu.mem_bus.read_byte(address);
+    let original_val = cpu.mmu.read_byte(address);
     let rotated_r = rr_n_helper(cpu, original_val);
-    cpu.mem_bus.write_byte(address, rotated_r);
+    cpu.mmu.write_byte(address, rotated_r);
 
     cpu.pc += size;
     cycles
@@ -2153,9 +2153,9 @@ fn sla_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let original_val = cpu.mem_bus.read_byte(address);
+    let original_val = cpu.mmu.read_byte(address);
     let result = sla_n_helper(cpu, original_val);
-    cpu.mem_bus.write_byte(address, result);
+    cpu.mmu.write_byte(address, result);
 
     cpu.pc += size;
     cycles
@@ -2192,9 +2192,9 @@ fn sra_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let original_val = cpu.mem_bus.read_byte(address);
+    let original_val = cpu.mmu.read_byte(address);
     let result = sra_n_helper(cpu, original_val);
-    cpu.mem_bus.write_byte(address, result);
+    cpu.mmu.write_byte(address, result);
 
     cpu.pc += size;
     cycles
@@ -2231,9 +2231,9 @@ fn srl_n_hl(cpu: &mut Cpu) -> u32 {
     debug_print(cpu, size, cycles, instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let original_val = cpu.mem_bus.read_byte(address);
+    let original_val = cpu.mmu.read_byte(address);
     let result = srl_n_helper(cpu, original_val);
-    cpu.mem_bus.write_byte(address, result);
+    cpu.mmu.write_byte(address, result);
 
     cpu.pc += size;
     cycles
@@ -2267,7 +2267,7 @@ fn bit_b_r_hl(cpu: &mut Cpu, b: usize) -> u32 {
     let instruction_string = format!("BIT {b},(HL)");
     debug_print(cpu, size, cycles, &instruction_string);
 
-    let target_byte = cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL));
+    let target_byte = cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL));
     bit_b_r_helper(cpu, b, target_byte);
 
     cpu.pc += size;
@@ -2300,8 +2300,8 @@ fn set_b_r_hl(cpu: &mut Cpu, b: usize) -> u32 {
     debug_print(cpu, size, cycles, &instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let byte = cpu.mem_bus.read_byte(address);
-    cpu.mem_bus.write_byte(address, byte | (0x01 << b));
+    let byte = cpu.mmu.read_byte(address);
+    cpu.mmu.write_byte(address, byte | (0x01 << b));
 
     cpu.pc += size;
     cycles
@@ -2327,8 +2327,8 @@ fn res_b_r_hl(cpu: &mut Cpu, b: usize) -> u32 {
     debug_print(cpu, size, cycles, &instruction_string);
 
     let address = cpu.regs.get_virt_reg(HL);
-    let byte = cpu.mem_bus.read_byte(address);
-    cpu.mem_bus.write_byte(address, byte & !(0x01 << b));
+    let byte = cpu.mmu.read_byte(address);
+    cpu.mmu.write_byte(address, byte & !(0x01 << b));
 
     cpu.pc += size;
     cycles

@@ -1,116 +1,115 @@
 //! Functionality related to Game Boy cartridges.
+use std::{fmt::Debug, fmt::Display, fs::File, io::Read};
 
-use std::{fmt::Display, fs::File, io::Read};
+use camino::Utf8Path;
+
+mod empty;
+mod mbc1;
+mod rom_only;
+
+// Re-exports
+pub use empty::CartEmpty;
 
 const BOOT_ROM_PATH: &str = "../dmg-boot.bin";
 
 const BYTES_IN_KIB: u32 = 128;
 
-const NIN_LOGO: [u8; 48] = [
+const LOGO: [u8; 48] = [
     0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
     0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
     0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E,
 ];
 
-/// A Game Boy cartridge.
-#[derive(Debug, Clone)]
-pub struct Cartridge {
-    ///  The boot ROM.
-    boot_rom_data: Option<[u8; 0x100]>,
-    /// The raw binary data stored on the cartridge.
-    data: Vec<u8>,
-    /// The hardware present on the cartridge.
-    cart_features: CartFeatures,
+/// Load a cartridge.
+pub fn load_cartridge<P: AsRef<Utf8Path>>(filepath: P) -> Box<dyn Cartridge> {
+    let mut file_buf = vec![];
+    if let Err(e) = File::open(filepath.as_ref()).and_then(|mut f| f.read_to_end(&mut file_buf)) {
+        panic!("{e}");
+    }
+
+    let cart_features = CartFeatures::from_data(&file_buf);
+    if cart_features.mbc1 {
+        Box::new(mbc1::CartMBC1::new(file_buf, cart_features))
+    } else {
+        Box::new(rom_only::CartRomOnly::new(file_buf, cart_features))
+    }
 }
-impl Cartridge {
-    /// Load a cartridge by loading a binary file at the given path.
-    pub fn from_file(filepath: &str) -> Option<Self> {
-        let mut data = vec![];
-        if File::open(filepath)
-            .and_then(|mut f| f.read_to_end(&mut data))
-            .is_err()
-        {
-            return None;
-        }
-        let boot_rom_data = Self::load_boot_rom();
 
-        let cart_features = CartFeatures::from_data(&data);
-
-        Some(Self {
-            boot_rom_data,
-            data,
-            cart_features,
-        })
-    }
-
-    /// Get the data stored on the cartridge.
-    pub fn data(&self) -> &[u8] {
-        &self.data
-    }
-
-    /// Get the boot ROM data.
-    pub fn boot_rom_data(&self) -> Option<&[u8; 0x100]> {
-        self.boot_rom_data.as_ref()
-    }
+/// A Game Boy cartridge.
+pub trait Cartridge: Debug {
+    /// Get the full raw ROM contents of the cartridge.
+    fn rom(&self) -> &[u8];
 
     /// Get the cartridge features.
-    pub fn cart_features(&self) -> &CartFeatures {
-        &self.cart_features
+    fn cart_features(&self) -> &CartFeatures;
+
+    /// Read a byte from the cartridge ROM.
+    ///
+    /// Default: Read directly from address without any banking.
+    fn read_rom(&self, address: u16) -> u8 {
+        self.rom()[address as usize]
     }
 
-    /// Attempt to load the boot ROM.
-    fn load_boot_rom() -> Option<[u8; 0x0100]> {
-        let mut data = vec![];
-        if File::open(BOOT_ROM_PATH)
-            .and_then(|mut f| f.read_to_end(&mut data))
-            .is_err()
-        {
-            eprintln!("Warning: no boot ROM found.");
-            return None;
-        };
-        let mut fixed_size_data: [u8; 0x0100] = [0x00; 0x0100];
-        fixed_size_data.copy_from_slice(&data);
-        Some(fixed_size_data)
+    /// Read a byte from the cartridge RAM.
+    ///
+    /// Default: no RAM, return garbage value
+    #[allow(unused_variables)]
+    fn read_ram(&self, address: u16) -> u8 {
+        0xFF
     }
+
+    /// "Write" a byte to the cartridge ROM. This usually has some other effect, such as setting an
+    /// internal cartridge register.
+    ///
+    /// Default value: Nothing happens on write.
+    #[allow(unused_variables)]
+    fn write_rom(&mut self, address: u16, value: u8) {}
+
+    /// Write a byte to the cartridge RAM.
+    ///
+    /// Default: no RAM, nothing happens.
+    #[allow(unused_variables)]
+    fn write_ram(&mut self, address: u16, value: u8) {}
 
     /// Get the logo shown at startup.
-    pub fn nin_logo(&self) -> &[u8] {
-        &self.data[0x0104..=0x0133]
+    fn logo(&self) -> &[u8] {
+        &self.rom()[0x0104..=0x0133]
     }
 
-    /// Verify accuracy of Nintendo logo. Return true iff the logo is accurate.
-    pub fn validate_logo(&self) -> bool {
-        for i in 0..48 {
-            if self.data[(0x0104 + (i as u16)) as usize] != NIN_LOGO[i as usize] {
+    /// Verify the accuracy of the logo. Return true iff logo is okay.
+    fn validate_logo(&self) -> bool {
+        for (i, logo_byte) in LOGO.iter().enumerate() {
+            if self.rom()[0x0104_usize + i] != *logo_byte {
                 return false;
             }
         }
         true
     }
 
-    /// Get the title of the game.
-    pub fn title(&self) -> &str {
+    /// Get the cartridge title.
+    fn title(&self) -> &str {
         self.title_helper(0x0143)
     }
-    /// Get the title of the game (11-byte size for CGB & later cartridges).
-    pub fn title_cgb(&self) -> &str {
+    /// Get the 11-byte cartridge title (for CGB & later cartridges).
+    fn title_cgb(&self) -> &str {
         self.title_helper(0x013E)
     }
     fn title_helper(&self, end_index: u16) -> &str {
-        match std::str::from_utf8(&self.data[0x0134..=(end_index as usize)]) {
+        match std::str::from_utf8(&self.rom()[0x0134..=(end_index as usize)]) {
             Ok(val) => val,
-            _ => std::str::from_utf8(&self.data[0x0132..=(end_index as usize - 1)]).unwrap_or(""),
+            _ => std::str::from_utf8(&self.rom()[0x0134..=(end_index as usize - 1)])
+                .unwrap_or_default(),
         }
     }
 
     /// Get the manufacturer code.
-    pub fn manufacturer_code(&self) -> &[u8] {
-        &self.data[0x013F..=0x0142]
+    fn manufacturer_code(&self) -> &[u8] {
+        &self.rom()[0x13F..=0x0142]
     }
 
     /// Get the CGB flag.
-    pub fn cgb_flag(&self) -> CgbFlag {
-        match self.data[0x0143] {
+    fn cgb_flag(&self) -> CgbFlag {
+        match self.rom()[0x0143] {
             0b1000_0000 => CgbFlag::CgbBkwd,
             0b1100_0000 => CgbFlag::Cgb,
             0b1000_1000 | 0b1000_0100 => CgbFlag::Pgb,
@@ -118,22 +117,22 @@ impl Cartridge {
         }
     }
 
-    /// If true, the cartridge supports SGB functions.
-    pub fn sgb_flag(&self) -> bool {
-        self.data[0x0146] == 0x03
+    /// Return true iff the cartridge supports SGB functionality.
+    fn sgb_flag(&self) -> bool {
+        self.rom()[0x0146] == 0x03
     }
 
     /// Get the amount of ROM present on the cartridge (in bytes).
-    pub fn rom_size(&self) -> u32 {
-        match self.data[0x0148] {
+    fn rom_size(&self) -> u32 {
+        match self.rom()[0x0148] {
             val if val <= 0x08 => (1 << val) * 32 * BYTES_IN_KIB,
             _ => 0,
         }
     }
 
     /// Get the amount of RAM present on the cartridge (in bytes).
-    pub fn ram_size(&self) -> u32 {
-        (match self.data[0x0149] {
+    fn ram_size(&self) -> u32 {
+        (match self.rom()[0x0149] {
             0x02 => 8,
             0x03 => 32,
             0x04 => 128,
@@ -142,51 +141,53 @@ impl Cartridge {
         }) * BYTES_IN_KIB
     }
 
-    /// If true, cartridge was intended to be sold in Japan. Otherwise, it was overseas only.
-    pub fn jpn(&self) -> bool {
-        self.data[0x014A] != 0x00
+    /// Return true iff cartridge was intended to be sold in Japan. Otherwise, it was overseas
+    /// only.
+    fn jpn(&self) -> bool {
+        self.rom()[0x014A] != 0x00
     }
 
-    /// Get the version number of the game (usually 0).
-    pub fn version_number(&self) -> u8 {
-        self.data[0x014C]
+    /// Get the version number of the cartridge (usually 0).
+    fn version_number(&self) -> u8 {
+        self.rom()[0x014C]
     }
 
     /// Get the header checksum.
-    pub fn checksum(&self) -> u8 {
-        self.data[0x014D]
+    fn checksum(&self) -> u8 {
+        self.rom()[0x014D]
     }
 
-    /// Validate checksum. Returns None if checksum passes, else returns the calculated checksum if
-    /// it fails.
-    pub fn validate_checksum(&self) -> Option<u8> {
+    /// Validate checksum. Return None if checksum passes. Otherwise, return the incorrect checksum
+    /// that was produced.
+    fn validate_checksum(&self) -> Option<u8> {
         let mut checksum: u8 = 0;
         for i in 0x0134..=0x014C {
-            checksum = checksum.wrapping_sub(self.data[i]).wrapping_sub(1);
+            checksum = checksum.wrapping_sub(self.rom()[i]).wrapping_sub(1);
         }
         if self.checksum() == checksum {
+            // Checksum OK!
             None
         } else {
+            // Bad checksum!
             Some(checksum)
         }
     }
 
     /// Get the global checksum.
-    pub fn global_checksum(&self) -> u16 {
-        ((self.data[0x014E] as u16) << 8) | (self.data[0x014F] as u16)
+    fn global_checksum(&self) -> u16 {
+        ((self.rom()[0x014E] as u16) << 8) | (self.rom()[0x014F] as u16)
     }
 
     /// Get some header info formatted as a nice String.
-    pub fn header_info(&self) -> String {
+    fn header_info(&self) -> String {
         format!(
             "Cart Info
-\tTitle     {}
-\tType      {}
-\tROM Size  {} KiB ({:#X} bytes)
-\tRAM Size  {} KiB ({:#X} bytes)
-\tChecksum  {}
-\tLogo      {}
-\tBoot ROM  {}",
+            \tTitle         {}
+            \tType          {}
+            \tROM Size      {} KiB ({:#X} bytes)
+            \tRAM Size      {} KiB ({:#X} bytes)
+            \tChecksum      {}
+            \tLogo          {}",
             self.title(),
             self.cart_features(),
             self.rom_size() / BYTES_IN_KIB,
@@ -203,11 +204,6 @@ impl Cartridge {
             } else {
                 String::from("Invalid!")
             },
-            if self.boot_rom_data.is_some() {
-                String::from("OK!")
-            } else {
-                String::from("None")
-            }
         )
     }
 }
@@ -418,6 +414,30 @@ impl Display for CartFeatures {
             str_vec.push("HuC1");
         }
         write!(f, "{}", str_vec.join("+"))
+    }
+}
+impl Default for CartFeatures {
+    fn default() -> Self {
+        Self {
+            rom_only: false,
+            rom: false,
+            mbc1: false,
+            mbc2: false,
+            mbc3: false,
+            mbc5: false,
+            mbc6: false,
+            mbc7: false,
+            ram: false,
+            battery: false,
+            mmm01: false,
+            timer: false,
+            rumble: false,
+            sensor: false,
+            pocket_camera: false,
+            bandai_tama5: false,
+            huc3: false,
+            huc1: false,
+        }
     }
 }
 

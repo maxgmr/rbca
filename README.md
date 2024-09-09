@@ -16,7 +16,7 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 - 04: Passed
 - 05: Passed
 - 06: Passed
-- 07: Hangs indefinitely (@ 0xC738 - LDH A,(n) - Reads 0x00 from 0xFF44 instead of 0x90)
+- 07: Passed
 - 08: Passed
 - 09: Passed
 - 10: Passed

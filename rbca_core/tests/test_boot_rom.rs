@@ -10,11 +10,8 @@ fn test_boot_rom() {
     const SLOW: bool = false;
     const WAIT_MS: u64 = 10;
 
-    let mut cpu = Cpu::new();
-    cpu.mem_bus.load_cart("../roms/tetris.gb", true);
-
-    let cpu_cart = cpu.mem_bus.cart.as_ref().unwrap();
-    println!("{}", cpu_cart.header_info());
+    let mut cpu = Cpu::new_boot("../../dmg-boot.bin");
+    println!("{}", cpu.mmu.cart.header_info());
 
     let mut t_cycles = 0;
     'testloop: loop {

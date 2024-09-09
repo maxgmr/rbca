@@ -25,8 +25,8 @@ fn test_common(rom_name: &str) {
     // const SLOW: bool = true;
     const SLOW: bool = false;
     const WAIT_MS: u64 = 50;
-    const LOG: bool = true;
-    // const LOG: bool = false;
+    // const LOG: bool = true;
+    const LOG: bool = false;
 
     #[allow(unused_variables)]
     fn is_breakpoint(
@@ -57,22 +57,21 @@ fn test_common(rom_name: &str) {
         .open(file_name)
         .unwrap();
 
-    let mut cpu = Cpu::new();
-    cpu.mem_bus.load_cart(
-        &format!("../roms/gb-test-roms/cpu_instrs/individual/{}", rom_name),
-        false,
-    );
+    let mut cpu = Cpu::new_cart(format!(
+        "../roms/gb-test-roms/cpu_instrs/individual/{}",
+        rom_name
+    ));
 
-    let cpu_cart = cpu.mem_bus.cart.as_ref().unwrap();
-    println!("{}", cpu_cart.header_info());
+    println!("{}", cpu.mmu.cart.header_info());
     println!(
-        "Breakpoints: {} Slow: {}",
+        "Breakpoints: {} Slow: {} Logs: {}",
         BREAKPOINTS,
         if SLOW {
             format!("{} ms", WAIT_MS)
         } else {
             "false".to_owned()
-        }
+        },
+        LOG
     );
     println!("Enter any text to continue...");
     let _: String = read!();
@@ -80,8 +79,8 @@ fn test_common(rom_name: &str) {
 
     cpu.pc = 0x0100;
     cpu.sp = 0xFFFE;
-    cpu.mem_bus
-        .write_byte(0xFF40, cpu.mem_bus.read_byte(0xFF40) | 0b1000_0000);
+    cpu.mmu
+        .write_byte(0xFF40, cpu.mmu.read_byte(0xFF40) | 0b1000_0000);
     cpu.regs.set_reg(A, 0x01);
     cpu.regs.set_reg(B, 0x00);
     cpu.regs.set_reg(C, 0x13);
@@ -111,7 +110,7 @@ fn test_common(rom_name: &str) {
         // log file
         // gameboy-doctor version
         if LOG {
-            log_queue.push_str(&format!("A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}\n", cpu.regs.get_reg(A), cpu.regs.get_flag_byte(), cpu.regs.get_reg(B), cpu.regs.get_reg(C), cpu.regs.get_reg(D), cpu.regs.get_reg(E), cpu.regs.get_reg(H), cpu.regs.get_reg(L), cpu.sp, cpu.pc, cpu.mem_bus.read_byte(cpu.pc), cpu.mem_bus.read_byte(cpu.pc + 1), cpu.mem_bus.read_byte(cpu.pc + 2), cpu.mem_bus.read_byte(cpu.pc + 3)));
+            log_queue.push_str(&format!("A:{:02X} F:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} SP:{:04X} PC:{:04X} PCMEM:{:02X},{:02X},{:02X},{:02X}\n", cpu.regs.get_reg(A), cpu.regs.get_flag_byte(), cpu.regs.get_reg(B), cpu.regs.get_reg(C), cpu.regs.get_reg(D), cpu.regs.get_reg(E), cpu.regs.get_reg(H), cpu.regs.get_reg(L), cpu.sp, cpu.pc, cpu.mmu.read_byte(cpu.pc), cpu.mmu.read_byte(cpu.pc + 1), cpu.mmu.read_byte(cpu.pc + 2), cpu.mmu.read_byte(cpu.pc + 3)));
         }
         // logdbg version
         // if LOG {
@@ -129,13 +128,13 @@ fn test_common(rom_name: &str) {
         }
 
         // blargg output
-        if cpu.mem_bus.read_byte(0xFF02) == 0x81 {
-            let c: char = cpu.mem_bus.read_byte(0xFF01).into();
+        if cpu.mmu.read_byte(0xFF02) == 0x81 {
+            let c: char = cpu.mmu.read_byte(0xFF01).into();
             blargg_out.push(c);
             if !DEBUG_INSTRUCTIONS {
                 print!("{c}");
             }
-            cpu.mem_bus.write_byte(0xFF02, 0x00);
+            cpu.mmu.write_byte(0xFF02, 0x00);
         }
 
         // breakpoints

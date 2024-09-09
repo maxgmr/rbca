@@ -11,6 +11,7 @@ fn test_ld_n_nn() {
         0x01, 0x12, 0x34, 0x11, 0x56, 0x78, 0x21, 0x9A, 0xBC, 0x31, 0xDE, 0xF0,
     ];
     cpu.load(0x0000, &data);
+    cpu.pc = 0x0000;
     assert_eq!(cpu.pc, 0x0000);
 
     cpu.cycle();
@@ -36,13 +37,13 @@ fn test_ld_hld_a() {
     cpu.regs.set_virt_reg(HL, 0x1234);
     cpu.regs.set_reg(A, 0xDC);
     execute_opcode(&mut cpu, 0x32);
-    assert_eq!(cpu.mem_bus.read_byte(0x1234), 0xDC);
+    assert_eq!(cpu.mmu.read_byte(0x1234), 0xDC);
 }
 
 #[test]
 fn test_bit_b_r() {
     let mut cpu = Cpu::default();
-    cpu.mem_bus.write_byte(0b0101_0101_0101_0101, 0b1010_1010);
+    cpu.mmu.write_byte(0b0101_0101_0101_0101, 0b1010_1010);
 
     let data = [0xCB, 0x7C];
     cpu.load(0x0000, &data);
@@ -94,6 +95,7 @@ fn test_jumps() {
     // (Testing JP nn) Jump to address 0x1234.
     let data_1 = [0xC3, 0x34, 0x12];
     cpu.load(0x0000, &data_1);
+    cpu.pc = 0x0000;
     cpu.cycle();
     assert_eq!(cpu.pc, 0x1234);
 
@@ -152,7 +154,7 @@ fn test_jumps() {
 
     // (Testing JP (HL)) Jump to address 0x2050.
     cpu.regs.set_virt_reg(HL, 0x2050);
-    cpu.mem_bus.write_byte(0x2040, 0xE9);
+    cpu.mmu.write_byte(0x2040, 0xE9);
     cpu.cycle();
     assert_eq!(cpu.pc, 0x2050);
 
@@ -230,6 +232,7 @@ fn test_jumps() {
 #[test]
 fn test_push_pop_nn() {
     let mut cpu = Cpu::new();
+    cpu.pc = 0x0000;
     cpu.regs.set_virt_reg(BC, 0x1234);
     cpu.regs.set_virt_reg(DE, 0x5678);
     cpu.regs.set_virt_reg(HL, 0x9ABC);
@@ -275,23 +278,23 @@ fn test_push_pop_nn() {
 #[test]
 fn test_rst_n() {
     let mut cpu = Cpu::new();
-    cpu.pc = 0xB000;
-    // Push 0xB001 to stack, jump to 0x0000.
-    cpu.mem_bus.write_byte(0xB000, 0xC7);
+    cpu.pc = 0xC000;
+    // Push 0xC001 to stack, jump to 0x0000.
+    cpu.mmu.write_byte(0xC000, 0xC7);
     // Push 0x0001 to stack, jump to 0x0008.
-    cpu.mem_bus.write_byte(0x0000, 0xCF);
+    cpu.mmu.write_byte(0x0000, 0xCF);
     // Push 0x0009 to stack, jump to 0x0010.
-    cpu.mem_bus.write_byte(0x0008, 0xD7);
+    cpu.mmu.write_byte(0x0008, 0xD7);
     // Push 0x0011 to stack, jump to 0x0018.
-    cpu.mem_bus.write_byte(0x0010, 0xDF);
+    cpu.mmu.write_byte(0x0010, 0xDF);
     // Push 0x0019 to stack, jump to 0x0020.
-    cpu.mem_bus.write_byte(0x0018, 0xE7);
+    cpu.mmu.write_byte(0x0018, 0xE7);
     // Push 0x0021 to stack, jump to 0x0028.
-    cpu.mem_bus.write_byte(0x0020, 0xEF);
+    cpu.mmu.write_byte(0x0020, 0xEF);
     // Push 0x0029 to stack, jump to 0x0030.
-    cpu.mem_bus.write_byte(0x0028, 0xF7);
+    cpu.mmu.write_byte(0x0028, 0xF7);
     // Push 0x0031 to stack, jump to 0x0038.
-    cpu.mem_bus.write_byte(0x0030, 0xFF);
+    cpu.mmu.write_byte(0x0030, 0xFF);
     assert_eq!(cpu.sp, 0xFFFE);
 
     cpu.cycle();
@@ -362,7 +365,7 @@ fn test_ld_nn_n() {
     assert_eq!(cpu.regs.get_reg(H), 0x89);
     cpu.cycle();
     assert_eq!(cpu.regs.get_reg(L), 0xAB);
-    assert_eq!(cpu.mem_bus.read_byte(cpu.pc), 0x00);
+    assert_eq!(cpu.mmu.read_byte(cpu.pc), 0x00);
 }
 
 #[test]
@@ -373,12 +376,13 @@ fn test_ld_r1_r2() {
         cpu.regs.set_reg(C, 0x56);
         cpu.regs.set_reg(D, 0x78);
         cpu.regs.set_reg(E, 0x9A);
-        cpu.regs.set_reg(H, 0xBC);
-        cpu.regs.set_reg(L, 0xDE);
+        cpu.regs.set_reg(H, 0xCF);
+        cpu.regs.set_reg(L, 0x00);
     }
 
     let mut cpu = Cpu::new();
     cpu.pc = 0x0000;
+    println!("{}", cpu.mmu.cart.header_info());
 
     for r1 in Target::iter() {
         for r2 in Target::iter() {
@@ -394,7 +398,7 @@ fn test_ld_r1_r2() {
     }
 
     let test_byte: u8 = 0xFE;
-    cpu.mem_bus.write_byte(cpu.regs.get_virt_reg(HL), test_byte);
+    cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), test_byte);
     for r1 in Target::iter() {
         set_default_vals(&mut cpu);
         let prev_pc = cpu.pc;
@@ -406,14 +410,14 @@ fn test_ld_r1_r2() {
 
     for r2 in Target::iter() {
         set_default_vals(&mut cpu);
-        cpu.mem_bus.write_byte(cpu.regs.get_virt_reg(HL), test_byte);
+        cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), test_byte);
         let prev_r2_val = cpu.regs.get_reg(r2);
         let prev_pc = cpu.pc;
 
         ld_hl_r2(&mut cpu, r2);
         assert_eq!(cpu.pc, prev_pc + 1);
         assert_eq!(
-            cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
+            cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)),
             cpu.regs.get_reg(r2)
         );
         assert_eq!(prev_r2_val, cpu.regs.get_reg(r2));
@@ -424,7 +428,7 @@ fn test_ld_r1_r2() {
     cpu.pc = 0x0000;
     cpu.cycle();
     assert_eq!(cpu.pc, 0x0002);
-    assert_eq!(cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)), 0x2A);
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0x2A);
 }
 
 #[test]
@@ -435,12 +439,13 @@ fn test_ld_a_n() {
     cpu.regs.set_reg(C, 0x45);
     cpu.regs.set_reg(D, 0x67);
     cpu.regs.set_reg(E, 0x89);
-    cpu.regs.set_reg(H, 0xAB);
-    cpu.regs.set_reg(L, 0xCD);
-    cpu.mem_bus.write_byte(cpu.regs.get_virt_reg(BC), 0xFE);
-    cpu.mem_bus.write_byte(cpu.regs.get_virt_reg(DE), 0xDC);
-    cpu.mem_bus.write_byte(cpu.regs.get_virt_reg(HL), 0xBA);
-    cpu.mem_bus.write_byte(0x7698, 0x2A);
+    cpu.regs.set_reg(H, 0xC0);
+    cpu.regs.set_reg(L, 0xFF);
+    cpu.regs.reset_flags();
+    cpu.mmu.write_byte(cpu.regs.get_virt_reg(BC), 0xFE);
+    cpu.mmu.write_byte(cpu.regs.get_virt_reg(DE), 0xDC);
+    cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), 0xBA);
+    cpu.mmu.write_byte(0x7698, 0x2A);
     // Put values A, B, C, D, E, H, L, (BC), (DE), (HL), (nn), n into A.
     let data = [
         0x7F, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x0A, 0x1A, 0x7E, 0xFA, 0x98, 0x76, 0x3E, 0x3A,
@@ -459,9 +464,9 @@ fn test_ld_a_n() {
     cpu.cycle();
     assert_eq!(cpu.regs.get_reg(A), 0x89);
     cpu.cycle();
-    assert_eq!(cpu.regs.get_reg(A), 0xAB);
+    assert_eq!(cpu.regs.get_reg(A), 0xC0);
     cpu.cycle();
-    assert_eq!(cpu.regs.get_reg(A), 0xCD);
+    assert_eq!(cpu.regs.get_reg(A), 0xFF);
     cpu.cycle();
     assert_eq!(cpu.regs.get_reg(A), 0xFE);
     cpu.cycle();
@@ -518,34 +523,34 @@ fn test_ld_n_a() {
     cpu.regs.set_virt_reg(HL, 0x6666);
 
     // Make sure that the values at the addresses aren't already 0xFF.
-    cpu.mem_bus.write_2_bytes(0x4444, 0x0000);
-    cpu.mem_bus.write_2_bytes(0x5555, 0x0000);
-    cpu.mem_bus.write_2_bytes(0x6666, 0x0000);
-    cpu.mem_bus.write_2_bytes(0x7777, 0x0000);
+    cpu.mmu.write_2_bytes(0x4444, 0x0000);
+    cpu.mmu.write_2_bytes(0x5555, 0x0000);
+    cpu.mmu.write_2_bytes(0x6666, 0x0000);
+    cpu.mmu.write_2_bytes(0x7777, 0x0000);
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_2_bytes(0x4444), 0x00FF);
-    assert_eq!(cpu.mem_bus.read_2_bytes(0x5555), 0x0000);
+    assert_eq!(cpu.mmu.read_2_bytes(0x4444), 0x00FF);
+    assert_eq!(cpu.mmu.read_2_bytes(0x5555), 0x0000);
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_2_bytes(0x5555), 0x00FF);
-    assert_eq!(cpu.mem_bus.read_2_bytes(0x6666), 0x0000);
+    assert_eq!(cpu.mmu.read_2_bytes(0x5555), 0x00FF);
+    assert_eq!(cpu.mmu.read_2_bytes(0x6666), 0x0000);
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_2_bytes(0x6666), 0x00FF);
-    assert_eq!(cpu.mem_bus.read_2_bytes(0x7777), 0x0000);
+    assert_eq!(cpu.mmu.read_2_bytes(0x6666), 0x00FF);
+    assert_eq!(cpu.mmu.read_2_bytes(0x7777), 0x0000);
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_2_bytes(0x7777), 0x00FF);
+    assert_eq!(cpu.mmu.read_2_bytes(0x7777), 0x00FF);
 }
 
 #[test]
 fn test_ld_a_c_c_a() {
     let mut cpu = Cpu::new();
 
-    cpu.mem_bus.write_byte(0xFF12, 0xFF);
-    cpu.mem_bus.write_byte(0xFF34, 0xEE);
+    cpu.mmu.write_byte(0xFF12, 0xFF);
+    cpu.mmu.write_byte(0xFF34, 0xEE);
     cpu.regs.set_reg(A, 0x00);
     cpu.regs.set_reg(C, 0x12);
-    cpu.mem_bus.write_byte(0x0000, 0xF2);
-    cpu.mem_bus.write_byte(0x0001, 0xE2);
+    cpu.mmu.write_byte(0x0000, 0xF2);
+    cpu.mmu.write_byte(0x0001, 0xE2);
     cpu.pc = 0x0000;
 
     cpu.cycle();
@@ -554,16 +559,16 @@ fn test_ld_a_c_c_a() {
     cpu.regs.set_reg(C, 0x34);
     cpu.cycle();
     assert_eq!(cpu.regs.get_reg(A), 0xFF);
-    assert_eq!(cpu.mem_bus.read_byte(0xFF34), 0xFF);
+    assert_eq!(cpu.mmu.read_byte(0xFF34), 0xFF);
 }
 
 #[test]
 fn test_a_hld() {
     let mut cpu = Cpu::new();
     cpu.regs.set_virt_reg(HL, 0x1234);
-    cpu.mem_bus.write_byte(0x1234, 0xFF);
+    cpu.mmu.write_byte(0x1234, 0xFF);
     cpu.regs.set_reg(A, 0x00);
-    cpu.mem_bus.write_byte(0x0000, 0x3A);
+    cpu.mmu.write_byte(0x0000, 0x3A);
     cpu.pc = 0x0000;
 
     cpu.cycle();
@@ -575,27 +580,27 @@ fn test_a_hld() {
 fn test_a_hli_hli_a() {
     let mut cpu = Cpu::new();
     cpu.regs.set_virt_reg(HL, 0x1234);
-    cpu.mem_bus.write_byte(0x1234, 0x00);
-    cpu.mem_bus.write_byte(0x1235, 0xEE);
-    cpu.mem_bus.write_byte(0x1236, 0x00);
+    cpu.mmu.write_byte(0x1234, 0x00);
+    cpu.mmu.write_byte(0x1235, 0xEE);
+    cpu.mmu.write_byte(0x1236, 0x00);
     cpu.regs.set_reg(A, 0xFF);
-    cpu.mem_bus.write_byte(0x0000, 0x22);
-    cpu.mem_bus.write_byte(0x0001, 0x2A);
-    cpu.mem_bus.write_byte(0x0002, 0x22);
+    cpu.mmu.write_byte(0x0000, 0x22);
+    cpu.mmu.write_byte(0x0001, 0x2A);
+    cpu.mmu.write_byte(0x0002, 0x22);
     cpu.pc = 0x0000;
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(0x1234), 0xFF);
+    assert_eq!(cpu.mmu.read_byte(0x1234), 0xFF);
     assert_eq!(cpu.regs.get_reg(A), 0xFF);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x1235);
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(0x1235), 0xEE);
+    assert_eq!(cpu.mmu.read_byte(0x1235), 0xEE);
     assert_eq!(cpu.regs.get_reg(A), 0xEE);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x1236);
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(0x1236), 0xEE);
+    assert_eq!(cpu.mmu.read_byte(0x1236), 0xEE);
     assert_eq!(cpu.regs.get_reg(A), 0xEE);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x1237);
 }
@@ -604,8 +609,8 @@ fn test_a_hli_hli_a() {
 fn test_ldh_n_a_a_n() {
     let mut cpu = Cpu::new();
     let data = [0xF0, 0x12, 0xE0, 0x34];
-    cpu.mem_bus.write_byte(0xFF12, 0xFF);
-    cpu.mem_bus.write_byte(0xFF34, 0x00);
+    cpu.mmu.write_byte(0xFF12, 0xFF);
+    cpu.mmu.write_byte(0xFF34, 0x00);
     cpu.load(0x0000, &data);
     cpu.regs.set_reg(A, 0x00);
     cpu.pc = 0x0000;
@@ -614,7 +619,7 @@ fn test_ldh_n_a_a_n() {
     assert_eq!(cpu.regs.get_reg(A), 0xFF);
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(0xFF34), 0xFF);
+    assert_eq!(cpu.mmu.read_byte(0xFF34), 0xFF);
 }
 
 #[test]
@@ -622,7 +627,8 @@ fn test_ld_sp_hl() {
     let mut cpu = Cpu::new();
     cpu.regs.set_virt_reg(HL, 0x1234);
     cpu.sp = 0x0000;
-    cpu.mem_bus.write_byte(0x0000, 0xF9);
+    cpu.mmu.write_byte(0x0000, 0xF9);
+    cpu.pc = 0x0000;
 
     cpu.cycle();
     assert_eq!(cpu.sp, 0x1234);
@@ -635,10 +641,11 @@ fn test_ld_hl_sp_n() {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, true);
+    cpu.pc = 0x0000;
     assert_eq!(cpu.sp, 0xFFFE);
 
     // Set HL = SP (0xFFFE) + 0x01.
-    cpu.mem_bus.write_2_bytes(0x0000, 0x01F8);
+    cpu.mmu.write_2_bytes(0x0000, 0x01F8);
     cpu.cycle();
     assert_eq!(cpu.regs.get_virt_reg(HL), 0xFFFF);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
@@ -648,7 +655,7 @@ fn test_ld_hl_sp_n() {
 
     cpu.sp = 0xF00E;
     // Set HL = SP (0xF00E) + 0x02; should set H flag.
-    cpu.mem_bus.write_2_bytes(0x0002, 0x02F8);
+    cpu.mmu.write_2_bytes(0x0002, 0x02F8);
     cpu.cycle();
     assert_eq!(cpu.regs.get_virt_reg(HL), 0xF010);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
@@ -658,7 +665,7 @@ fn test_ld_hl_sp_n() {
 
     cpu.sp = 0xF0D0;
     // Set HL = SP (0xF0D0) + 0x51; should set C flag.
-    cpu.mem_bus.write_2_bytes(0x0004, 0x51F8);
+    cpu.mmu.write_2_bytes(0x0004, 0x51F8);
     cpu.cycle();
     assert_eq!(cpu.regs.get_virt_reg(HL), 0xF121);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
@@ -668,7 +675,7 @@ fn test_ld_hl_sp_n() {
 
     cpu.sp = 0xF0DC;
     // Set HL = SP (0xF0DC) + 0x34; should set H & C flags.
-    cpu.mem_bus.write_2_bytes(0x0006, 0x34F8);
+    cpu.mmu.write_2_bytes(0x0006, 0x34F8);
     cpu.cycle();
     assert_eq!(cpu.regs.get_virt_reg(HL), 0xF110);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
@@ -681,13 +688,14 @@ fn test_ld_hl_sp_n() {
 fn test_ld_nn_sp() {
     let mut cpu = Cpu::new();
     cpu.sp = 0x1234;
+    cpu.pc = 0x0000;
     // Put 0x1234 at (0x4321).
     let data = [0x08, 0x21, 0x43];
     cpu.load(0x0000, &data);
-    cpu.mem_bus.write_2_bytes(0x1234, 0x0000);
+    cpu.mmu.write_2_bytes(0x1234, 0x0000);
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(0x4321), 0x34);
-    assert_eq!(cpu.mem_bus.read_byte(0x4322), 0x12);
+    assert_eq!(cpu.mmu.read_byte(0x4321), 0x34);
+    assert_eq!(cpu.mmu.read_byte(0x4322), 0x12);
 }
 
 #[test]
@@ -704,7 +712,7 @@ fn test_add_a_n() {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, false);
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.mem_bus.write_byte(0x9ABC, 0x0E);
+    cpu.mmu.write_byte(0x9ABC, 0x0E);
     // Add A, B, C, D, E, H, L, (HL), n to A
     let data = [0x87, 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0xC6, 0x01];
     cpu.load(0x0000, &data);
@@ -785,7 +793,8 @@ fn test_adc_a_n() {
     cpu.regs.set_reg(E, 0x0F);
     cpu.regs.set_reg(H, 0x9F);
     cpu.regs.set_reg(L, 0xFF);
-    cpu.mem_bus.write_byte(0x9FFF, 0xFF);
+    cpu.regs.set_flag(RegFlag::C, false);
+    cpu.mmu.write_byte(0x9FFF, 0xFF);
     let data = [0x8F, 0x88, 0x89, 0x8A, 0x8B, 0x8C, 0x8D, 0x8E, 0xCE, 0x01];
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
@@ -864,7 +873,7 @@ fn test_sub_n() {
     cpu.regs.set_reg(E, 0x00);
     cpu.regs.set_reg(H, 0xCD);
     cpu.regs.set_reg(L, 0x67);
-    cpu.mem_bus.write_byte(0xCD67, 0x02);
+    cpu.mmu.write_byte(0xCD67, 0x02);
     let data = [0x97, 0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0xD6, 0x01, 0x96];
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
@@ -944,7 +953,8 @@ fn test_sbc_n() {
     cpu.regs.set_reg(E, 0xFF);
     cpu.regs.set_reg(H, 0xFF);
     cpu.regs.set_reg(L, 0x01);
-    cpu.mem_bus.write_byte(0xFF01, 0x03);
+    cpu.regs.reset_flags();
+    cpu.mmu.write_byte(0xFF01, 0x03);
     let data = [0x9F, 0x98, 0x99, 0x9A, 0x9B, 0x9C, 0x9D, 0xDE, 0x02, 0x9E];
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
@@ -1025,7 +1035,7 @@ fn test_and_n() {
     cpu.regs.set_reg(E, 0b1110_1111);
     cpu.regs.set_reg(H, 0b1110_0000);
     cpu.regs.set_reg(L, 0b0111_0110);
-    cpu.mem_bus.write_byte(0b0110_0000_0111_0110, 0b0000_1111);
+    cpu.mmu.write_byte(0b0110_0000_0111_0110, 0b0000_1111);
     let data = [
         0xA7,
         0xA0,
@@ -1100,7 +1110,7 @@ fn test_or_n() {
     cpu.regs.set_reg(E, 0b0010_1000);
     cpu.regs.set_reg(H, 0b0110_0000);
     cpu.regs.set_reg(L, 0b0000_0000);
-    cpu.mem_bus.write_byte(0b0110_0000_0000_0000, 0b1111_0000);
+    cpu.mmu.write_byte(0b0110_0000_0000_0000, 0b1111_0000);
     let data = [
         0xB7,
         0xB0,
@@ -1170,7 +1180,7 @@ fn test_xor_n() {
     cpu.regs.set_reg(E, 0b0000_1010); // 0b0110_0010
     cpu.regs.set_reg(H, 0b1110_0100); // 0b1000_0110
     cpu.regs.set_reg(L, 0b0000_0011); // 0b1000_0101
-    cpu.mem_bus.write_byte(0b0110_0100_0000_0011, 0b1111_0000); // 0b0111_0001
+    cpu.mmu.write_byte(0b0110_0100_0000_0011, 0b1111_0000); // 0b0111_0001
     let data = [
         0xAF,
         0xA8,
@@ -1241,7 +1251,7 @@ fn test_cp_n() {
     cpu.regs.set_reg(H, 0xC8);
     cpu.regs.set_reg(L, 0xE0);
     let data = [0xBF, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xFE, 0x00, 0xBE];
-    cpu.mem_bus.write_byte(0xC8E0, 0xF8);
+    cpu.mmu.write_byte(0xC8E0, 0xF8);
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
 
@@ -1315,7 +1325,7 @@ fn test_inc_dec_n() {
     cpu.regs.set_reg(E, 0x1F);
     cpu.regs.set_reg(H, 0xD0);
     cpu.regs.set_reg(L, 0x11);
-    cpu.mem_bus.write_byte(0xD112, 0x23);
+    cpu.mmu.write_byte(0xD112, 0x23);
     let data = [
         0x3C, 0x04, 0x0C, 0x14, 0x1C, 0x24, 0x2C, 0x34, 0x3D, 0x05, 0x0D, 0x15, 0x1D, 0x25, 0x2D,
         0x35,
@@ -1359,7 +1369,7 @@ fn test_inc_dec_n() {
     assert!(!cpu.regs.get_flag(RegFlag::H));
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(0xF112), 0x24);
+    assert_eq!(cpu.mmu.read_byte(0xF112), 0x24);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 
     // Start DEC n test
@@ -1404,7 +1414,7 @@ fn test_inc_dec_n() {
 
     cpu.regs.set_virt_reg(HL, 0xD112);
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(0xD112), 0x23);
+    assert_eq!(cpu.mmu.read_byte(0xD112), 0x23);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 }
 
@@ -1522,6 +1532,7 @@ fn test_inc_dec_nn() {
     // INC BC, DE, HL, SP; DEC BC, DE, HL, SP.
     let data = [0x03, 0x13, 0x23, 0x33, 0x0B, 0x1B, 0x2B, 0x3B];
     cpu.load(0x0000, &data);
+    cpu.pc = 0x0000;
 
     cpu.cycle();
     assert_eq!(cpu.regs.get_virt_reg(BC), 0x0020);
@@ -1558,7 +1569,7 @@ fn test_swap_n() {
     cpu.regs.set_reg(E, 0b0110_1001);
     cpu.regs.set_reg(H, 0b1010_0101);
     cpu.regs.set_reg(L, 0b0100_0000);
-    cpu.mem_bus.write_byte(0b1010_0101_0100_0000, 0xAB);
+    cpu.mmu.write_byte(0xC888, 0xAB);
     let data = [
         0xCB, 0x37, 0xCB, 0x30, 0xCB, 0x31, 0xCB, 0x32, 0xCB, 0x33, 0xCB, 0x34, 0xCB, 0x35, 0xCB,
         0x36,
@@ -1604,10 +1615,10 @@ fn test_swap_n() {
     assert_eq!(cpu.regs.get_reg(L), 0b0000_0100);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.regs.set_reg(H, 0b1010_0101);
-    cpu.regs.set_reg(L, 0b0100_0000);
+    cpu.regs.set_reg(H, 0xC8);
+    cpu.regs.set_reg(L, 0x88);
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(0b1010_0101_0100_0000), 0xBA);
+    assert_eq!(cpu.mmu.read_byte(0xC888), 0xBA);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 }
 
@@ -1616,6 +1627,7 @@ fn test_daa() {
     let mut cpu = Cpu::new();
     let data = [0x27; 10];
     cpu.load(0x0000, &data);
+    cpu.pc = 0x0000;
 
     // Test convert 0x73 + 0x23 = 0x96; no change necessary.
     cpu.regs.reset_flags();
@@ -1801,8 +1813,8 @@ fn test_ccf_scf() {
 fn test_good_stop() {
     let mut cpu = Cpu::new();
     cpu.pc = 0x0000;
-    cpu.mem_bus.write_byte(0x0000, 0x10);
-    cpu.mem_bus.write_byte(0x0001, 0x00);
+    cpu.mmu.write_byte(0x0000, 0x10);
+    cpu.mmu.write_byte(0x0001, 0x00);
     cpu.cycle();
 }
 
@@ -1811,8 +1823,8 @@ fn test_good_stop() {
 fn test_bad_stop() {
     let mut cpu = Cpu::new();
     cpu.pc = 0x0000;
-    cpu.mem_bus.write_byte(0x0000, 0x10);
-    cpu.mem_bus.write_byte(0x0001, 0xFF);
+    cpu.mmu.write_byte(0x0000, 0x10);
+    cpu.mmu.write_byte(0x0001, 0xFF);
     cpu.cycle();
 }
 
@@ -2130,18 +2142,18 @@ fn test_rotates() {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.mem_bus.write_byte(address, 0b0101_0011);
+    cpu.mmu.write_byte(address, 0b0101_0011);
 
     // Test RLC
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(address), 0b1010_0110);
+    assert_eq!(cpu.mmu.read_byte(address), 0b1010_0110);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(address), 0b0100_1101);
+    assert_eq!(cpu.mmu.read_byte(address), 0b0100_1101);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     // Test RL
@@ -2150,18 +2162,18 @@ fn test_rotates() {
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, true);
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(address), 0b1001_1011);
+    assert_eq!(cpu.mmu.read_byte(address), 0b1001_1011);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(address), 0b0011_0110);
+    assert_eq!(cpu.mmu.read_byte(address), 0b0011_0110);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(address), 0b0110_1101);
+    assert_eq!(cpu.mmu.read_byte(address), 0b0110_1101);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     // Test RRC
@@ -2170,14 +2182,14 @@ fn test_rotates() {
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, false);
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(address), 0b1011_0110);
+    assert_eq!(cpu.mmu.read_byte(address), 0b1011_0110);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(address), 0b0101_1011);
+    assert_eq!(cpu.mmu.read_byte(address), 0b0101_1011);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     // Test RR
@@ -2186,27 +2198,27 @@ fn test_rotates() {
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, false);
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(address), 0b0010_1101);
+    assert_eq!(cpu.mmu.read_byte(address), 0b0010_1101);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(address), 0b1001_0110);
+    assert_eq!(cpu.mmu.read_byte(address), 0b1001_0110);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(address), 0b1100_1011);
+    assert_eq!(cpu.mmu.read_byte(address), 0b1100_1011);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     cpu.cycle();
-    assert_eq!(cpu.mem_bus.read_byte(address), 0b0110_0101);
+    assert_eq!(cpu.mmu.read_byte(address), 0b0110_0101);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     // Test zero flag
     cpu.regs.reset_flags();
-    cpu.mem_bus.write_byte(address, 0x00);
+    cpu.mmu.write_byte(address, 0x00);
     cpu.cycle();
     assert!(cpu.regs.get_flag(RegFlag::Z));
 
@@ -2276,13 +2288,9 @@ fn test_sla_sra_srl() {
     cpu.cycle();
     assert_eq!(cpu.regs.get_reg(L), 0b1111_1100);
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.mem_bus
-        .write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
+    cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b0101_0100
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b0101_0100);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     // SRA n
@@ -2313,13 +2321,9 @@ fn test_sla_sra_srl() {
     cpu.cycle();
     assert_eq!(cpu.regs.get_reg(L), 0b0011_1111);
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.mem_bus
-        .write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
+    cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1101_0101
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1101_0101);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     // SRL n
@@ -2357,13 +2361,9 @@ fn test_sla_sra_srl() {
     cpu.cycle();
     assert_eq!(cpu.regs.get_reg(L), 0b0011_1111);
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.mem_bus
-        .write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
+    cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b0101_0101
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b0101_0101);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 }
 
@@ -2403,48 +2403,23 @@ fn test_set_b_r() {
         }
     }
 
-    cpu.mem_bus
-        .write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
+    cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1010_1011,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1011,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1010_1011,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1011,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1010_1111,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1111,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1010_1111,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1111,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1011_1111,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1011_1111,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1011_1111,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1011_1111,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1111_1111,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1111_1111,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1111_1111,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1111_1111,);
 }
 
 #[test]
@@ -2483,48 +2458,23 @@ fn test_res_b_r() {
         }
     }
 
-    cpu.mem_bus
-        .write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
+    cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1010_1010,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1010,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1010_1000,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1000,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1010_1000,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1000,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1010_0000,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_0000,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1010_0000,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_0000,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1000_0000,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1000_0000,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b1000_0000,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1000_0000,);
     cpu.cycle();
-    assert_eq!(
-        cpu.mem_bus.read_byte(cpu.regs.get_virt_reg(HL)),
-        0b0000_0000,
-    );
+    assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b0000_0000,);
 }
 
 #[test]
@@ -2545,12 +2495,12 @@ fn test_call_cc_nn() {
         0xC4, 0xFF, 0xFF, 0xCC, 0xFF, 0xFF, 0xD4, 0xFF, 0xFF, 0xDC, 0xFF, 0xFF, 0xC4, 0x00, 0x01,
     ];
     cpu.load(0x0000, &data);
-    cpu.mem_bus.write_byte(0x0100, 0xCC);
-    cpu.mem_bus.write_2_bytes(0x0101, 0x0200);
-    cpu.mem_bus.write_byte(0x0200, 0xD4);
-    cpu.mem_bus.write_2_bytes(0x0201, 0x0300);
-    cpu.mem_bus.write_byte(0x0300, 0xDC);
-    cpu.mem_bus.write_2_bytes(0x0301, 0x0400);
+    cpu.mmu.write_byte(0x0100, 0xCC);
+    cpu.mmu.write_2_bytes(0x0101, 0x0200);
+    cpu.mmu.write_byte(0x0200, 0xD4);
+    cpu.mmu.write_2_bytes(0x0201, 0x0300);
+    cpu.mmu.write_byte(0x0300, 0xDC);
+    cpu.mmu.write_2_bytes(0x0301, 0x0400);
     cpu.pc = 0x0000;
 
     // Conditions not met- should not jump.
@@ -2593,9 +2543,9 @@ fn test_ret() {
     cpu.push_stack(0x9ABC);
     cpu.push_stack(0x5678);
     cpu.push_stack(0x1234);
-    cpu.mem_bus.write_byte(0x0000, 0xC9);
-    cpu.mem_bus.write_byte(0x1234, 0xC9);
-    cpu.mem_bus.write_byte(0x5678, 0xC9);
+    cpu.mmu.write_byte(0x0000, 0xC9);
+    cpu.mmu.write_byte(0x1234, 0xC9);
+    cpu.mmu.write_byte(0x5678, 0xC9);
     cpu.pc = 0x0000;
 
     cpu.cycle();
@@ -2615,9 +2565,9 @@ fn test_ret_cc() {
     cpu.push_stack(0x0200);
     cpu.push_stack(0x0100);
     cpu.load(0x0000, &data);
-    cpu.mem_bus.write_byte(0x0100, 0xC8);
-    cpu.mem_bus.write_byte(0x0200, 0xD0);
-    cpu.mem_bus.write_byte(0x0300, 0xD8);
+    cpu.mmu.write_byte(0x0100, 0xC8);
+    cpu.mmu.write_byte(0x0200, 0xD0);
+    cpu.mmu.write_byte(0x0300, 0xD8);
     cpu.pc = 0x0000;
 
     // Conditions not met- should not jump.
@@ -2654,7 +2604,7 @@ fn test_reti() {
     let mut cpu = Cpu::new();
     cpu.push_stack(0x1234);
     cpu.interrupts_enabled = false;
-    cpu.mem_bus.write_byte(0x0000, 0xD9);
+    cpu.mmu.write_byte(0x0000, 0xD9);
     cpu.pc = 0x0000;
 
     let initial_sp = cpu.sp;

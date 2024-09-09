@@ -6,6 +6,7 @@ authors = ["Max Gilmour"]
 repository = "https://github.com/maxgmr/rbca"
 
 [dependencies]
+camino = "1.1"
 strum = "0.26"
 strum_macros = "0.26"
 

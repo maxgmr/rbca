@@ -1,5 +1,7 @@
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign};
+
 /// For single-byte I/O registers whose bits act like flags.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 pub struct Flags {
     byte: u8,
 }
@@ -33,6 +35,45 @@ impl Flags {
     pub fn set<F: FlagsEnum>(&mut self, flag: F, value: bool) {
         let pos = flag.val().trailing_zeros();
         self.byte = (self.byte & !(0b1 << pos)) | ((if value { 1 } else { 0 }) << pos)
+    }
+}
+impl BitAnd for Flags {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.byte & rhs.byte;
+        self
+    }
+}
+impl BitAndAssign for Flags {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.byte &= rhs.byte;
+    }
+}
+impl BitOr for Flags {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        self.byte | rhs.byte;
+        self
+    }
+}
+impl BitOrAssign for Flags {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.byte |= rhs.byte;
+    }
+}
+impl BitXor for Flags {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        self.byte ^ rhs.byte;
+        self
+    }
+}
+impl BitXorAssign for Flags {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        self.byte ^= rhs.byte;
     }
 }
 

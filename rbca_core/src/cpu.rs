@@ -1,13 +1,19 @@
 //! All functionality related to the emulated CPU of the Game Boy.
 use std::default::Default;
 
-use crate::{instructions::execute_opcode, MemoryBus, Registers};
+use camino::{Utf8Path, Utf8PathBuf};
+
+use crate::{
+    instructions::execute_opcode,
+    Mmu, RegFlag, Registers,
+    Target::{A, B, C, D, E, H, L},
+};
 
 const INTERRUPT_FLAG_REGISTER_ADDR: u16 = 0xFF0F;
 const INTERRUPT_ENABLE_REGISTER_ADDR: u16 = 0xFFFF;
 
 /// The emulated CPU of the Game Boy.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Cpu {
     /// Registers
     pub regs: Registers,
@@ -15,11 +21,12 @@ pub struct Cpu {
     pub pc: u16,
     /// Stack pointer
     pub sp: u16,
-    /// Memory
-    pub mem_bus: MemoryBus,
+    /// MMU
+    pub mmu: Mmu,
     /// Halted
     pub is_halted: bool,
     /// Stopped
+    // TODO
     pub is_stopped: bool,
     /// Countdown until interrupts are disabled.
     pub di_countdown: usize,
@@ -29,9 +36,73 @@ pub struct Cpu {
     pub interrupts_enabled: bool,
 }
 impl Cpu {
-    /// Create a new [Cpu].
+    /// Create a new [Cpu] with no boot ROM or cartridge.
     pub fn new() -> Self {
-        Self::default()
+        Self::new_no_boot_helper(None::<Utf8PathBuf>)
+    }
+
+    /// Create a new [Cpu] with no boot ROM.
+    pub fn new_cart<P: AsRef<Utf8Path>>(cart_path: P) -> Self {
+        Self::new_no_boot_helper(Some(cart_path))
+    }
+
+    /// Create a new [Cpu] with no cartridge.
+    pub fn new_boot<P: AsRef<Utf8Path>>(boot_rom_path: P) -> Self {
+        Self::new_with_boot_helper(None, boot_rom_path)
+    }
+
+    /// Create a new [Cpu] with a cartridge and a boot ROM.
+    pub fn new_boot_cart<P: AsRef<Utf8Path>>(cart_path: P, boot_rom_path: P) -> Self {
+        Self::new_with_boot_helper(Some(cart_path), boot_rom_path)
+    }
+
+    fn new_with_boot_helper<P: AsRef<Utf8Path>>(cart_path: Option<P>, boot_rom_path: P) -> Self {
+        // TODO random vals
+        Self {
+            regs: Registers::default(),
+            pc: 0x0000,
+            sp: 0x0000,
+            mmu: if let Some(cp) = cart_path {
+                Mmu::new_boot_cart(cp, boot_rom_path)
+            } else {
+                Mmu::new_boot(boot_rom_path)
+            },
+            is_halted: false,
+            is_stopped: false,
+            ei_countdown: 0,
+            di_countdown: 0,
+            interrupts_enabled: false,
+        }
+    }
+
+    fn new_no_boot_helper<P: AsRef<Utf8Path>>(cart_path: Option<P>) -> Self {
+        let mut cpu = Self {
+            regs: Registers::default(),
+            pc: 0x0100,
+            sp: 0xFFFE,
+            mmu: if let Some(cp) = cart_path {
+                Mmu::new_cart(cp)
+            } else {
+                Mmu::new()
+            },
+            is_halted: false,
+            is_stopped: false,
+            ei_countdown: 0,
+            di_countdown: 0,
+            interrupts_enabled: false,
+        };
+        cpu.regs.set_reg(A, 0x01);
+        cpu.regs.set_reg(B, 0x00);
+        cpu.regs.set_reg(C, 0x13);
+        cpu.regs.set_reg(D, 0x00);
+        cpu.regs.set_reg(E, 0xD8);
+        cpu.regs.set_reg(H, 0x01);
+        cpu.regs.set_reg(L, 0x4D);
+        cpu.regs.set_flag(RegFlag::Z, true);
+        cpu.regs.set_flag(RegFlag::N, false);
+        cpu.regs.set_flag(RegFlag::H, true);
+        cpu.regs.set_flag(RegFlag::C, true);
+        cpu
     }
 
     /// Perform one cycle. Return number of T-cycles taken.
@@ -44,11 +115,11 @@ impl Cpu {
         } else if self.is_halted {
             4
         } else {
-            let opcode = self.mem_bus.read_byte(self.pc);
+            let opcode = self.mmu.read_byte(self.pc);
             execute_opcode(self, opcode)
         };
 
-        self.mem_bus.cycle(t_cycles)
+        self.mmu.cycle(t_cycles)
     }
 
     // Handle interrupts
@@ -57,8 +128,8 @@ impl Cpu {
             return 0;
         }
 
-        let interrupt_enable_register = self.mem_bus.read_byte(INTERRUPT_ENABLE_REGISTER_ADDR);
-        let interrupt_flag_register = self.mem_bus.read_byte(INTERRUPT_FLAG_REGISTER_ADDR);
+        let interrupt_enable_register = self.mmu.read_byte(INTERRUPT_ENABLE_REGISTER_ADDR);
+        let interrupt_flag_register = self.mmu.read_byte(INTERRUPT_FLAG_REGISTER_ADDR);
         let interrupt_activated = interrupt_enable_register & interrupt_flag_register;
         if interrupt_activated == 0 {
             return 0;
@@ -75,7 +146,7 @@ impl Cpu {
         if offset >= 5 {
             panic!("Invalid interrupt triggered: {:#010b}", interrupt_activated);
         }
-        self.mem_bus.write_byte(
+        self.mmu.write_byte(
             INTERRUPT_FLAG_REGISTER_ADDR,
             interrupt_flag_register & !(0b1 << offset),
         );
@@ -107,46 +178,36 @@ impl Cpu {
     #[cfg(test)]
     pub fn load(&mut self, start_index: u16, data: &[u8]) {
         for (i, _) in data.iter().enumerate() {
-            self.mem_bus.write_byte(start_index + (i as u16), data[i]);
+            self.mmu.write_byte(start_index + (i as u16), data[i]);
         }
     }
 
     /// Get next byte.
     pub fn get_next_byte(&mut self) -> u8 {
-        self.mem_bus.read_byte(self.pc + 1)
+        self.mmu.read_byte(self.pc + 1)
     }
 
     /// Get next two bytes (little-endian).
     pub fn get_next_2_bytes(&mut self) -> u16 {
-        self.mem_bus.read_2_bytes(self.pc + 1)
+        self.mmu.read_2_bytes(self.pc + 1)
     }
 
     /// Push to stack.
     pub fn push_stack(&mut self, value: u16) {
         self.sp = self.sp.wrapping_sub(2);
-        self.mem_bus.write_2_bytes(self.sp, value);
+        self.mmu.write_2_bytes(self.sp, value);
     }
 
     /// Pop from stack.
     pub fn pop_stack(&mut self) -> u16 {
-        let popped_val = self.mem_bus.read_2_bytes(self.sp);
-        self.sp += 2;
+        let popped_val = self.mmu.read_2_bytes(self.sp);
+        self.sp = self.sp.wrapping_add(2);
         popped_val
     }
 }
 impl Default for Cpu {
     fn default() -> Self {
-        Self {
-            regs: Registers::default(),
-            pc: 0x0000,
-            sp: 0xFFFE,
-            mem_bus: MemoryBus::new(),
-            is_halted: false,
-            is_stopped: false,
-            ei_countdown: 0,
-            di_countdown: 0,
-            interrupts_enabled: false,
-        }
+        Self::new()
     }
 }
 
@@ -161,6 +222,7 @@ mod tests {
         let mut cpu = Cpu::new();
         let data = [0x01, 0x23, 0x45, 0x67];
         cpu.load(0x0000, &data);
+        cpu.pc = 0x0000;
         assert_eq!(cpu.get_next_2_bytes(), 0x4523);
     }
 }

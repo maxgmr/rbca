@@ -2,7 +2,7 @@ use std::default::Default;
 
 use crate::{io_registers::If, Flags, FlagsEnum};
 
-const LY_STUBBED: bool = true;
+const LY_STUBBED: bool = false;
 
 /// Width of the Game Boy display in pixels.
 pub const DISPLAY_WIDTH: usize = 160;
@@ -23,6 +23,10 @@ pub struct PPU {
     pub data_output: [u8; DISPLAY_WIDTH * DISPLAY_HEIGHT * 3],
     /// Clone of interrupt flags to keep track of any interrupts set by the PPU.
     pub interrupt_flags: Flags,
+    /// 8KiB Video RAM (VRAM).
+    vram: [u8; 0x2000],
+    // Object attribute memory.
+    oam: [u8; 0x00A0],
     // Clock to keep track of timing while in a given PPU mode.
     mode_clock: u32,
     // [0xFF40]
@@ -75,6 +79,8 @@ impl PPU {
         Self {
             data_output: [0x00; DISPLAY_WIDTH * DISPLAY_HEIGHT * 3],
             interrupt_flags: Flags::new(0b0000_0000),
+            vram: [0x00; 0x2000],
+            oam: [0x00; 0x00A0],
             mode_clock: 0,
             lcd_control: Flags::new(0b0101_1000),
             lcd_y_coord: 0b0000_0000,
@@ -95,74 +101,71 @@ impl PPU {
         }
     }
 
-    /// Directly retrieve the byte at the given address. Not recommended.
+    /// Directly read the byte of a given address.
     pub fn read_byte(&self, address: u16) -> u8 {
         match address {
-            0x0000 => self.lcd_control.read_byte(),
-            0x0001 => self.lcd_status.read_byte(),
-            0x0002 => self.bg_view_y,
-            0x0003 => self.bg_view_x,
-            0x0004 => {
+            0x8000..=0x9FFF => self.vram[address as usize - 0x8000],
+            0xFE00..=0xFE9F => self.oam[address as usize - 0xFE00],
+            0xFF40 => self.lcd_control.read_byte(),
+            0xFF41 => self.lcd_status.read_byte(),
+            0xFF42 => self.bg_view_y,
+            0xFF43 => self.bg_view_x,
+            0xFF44 => {
                 if LY_STUBBED {
                     0x90
                 } else {
                     self.lcd_y_coord
                 }
             }
-            0x0005 => self.ly_compare,
-            // OAM DMA transfer is write only
-            0x0006 => 0x00,
-            0x0007 => self.bg_palette.read_byte(),
-            0x0008 => self.obj_palette_0.read_byte(),
-            0x0009 => self.obj_palette_1.read_byte(),
-            0x000A => self.win_y,
-            0x000B => self.win_x,
-            0x000C => 0xFF,
-            // CGB only - prepare speed switch
-            0x000D => 0xFF,
-            0x000E => 0xFF,
+            0xFF45 => self.ly_compare,
+            0xFF46 => 0xFF,
+            0xFF47 => self.bg_palette.read_byte(),
+            0xFF48 => self.obj_palette_0.read_byte(),
+            0xFF49 => self.obj_palette_1.read_byte(),
+            0xFF4A => self.win_y,
+            0xFF4B => self.win_x,
             // CGB only
-            0x000F => 0xFF,
-            _ => unimplemented!("Unimplemented PPU address: {:#04X}", address),
+            0xFF4C => 0xFF,
+            0xFF4D => 0xFF,
+            0xFF4E => 0xFF,
+            0xFF4F => 0xFF,
+            0xFF51..=0xFF55 | 0xFF68..=0xFF6B => 0xFF,
+            _ => panic!("PPU: read illegal address {:#06X}.", address),
         }
     }
 
     /// Directly replace the byte at the given address. Not recommended.
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
-            0x0000 => self.lcd_control.write_byte(value),
-            0x0001 => self.lcd_status.write_byte(value),
-            0x0002 => self.bg_view_y = value,
-            0x0003 => self.bg_view_x = value,
-            // LCD Y coord is read only
-            0x0004 => {}
-            0x0005 => {
+            0x8000..=0x9FFF => self.vram[address as usize - 0x8000] = value,
+            0xFE00..=0xFE9F => self.oam[address as usize - 0xFE00] = value,
+            0xFF40 => self.lcd_control.write_byte(value),
+            0xFF41 => self.lcd_status.write_byte(value),
+            0xFF42 => self.bg_view_y = value,
+            0xFF43 => self.bg_view_x = value,
+            0xFF44 => {}
+            0xFF45 => {
                 self.ly_compare = value;
                 self.check_lyc_ly();
             }
-            0x0007 => self.bg_palette.write_byte(value),
-            0x0008 => self.obj_palette_0.write_byte(value),
-            0x0009 => self.obj_palette_1.write_byte(value),
-            0x000A => self.win_y = value,
-            0x000B => self.win_x = value,
-            0x000C => {}
-            // CGB only - prepare speed switch
-            0x000D => {}
-            0x000E => {}
+            0xFF46 => {}
+            0xFF47 => self.bg_palette.write_byte(value),
+            0xFF48 => self.obj_palette_0.write_byte(value),
+            0xFF49 => self.obj_palette_1.write_byte(value),
+            0xFF4A => self.win_y = value,
+            0xFF4B => self.win_x = value,
             // CGB only
-            0x000F => {}
-            _ => unimplemented!("Unimplemented PPU address: {:#04X}", address),
+            0xFF4C => {}
+            0xFF4D => {}
+            0xFF4E => {}
+            0xFF4F => {}
+            0xFF51..=0xFF55 | 0xFF68..=0xFF6B => {}
+            _ => panic!("PPU: write illegal address {:#06X}.", address),
         }
     }
 
     /// Advance PPU state equal to the number of t-cycles the CPU advanced.
-    pub fn cycle(
-        &mut self,
-        t_cycles: u32,
-        bg_map: &[u8; 0x0400],
-        win_map: &[u8; 0x0400],
-        tile_data: &[u8; 0x2000],
-    ) {
+    pub fn cycle(&mut self, t_cycles: u32) {
         if !self.lcd_control.get(Lcdc::LcdPpuEnable) {
             return;
         }
@@ -182,7 +185,7 @@ impl PPU {
             // Drawing pixels. Send pixels to the LCD. OAM (except by DMA) & VRAM inaccessible.
             3 => {
                 if self.mode_clock >= DRAW_PX_CYCLES {
-                    self.render_scanline(bg_map, win_map, tile_data);
+                    self.render_scanline();
                     // Enter HBlank mode
                     if self.lcd_status.get(Stat::Mode0IntSelect) {
                         self.interrupt_flags.set(If::Lcd, true);
@@ -237,92 +240,82 @@ impl PPU {
     }
 
     /// Render a line of pixels on the LCD.
-    fn render_scanline(
-        &mut self,
-        bg_map: &[u8; 0x0400],
-        win_map: &[u8; 0x0400],
-        tile_data: &[u8; 0x2000],
-    ) {
+    fn render_scanline(&mut self) {
         // Reset line
         for x in 0..DISPLAY_WIDTH {
             self.set_pixel(x, self.lcd_y_coord as usize, 255);
         }
-        self.render_bg_line(bg_map, win_map, tile_data);
-        self.render_obj_line(bg_map, win_map, tile_data);
+        self.render_bg_line();
+        self.render_obj_line();
     }
 
     /// Draw the background layer on the LCD.
-    fn render_bg_line(
-        &mut self,
-        bg_map: &[u8; 0x0400],
-        win_map: &[u8; 0x0400],
-        tile_data: &[u8; 0x2000],
-    ) {
-        let bg_map_y = self.lcd_y_coord.wrapping_add(self.bg_view_y);
-
-        // Check whether the current scanline is located within the window.
-        let row_is_window =
-            self.lcd_control.get(Lcdc::WindowEnable) && (self.lcd_y_coord >= self.win_y);
-
-        for x in 0..(DISPLAY_WIDTH as u8) {
-            let bg_map_x = x.wrapping_add(self.bg_view_x);
-
-            // Check whether the current column is located within the window.
-            let col_is_window =
-                self.lcd_control.get(Lcdc::WindowEnable) && (x >= self.win_x.wrapping_sub(7));
-
-            let is_window = row_is_window && col_is_window;
-
-            let tile_num = if is_window {
-                let x_addr_offset = x.wrapping_sub(self.win_x.wrapping_sub(7));
-                let y_addr_offset = self.lcd_y_coord.wrapping_sub(self.win_y);
-                let addr = Self::get_map_addr(x_addr_offset, y_addr_offset);
-                win_map[addr]
-            } else {
-                let addr = Self::get_map_addr(bg_map_x, bg_map_y);
-                bg_map[addr]
-            };
-
-            // Each tile occupies 16 bytes.
-            // https://gbdev.io/pandocs/Tile_Data.html
-            let tile_data_start_addr =
-                if self.lcd_control.get(Lcdc::BGWindowTileDataArea) || tile_num > 0x7F {
-                    (tile_num as u16) << 4
-                } else {
-                    0x1000 | ((tile_num as u16) << 4)
-                };
-
-            // Each line of the tile occupies 2 bytes.
-            let y_tile_data_addr_offset = ((if is_window {
-                self.lcd_y_coord - self.win_y
-            } else {
-                bg_map_y
-            } as u16)
-                % 8)
-                * 2;
-
-            let left_byte_addr = tile_data_start_addr + y_tile_data_addr_offset;
-            let right_byte_addr = left_byte_addr + 1;
-
-            let left_byte = tile_data[left_byte_addr as usize];
-            let right_byte = tile_data[right_byte_addr as usize];
-
-            // Bit 7 represents leftmost pixel, bit 0 the rightmost pixel.
-            let bit_index = if is_window {
-                self.win_x.wrapping_sub(x) % 8
-            } else {
-                7 - (bg_map_x % 8)
-            };
-            // Assemble the colour index from left & right bytes.
-            let colour_index = Self::get_colour_index(left_byte, right_byte, bit_index);
-            let colour = match (colour_index & 0b10, colour_index & 0b01) {
-                (1, 1) => self.bg_palette.read_byte() >> 6,
-                (1, 0) => (self.bg_palette.read_byte() & 0b0011_0000) >> 4,
-                (0, 1) => (self.bg_palette.read_byte() & 0b0000_1100) >> 2,
-                _ => self.bg_palette.read_byte() & 0b0000_0011,
-            };
-            let offset = self.lcd_y_coord as usize + (256 * x as usize);
-        }
+    fn render_bg_line(&mut self) {
+        // let bg_map_y = self.lcd_y_coord.wrapping_add(self.bg_view_y);
+        //
+        // // Check whether the current scanline is located within the window.
+        // let row_is_window =
+        //     self.lcd_control.get(Lcdc::WindowEnable) && (self.lcd_y_coord >= self.win_y);
+        //
+        // for x in 0..(DISPLAY_WIDTH as u8) {
+        //     let bg_map_x = x.wrapping_add(self.bg_view_x);
+        //
+        //     // Check whether the current column is located within the window.
+        //     let col_is_window =
+        //         self.lcd_control.get(Lcdc::WindowEnable) && (x >= self.win_x.wrapping_sub(7));
+        //
+        //     let is_window = row_is_window && col_is_window;
+        //
+        //     let tile_num = if is_window {
+        //         let x_addr_offset = x.wrapping_sub(self.win_x.wrapping_sub(7));
+        //         let y_addr_offset = self.lcd_y_coord.wrapping_sub(self.win_y);
+        //         let addr = Self::get_map_addr(x_addr_offset, y_addr_offset);
+        //         win_map[addr]
+        //     } else {
+        //         let addr = Self::get_map_addr(bg_map_x, bg_map_y);
+        //         bg_map[addr]
+        //     };
+        //
+        //     // Each tile occupies 16 bytes.
+        //     // https://gbdev.io/pandocs/Tile_Data.html
+        //     let tile_data_start_addr =
+        //         if self.lcd_control.get(Lcdc::BGWindowTileDataArea) || tile_num > 0x7F {
+        //             (tile_num as u16) << 4
+        //         } else {
+        //             0x1000 | ((tile_num as u16) << 4)
+        //         };
+        //
+        //     // Each line of the tile occupies 2 bytes.
+        //     let y_tile_data_addr_offset = ((if is_window {
+        //         self.lcd_y_coord - self.win_y
+        //     } else {
+        //         bg_map_y
+        //     } as u16)
+        //         % 8)
+        //         * 2;
+        //
+        //     let left_byte_addr = tile_data_start_addr + y_tile_data_addr_offset;
+        //     let right_byte_addr = left_byte_addr + 1;
+        //
+        //     let left_byte = tile_data[left_byte_addr as usize];
+        //     let right_byte = tile_data[right_byte_addr as usize];
+        //
+        //     // Bit 7 represents leftmost pixel, bit 0 the rightmost pixel.
+        //     let bit_index = if is_window {
+        //         self.win_x.wrapping_sub(x) % 8
+        //     } else {
+        //         7 - (bg_map_x % 8)
+        //     };
+        //     // Assemble the colour index from left & right bytes.
+        //     let colour_index = Self::get_colour_index(left_byte, right_byte, bit_index);
+        //     let colour = match (colour_index & 0b10, colour_index & 0b01) {
+        //         (1, 1) => self.bg_palette.read_byte() >> 6,
+        //         (1, 0) => (self.bg_palette.read_byte() & 0b0011_0000) >> 4,
+        //         (0, 1) => (self.bg_palette.read_byte() & 0b0000_1100) >> 2,
+        //         _ => self.bg_palette.read_byte() & 0b0000_0011,
+        //     };
+        //     let offset = self.lcd_y_coord as usize + (256 * x as usize);
+        // }
     }
 
     fn get_colour_index(left_byte: u8, right_byte: u8, bit_index: u8) -> u8 {
@@ -345,12 +338,7 @@ impl PPU {
     }
 
     /// Draw the sprites layer on the LCD.
-    fn render_obj_line(
-        &mut self,
-        bg_map: &[u8; 0x0400],
-        win_map: &[u8; 0x0400],
-        tile_data: &[u8; 0x2000],
-    ) {
+    fn render_obj_line(&mut self) {
         if !self.lcd_control.get(Lcdc::OBJEnable) {
             return;
         }
@@ -589,14 +577,6 @@ mod tests {
 
     use super::*;
 
-    const BL_BG_MAP: [u8; 0x0400] = [0x00; 0x0400];
-    const BL_WIN_MAP: [u8; 0x0400] = [0x00; 0x0400];
-    const BL_TILE_DATA: [u8; 0x2000] = [0x00; 0x2000];
-
-    fn cycle_bl(ppu: &mut PPU, t_cycles: u32) {
-        ppu.cycle(t_cycles, &BL_BG_MAP, &BL_WIN_MAP, &BL_TILE_DATA);
-    }
-
     #[test]
     fn test_get_mode() {
         let mut ppu = PPU::new();
@@ -621,70 +601,70 @@ mod tests {
     fn test_cycle_timing() {
         let mut ppu = PPU::new();
         // Check Y coord == 0
-        assert_eq!(ppu.read_byte(0x0004), 0x00);
+        assert_eq!(ppu.read_byte(0xFF44), 0x00);
         // Enable LCD & PPU
-        ppu.write_byte(0x00, 0b1000_0000 | ppu.read_byte(0x0000));
+        ppu.write_byte(0xFF40, 0b1000_0000 | ppu.read_byte(0xFF40));
         // Set mode to OAM (2)
-        ppu.write_byte(0x0001, 0b0000_0010 | ppu.read_byte(0x0001));
-        ppu.write_byte(0x0001, !0b0000_0001 & ppu.read_byte(0x0001));
+        ppu.write_byte(0xFF41, 0b0000_0010 | ppu.read_byte(0xFF41));
+        ppu.write_byte(0xFF41, !0b0000_0001 & ppu.read_byte(0xFF41));
         // Advance 70 cycles
-        cycle_bl(&mut ppu, 70);
-        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 2);
+        ppu.cycle(70);
+        assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 2);
         // Advance 10 cycles (total = 80), so should be in draw mode (3)
-        cycle_bl(&mut ppu, 10);
-        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 3);
+        ppu.cycle(10);
+        assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 3);
         // Advance 100 cycles, so should remain in draw mode (3)
-        cycle_bl(&mut ppu, 100);
-        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 3);
-        assert_eq!(ppu.read_byte(0x0004), 0x00);
+        ppu.cycle(100);
+        assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 3);
+        assert_eq!(ppu.read_byte(0xFF44), 0x00);
         // Advance 73 cycles without penalties, so should be in hblank mode (0)
-        cycle_bl(&mut ppu, 73);
-        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 0);
-        assert_eq!(ppu.read_byte(0x0004), 0x00);
+        ppu.cycle(73);
+        assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 0);
+        assert_eq!(ppu.read_byte(0xFF44), 0x00);
         assert_eq!(ppu.mode_clock, 1);
         // Advance 203 cycles, so should be back in OAM mode with line advanced (2)
-        cycle_bl(&mut ppu, 203);
-        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 2);
-        assert_eq!(ppu.read_byte(0x0004), 0x01);
+        ppu.cycle(203);
+        assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 2);
+        assert_eq!(ppu.read_byte(0xFF44), 0x01);
         assert_eq!(ppu.mode_clock, 0);
         // Advance another line
-        cycle_bl(&mut ppu, 80);
-        cycle_bl(&mut ppu, 289);
-        cycle_bl(&mut ppu, 87);
-        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 2);
-        assert_eq!(ppu.read_byte(0x0004), 0x02);
+        ppu.cycle(80);
+        ppu.cycle(289);
+        ppu.cycle(87);
+        assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 2);
+        assert_eq!(ppu.read_byte(0xFF44), 0x02);
         assert_eq!(ppu.mode_clock, 0);
         // Advance to last line
         for i in 0..141 {
-            cycle_bl(&mut ppu, 80);
-            cycle_bl(&mut ppu, 289);
-            cycle_bl(&mut ppu, 87);
-            assert_eq!(ppu.read_byte(0x0004), 0x03 + i);
-            assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 2);
+            ppu.cycle(80);
+            ppu.cycle(289);
+            ppu.cycle(87);
+            assert_eq!(ppu.read_byte(0xFF44), 0x03 + i);
+            assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 2);
         }
         // Advance past last line, should be in VBlank mode (1)
-        cycle_bl(&mut ppu, 80);
-        cycle_bl(&mut ppu, 289);
-        cycle_bl(&mut ppu, 87);
-        assert_eq!(ppu.read_byte(0x0004), 144);
-        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 1);
+        ppu.cycle(80);
+        ppu.cycle(289);
+        ppu.cycle(87);
+        assert_eq!(ppu.read_byte(0xFF44), 144);
+        assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 1);
         // Advance partway through first VBlank line
-        cycle_bl(&mut ppu, 455);
-        assert_eq!(ppu.read_byte(0x0004), 144);
-        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 1);
+        ppu.cycle(455);
+        assert_eq!(ppu.read_byte(0xFF44), 144);
+        assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 1);
         // Go to next VBlank line (line 145)
-        cycle_bl(&mut ppu, 1);
-        assert_eq!(ppu.read_byte(0x0004), 145);
-        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 1);
+        ppu.cycle(1);
+        assert_eq!(ppu.read_byte(0xFF44), 145);
+        assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 1);
         // Go to end of VBlank lines
         for i in 0..8 {
-            cycle_bl(&mut ppu, 456);
-            assert_eq!(ppu.read_byte(0x0004), 146 + i);
-            assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 1);
+            ppu.cycle(456);
+            assert_eq!(ppu.read_byte(0xFF44), 146 + i);
+            assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 1);
         }
         // Go to end of line 153 & start next frame
-        cycle_bl(&mut ppu, 456);
-        assert_eq!(ppu.read_byte(0x0004), 0);
-        assert_eq!(ppu.read_byte(0x0001) & 0b0000_0011, 2);
+        ppu.cycle(456);
+        assert_eq!(ppu.read_byte(0xFF44), 0);
+        assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 2);
     }
 }
