@@ -11,7 +11,7 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 ### CPU Instruction Tests
 
 - 01: Passed
-- 02: Hangs indefinitely (possibly same problem as 07)
+- 02: Hangs indefinitely
 - 03: Passed
 - 04: Passed
 - 05: Passed
