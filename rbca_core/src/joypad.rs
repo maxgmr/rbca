@@ -59,8 +59,6 @@ impl Joypad {
             self.interrupt_flags |= Flags::new(0b0001_0000);
         }
 
-        println!("{:#010b}, {:#010b}", old_vals, new_vals.read_byte());
-
         // Update buttons pressed, but not the "Select" state
         self.data = (self.data & Flags::new(0b1111_0000)) | new_vals;
     }
