@@ -5,7 +5,7 @@ use crate::{mmu::If, Flags, FlagsEnum};
 /// Device timer.
 #[derive(Debug)]
 pub struct Timer {
-    // Used to alert MMU that the timer triggered some interrupt flags.
+    /// Used to alert MMU that the timer triggered some interrupt flags.
     pub interrupt_flags: Flags,
     // Internal helper counter.
     timer_internal_clocksum: u32,
