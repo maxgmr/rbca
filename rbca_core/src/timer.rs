@@ -1,3 +1,5 @@
+use std::default::Default;
+
 use crate::{mmu::If, Flags, FlagsEnum};
 
 /// Device timer.
@@ -94,6 +96,11 @@ impl Timer {
                 }
             }
         }
+    }
+}
+impl Default for Timer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
