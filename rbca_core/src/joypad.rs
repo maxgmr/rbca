@@ -35,12 +35,6 @@ impl Joypad {
         let value_flags = Flags::new(value);
         self.data.set(SelectButtons, value_flags.get(SelectButtons));
         self.data.set(SelectDPad, value_flags.get(SelectDPad));
-        if self.data.get(SelectButtons) && self.data.get(SelectDPad) {
-            self.data.set(StartDown, true);
-            self.data.set(SelectUp, true);
-            self.data.set(BLeft, true);
-            self.data.set(ARight, true);
-        }
         self.update();
     }
 
