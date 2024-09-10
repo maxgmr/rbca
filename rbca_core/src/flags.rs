@@ -41,8 +41,7 @@ impl BitAnd for Flags {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self::Output {
-        self.byte & rhs.byte;
-        self
+        Flags::new(self.byte & rhs.byte)
     }
 }
 impl BitAndAssign for Flags {
@@ -54,8 +53,7 @@ impl BitOr for Flags {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self::Output {
-        self.byte | rhs.byte;
-        self
+        Flags::new(self.byte | rhs.byte)
     }
 }
 impl BitOrAssign for Flags {
@@ -67,8 +65,7 @@ impl BitXor for Flags {
     type Output = Self;
 
     fn bitxor(self, rhs: Self) -> Self::Output {
-        self.byte ^ rhs.byte;
-        self
+        Flags::new(self.byte ^ rhs.byte)
     }
 }
 impl BitXorAssign for Flags {
