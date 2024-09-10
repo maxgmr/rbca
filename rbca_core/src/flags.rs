@@ -160,4 +160,22 @@ mod tests {
         assert_eq!(flags.read_byte(), 0b1001_1010);
         assert!(!flags.get(H));
     }
+
+    #[test]
+    fn test_bitwise() {
+        let mut f1 = Flags::new(0b0101_0000);
+        let f2 = Flags::new(0b0110_1010);
+
+        assert_eq!((f1 | f2).read_byte(), 0b0111_1010);
+        assert_eq!((f1 & f2).read_byte(), 0b0100_0000);
+        assert_eq!((f1 ^ f2).read_byte(), 0b0011_1010);
+
+        f1 |= f2;
+        assert_eq!(f1.read_byte(), 0b0111_1010);
+        f1 &= f2;
+        assert_eq!(f1.read_byte(), 0b0110_1010);
+        let mut f1 = Flags::new(0b1110_0110);
+        f1 ^= f2;
+        assert_eq!(f1.read_byte(), 0b1000_1100);
+    }
 }
