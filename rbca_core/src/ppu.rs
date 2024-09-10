@@ -24,34 +24,34 @@ pub struct PPU {
     /// Clone of interrupt flags to keep track of any interrupts set by the PPU.
     pub interrupt_flags: Flags,
     /// 8KiB Video RAM (VRAM).
-    vram: [u8; 0x2000],
+    pub vram: [u8; 0x2000],
     // Object attribute memory.
-    oam: [u8; 0x00A0],
+    pub oam: [u8; 0x00A0],
     // Clock to keep track of timing while in a given PPU mode.
     mode_clock: u32,
-    // [0xFF40]
-    lcd_control: Flags,
-    // [0xFF44] read-only
+    /// [0xFF40]
+    pub lcd_control: Flags,
+    /// [0xFF44] read-only
     lcd_y_coord: u8,
-    // [0xFF45]
+    /// [0xFF45]
     ly_compare: u8,
-    // [0xFF41]
+    /// [0xFF41]
     lcd_status: Flags,
-    // [0xFF42]
+    /// [0xFF42]
     bg_view_y: u8,
-    // [0xFF43]
+    /// [0xFF43]
     bg_view_x: u8,
-    // [0xFF4A]
+    /// [0xFF4A]
     win_y: u8,
-    // [0xFF4B]
+    /// [0xFF4B]
     win_x: u8,
-    // [0xFF47]
+    /// [0xFF47]
     // DMG mode only
     bg_palette: Flags,
-    // [0xFF48]
+    /// [0xFF48]
     // DMG mode only
     obj_palette_0: Flags,
-    // [0xFF49]
+    /// [0xFF49]
     // DMG mode only
     obj_palette_1: Flags,
     // [0xFF68]
