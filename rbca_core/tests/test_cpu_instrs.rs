@@ -25,8 +25,8 @@ fn test_common(rom_name: &str) {
     // const SLOW: bool = true;
     const SLOW: bool = false;
     const WAIT_MS: u64 = 50;
-    const LOG: bool = true;
-    // const LOG: bool = false;
+    // const LOG: bool = true;
+    const LOG: bool = false;
 
     #[allow(unused_variables)]
     fn is_breakpoint(

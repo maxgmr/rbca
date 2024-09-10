@@ -166,35 +166,6 @@ impl Default for IORegisters {
     }
 }
 
-/// Joypad enum.
-#[derive(Debug, Copy, Clone)]
-enum Joyp {
-    /// If 0, buttons (SsBA) can be read from lower nibble.
-    SelectButtons,
-    /// If 0, directional keys can be read from lower nibble.
-    SelectDPad,
-    /// 0 = pressed.
-    StartDown,
-    /// 0 = pressed.
-    SelectUp,
-    /// 0 = pressed.
-    BLeft,
-    /// 0 = pressed.
-    ARight,
-}
-impl FlagsEnum for Joyp {
-    fn val(&self) -> u8 {
-        match self {
-            Self::SelectButtons => 0b0010_0000,
-            Self::SelectDPad => 0b0001_0000,
-            Self::StartDown => 0b0000_1000,
-            Self::SelectUp => 0b0000_0100,
-            Self::BLeft => 0b0000_0010,
-            Self::ARight => 0b0000_0001,
-        }
-    }
-}
-
 /// Serial transfer control enum.
 #[derive(Debug, Copy, Clone)]
 enum Stc {

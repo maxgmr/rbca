@@ -1,6 +1,6 @@
 use std::default::Default;
 
-use crate::{io_registers::If, Flags, FlagsEnum};
+use crate::{mmu::If, Flags, FlagsEnum};
 
 const LY_STUBBED: bool = false;
 

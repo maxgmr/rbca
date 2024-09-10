@@ -4,7 +4,7 @@ use camino::Utf8Path;
 
 use crate::{
     cartridge::{self, CartEmpty, Cartridge},
-    Audio, Flags, FlagsEnum, Timer, PPU,
+    Audio, Flags, FlagsEnum, Joypad, Timer, PPU,
 };
 
 /// Memory management unit. Routes reads and writes and controls device state.
@@ -19,7 +19,7 @@ pub struct Mmu {
     /// Echo RAM. Mirror of 0xC000-0xDDFF.
     eram: [u8; 0x1E00],
     /// Joypad input.
-    joypad: Flags,
+    joypad: Joypad,
     /// Serial transfer data.
     serial_data: u8,
     /// Serial transfer control.
@@ -73,7 +73,7 @@ impl Mmu {
             boot_rom,
             wram: [0x00; 0x2000],
             eram: [0x00; 0x1E00],
-            joypad: Flags::new(0b0011_1111),
+            joypad: Joypad::new(),
             serial_data: 0x00,
             serial_control: Flags::new(0b0000_0000),
             timer: Timer::new(),
@@ -171,19 +171,20 @@ impl Mmu {
         self.timer.cycle(t_cycles);
         // Update IF register in the timer triggered any interrupts.
         self.if_reg |= self.timer.interrupt_flags;
+        self.timer.interrupt_flags.write_byte(0x00);
 
-        // TODO check for joypad interrupts.
+        // Check for joypad interrupts.
+        self.if_reg |= self.joypad.interrupt_flags;
+        self.joypad.interrupt_flags.write_byte(0x00);
 
         // Cycle the PPU.
-        // TODO
-        // let ppu_cycles = self.ppu.cycle(t_cycles);
+        self.ppu.cycle(t_cycles);
 
         // TODO cycle sound.
         self.audio.cycle(t_cycles);
 
         // TODO check for serial interrupts.
 
-        // TODO return PPU cycles.
         t_cycles
     }
 }
