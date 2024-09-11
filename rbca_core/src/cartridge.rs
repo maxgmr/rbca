@@ -30,8 +30,10 @@ pub fn load_cartridge<P: AsRef<Utf8Path>>(filepath: P) -> Box<dyn Cartridge> {
     let cart_features = CartFeatures::from_data(&file_buf);
     if cart_features.mbc1 {
         Box::new(mbc1::CartMBC1::new(file_buf))
-    } else {
+    } else if cart_features.rom_only {
         Box::new(rom_only::CartRomOnly::new(file_buf, cart_features))
+    } else {
+        unimplemented!("Unimplemented cartridge type: {cart_features}");
     }
 }
 
