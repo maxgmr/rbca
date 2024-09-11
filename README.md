@@ -28,9 +28,9 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 
 ### Memory Timing Tests
 
-- 01: Untested
-- 02: Untested
-- 03: Untested
+- 01: Failed
+- 02: Failed
+- 03: Failed
 
 ### Memory-2 Timing Tests
 
@@ -40,7 +40,7 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 
 ### Interrupt Timing Test
 
-- Untested
+- Failed: Gets stuck at 0xC9C9
 
 ### DMG Sound Tests
 
