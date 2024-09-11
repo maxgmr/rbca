@@ -17,11 +17,25 @@ const VBLANK_CYCLES: u32 = 456;
 
 const MAX_SCANLINES: u8 = 153;
 
+const TILE_MAP_SIZE: usize = 0x0400;
+const TILE_DATA_SIZE: usize = 0x1000;
+
+const VRAM_ADDR_OFFSET: u16 = 0x8000;
+
+const WINMAP_START_0: u16 = 0x9800;
+const WINMAP_START_1: u16 = 0x9C00;
+
+const BGMAP_START_0: u16 = 0x9800;
+const BGMAP_START_1: u16 = 0x9C00;
+
+const TILEDATA_START_0: u16 = 0x8800;
+const TILEDATA_START_1: u16 = 0x8000;
+
 /// Pixel processing unit.
 #[derive(Debug, Clone)]
 pub struct PPU {
     /// Data output of screen.
-    pub data_output: [u8; DISPLAY_WIDTH * DISPLAY_HEIGHT * 3],
+    pub data_output: [u8; DISPLAY_WIDTH * DISPLAY_HEIGHT],
     /// Clone of interrupt flags to keep track of any interrupts set by the PPU.
     pub interrupt_flags: Flags,
     /// 8KiB Video RAM (VRAM).
@@ -78,7 +92,7 @@ impl PPU {
             println!("WARNING: rbca is currently LY-stubbed. This means that any read to LY (0xFF44) will return 0x90.");
         }
         Self {
-            data_output: [0x00; DISPLAY_WIDTH * DISPLAY_HEIGHT * 3],
+            data_output: [0x00; DISPLAY_WIDTH * DISPLAY_HEIGHT],
             interrupt_flags: Flags::new(0b0000_0000),
             vram: [0x00; 0x2000],
             oam: [0x00; 0x00A0],
@@ -240,77 +254,92 @@ impl PPU {
         for x in 0..DISPLAY_WIDTH {
             self.set_pixel(x, self.lcd_y_coord as usize, 255);
         }
+
         self.render_bg_line();
         self.render_obj_line();
     }
 
     /// Draw the background layer on the LCD.
     fn render_bg_line(&mut self) {
-        // let bg_map_y = self.lcd_y_coord.wrapping_add(self.bg_view_y);
-        //
-        // // Check whether the current scanline is located within the window.
-        // let row_is_window =
-        //     self.lcd_control.get(Lcdc::WindowEnable) && (self.lcd_y_coord >= self.win_y);
-        //
-        // for x in 0..(DISPLAY_WIDTH as u8) {
-        //     let bg_map_x = x.wrapping_add(self.bg_view_x);
-        //
-        //     // Check whether the current column is located within the window.
-        //     let col_is_window =
-        //         self.lcd_control.get(Lcdc::WindowEnable) && (x >= self.win_x.wrapping_sub(7));
-        //
-        //     let is_window = row_is_window && col_is_window;
-        //
-        //     let tile_num = if is_window {
-        //         let x_addr_offset = x.wrapping_sub(self.win_x.wrapping_sub(7));
-        //         let y_addr_offset = self.lcd_y_coord.wrapping_sub(self.win_y);
-        //         let addr = Self::get_map_addr(x_addr_offset, y_addr_offset);
-        //         win_map[addr]
-        //     } else {
-        //         let addr = Self::get_map_addr(bg_map_x, bg_map_y);
-        //         bg_map[addr]
-        //     };
-        //
-        //     // Each tile occupies 16 bytes.
-        //     // https://gbdev.io/pandocs/Tile_Data.html
-        //     let tile_data_start_addr =
-        //         if self.lcd_control.get(Lcdc::BGWindowTileDataArea) || tile_num > 0x7F {
-        //             (tile_num as u16) << 4
-        //         } else {
-        //             0x1000 | ((tile_num as u16) << 4)
-        //         };
-        //
-        //     // Each line of the tile occupies 2 bytes.
-        //     let y_tile_data_addr_offset = ((if is_window {
-        //         self.lcd_y_coord - self.win_y
-        //     } else {
-        //         bg_map_y
-        //     } as u16)
-        //         % 8)
-        //         * 2;
-        //
-        //     let left_byte_addr = tile_data_start_addr + y_tile_data_addr_offset;
-        //     let right_byte_addr = left_byte_addr + 1;
-        //
-        //     let left_byte = tile_data[left_byte_addr as usize];
-        //     let right_byte = tile_data[right_byte_addr as usize];
-        //
-        //     // Bit 7 represents leftmost pixel, bit 0 the rightmost pixel.
-        //     let bit_index = if is_window {
-        //         self.win_x.wrapping_sub(x) % 8
-        //     } else {
-        //         7 - (bg_map_x % 8)
-        //     };
-        //     // Assemble the colour index from left & right bytes.
-        //     let colour_index = Self::get_colour_index(left_byte, right_byte, bit_index);
-        //     let colour = match (colour_index & 0b10, colour_index & 0b01) {
-        //         (1, 1) => self.bg_palette.read_byte() >> 6,
-        //         (1, 0) => (self.bg_palette.read_byte() & 0b0011_0000) >> 4,
-        //         (0, 1) => (self.bg_palette.read_byte() & 0b0000_1100) >> 2,
-        //         _ => self.bg_palette.read_byte() & 0b0000_0011,
-        //     };
-        //     let offset = self.lcd_y_coord as usize + (256 * x as usize);
-        // }
+        let bg_map_y = self.lcd_y_coord.wrapping_add(self.bg_view_y);
+
+        // Check whether the current scanline is located within the window.
+        let row_is_window =
+            self.lcd_control.get(Lcdc::WindowEnable) && (self.lcd_y_coord >= self.win_y);
+
+        for x in 0..(DISPLAY_WIDTH as u8) {
+            let bg_map_x = x.wrapping_add(self.bg_view_x);
+
+            // Check whether the current column is located within the window.
+            let col_is_window =
+                self.lcd_control.get(Lcdc::WindowEnable) && (x >= self.win_x.wrapping_sub(7));
+
+            let px_is_window = row_is_window && col_is_window;
+
+            // Calc index of px in tile data.
+            let tile_num = if px_is_window {
+                let start = (if self.lcd_control.get(Lcdc::WindowTileMapArea) {
+                    WINMAP_START_1
+                } else {
+                    WINMAP_START_0
+                }) - VRAM_ADDR_OFFSET;
+                let x_addr_offset = x.wrapping_sub(self.win_x.wrapping_sub(7));
+                let y_addr_offset = self.lcd_y_coord.wrapping_sub(self.win_y);
+                let addr = Self::get_map_addr(start, x_addr_offset, y_addr_offset);
+                self.vram[addr]
+            } else {
+                let start = (if self.lcd_control.get(Lcdc::BGTileMapArea) {
+                    BGMAP_START_1
+                } else {
+                    BGMAP_START_0
+                }) - VRAM_ADDR_OFFSET;
+                let addr = Self::get_map_addr(start, bg_map_x, bg_map_y);
+                self.vram[addr]
+            };
+
+            // Each tile occupies 16 bytes.
+            // https://gbdev.io/pandocs/Tile_Data.html
+            let tile_data_start_addr =
+                if self.lcd_control.get(Lcdc::BGWindowTileDataArea) || tile_num > 0x7F {
+                    (tile_num as u16) << 4
+                } else {
+                    0x1000 | ((tile_num as u16) << 4)
+                };
+
+            // Each line of the tile occupies 2 bytes.
+            let y_tile_data_addr_offset = ((if px_is_window {
+                self.lcd_y_coord - self.win_y
+            } else {
+                bg_map_y
+            } as u16)
+                % 8)
+                * 2;
+
+            let left_byte_addr = tile_data_start_addr + y_tile_data_addr_offset;
+            let right_byte_addr = left_byte_addr + 1;
+
+            let left_byte = self.vram[left_byte_addr as usize];
+            let right_byte = self.vram[right_byte_addr as usize];
+
+            // Bit 7 represents leftmost pixel, bit 0 the rightmost pixel.
+            let bit_index = if px_is_window {
+                self.win_x.wrapping_sub(x) % 8
+            } else {
+                7 - (bg_map_x % 8)
+            };
+            // Assemble the colour index from left & right bytes.
+            let colour_index = Self::get_colour_index(left_byte, right_byte, bit_index);
+            let colour = match colour_index {
+                3 => self.bg_palette.read_byte() >> 6,
+                2 => (self.bg_palette.read_byte() & 0b0011_0000) >> 4,
+                1 => (self.bg_palette.read_byte() & 0b0000_1100) >> 2,
+                0 => self.bg_palette.read_byte() & 0b0000_0011,
+                _ => unreachable!(
+                    "Unreachable colour index {colour_index}. Bad `get_colour_index` function."
+                ),
+            };
+            let data_output_index = ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x as usize);
+        }
     }
 
     fn get_colour_index(left_byte: u8, right_byte: u8, bit_index: u8) -> u8 {
@@ -328,8 +357,8 @@ impl PPU {
     }
 
     /// Get the tile map address based on the X & Y offsets.
-    fn get_map_addr(x_offset: u8, y_offset: u8) -> usize {
-        ((((y_offset as u16) / 8) * 32) + ((x_offset as u16) / 8)) as usize
+    fn get_map_addr(start: u16, x_offset: u8, y_offset: u8) -> usize {
+        (start + (((y_offset as u16) / 8) * 32) + ((x_offset as u16) / 8)) as usize
     }
 
     /// Draw the sprites layer on the LCD.
