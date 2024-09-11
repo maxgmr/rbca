@@ -25,6 +25,10 @@ impl Cartridge for CartEmpty {
         &self.cart_features
     }
 
+    fn is_empty(&self) -> bool {
+        true
+    }
+
     fn read_rom(&self, address: u16) -> u8 {
         if (address as usize) < self.rom.len() {
             self.rom[address as usize]
