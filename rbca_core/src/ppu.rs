@@ -129,7 +129,7 @@ impl PPU {
             0xFF4D => 0xFF,
             0xFF4E => 0xFF,
             0xFF4F => 0xFF,
-            0xFF51..=0xFF55 | 0xFF68..=0xFF6B => 0xFF,
+            0xFF51..=0xFF55 | 0xFF68..=0xFF6B | 0xFF70 => 0xFF,
             _ => panic!("PPU: read illegal address {:#06X}.", address),
         }
     }
@@ -159,7 +159,7 @@ impl PPU {
             0xFF4D => {}
             0xFF4E => {}
             0xFF4F => {}
-            0xFF51..=0xFF55 | 0xFF68..=0xFF6B => {}
+            0xFF51..=0xFF55 | 0xFF68..=0xFF6B | 0xFF70 => {}
             _ => panic!("PPU: write illegal address {:#06X}.", address),
         }
     }
