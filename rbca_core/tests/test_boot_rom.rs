@@ -3,16 +3,29 @@
 use std::time::Instant;
 
 use rbca_core::Cpu;
+use text_io::read;
 
 #[test]
 #[ignore]
 fn test_boot_rom() {
-    const INSTR_DEBUG: bool = true;
+    const INSTR_DEBUG: bool = false;
     const SLOW: bool = false;
     const WAIT_MS: u64 = 10;
 
-    let mut cpu = Cpu::new_boot("../../dmg-boot.bin");
+    let mut cpu = Cpu::new_boot_cart("../roms/test_mbc1.gb", "../dmg-boot.bin");
     println!("{}", cpu.mmu.cart.header_info());
+    println!(
+        "Instruction Debug: {}, Slow: {}",
+        INSTR_DEBUG,
+        if SLOW {
+            format!("{} ms", WAIT_MS)
+        } else {
+            "false".to_owned()
+        },
+    );
+    println!("Enter any text to continue...");
+    let _: String = read!();
+    println!("-------");
 
     let mut t_cycles = 0;
     'testloop: loop {
