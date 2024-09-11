@@ -34,15 +34,7 @@ pub fn blargg_test_common(rom_name: &str, rom_path: &str) {
         // (cpu.regs.get_flag(RegFlag::C) != last_state.regs.get_flag(RegFlag::C)) || (cpu.pc > 0xC000)
     }
 
-    // #[allow(unused_assignments)]
-    // let mut log_file = OpenOptions::new()
-    //     .write(true)
-    //     .create(true)
-    //     .truncate(LOG)
-    //     .open(format!("{}_LOG", &rom_name[0..=1]))
-    //     .unwrap();
-
-    let file_name = format!("{}_LOG", &rom_name[0..=1]);
+    let file_name = format!("{rom_name}_LOG");
     let _ = fs::remove_file(&file_name);
     let mut log_file = OpenOptions::new()
         .create(true)
