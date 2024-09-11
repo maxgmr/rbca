@@ -21,3 +21,7 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 - 09: Passed
 - 10: Passed
 - 11: Passed
+
+### Instruction Timing Tests
+
+- Failed #255
