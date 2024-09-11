@@ -45,6 +45,13 @@ pub trait Cartridge: Debug {
     /// Get the cartridge features.
     fn cart_features(&self) -> &CartFeatures;
 
+    /// Return true iff the cartridge is empty.
+    ///
+    /// Default: false.
+    fn is_empty(&self) -> bool {
+        false
+    }
+
     /// Read a byte from the cartridge ROM.
     ///
     /// Default: Read directly from address without any banking.
@@ -181,13 +188,13 @@ pub trait Cartridge: Debug {
     /// Get some header info formatted as a nice String.
     fn header_info(&self) -> String {
         format!(
-            "Cart Info
-            \tTitle         {}
-            \tType          {}
-            \tROM Size      {} KiB ({:#X} bytes)
-            \tRAM Size      {} KiB ({:#X} bytes)
-            \tChecksum      {}
-            \tLogo          {}",
+            "Cartridge Info
+\tTitle\t\t\t{}
+\tType\t\t\t{}
+\tROM Size\t\t{} KiB ({:#X} bytes)
+\tRAM Size\t\t{} KiB ({:#X} bytes)
+\tChecksum\t\t{}
+\tLogo Check\t\t{}",
             self.title(),
             self.cart_features(),
             self.rom_size() / BYTES_IN_KIB,
