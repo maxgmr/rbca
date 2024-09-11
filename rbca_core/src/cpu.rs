@@ -5,7 +5,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::{
     instructions::execute_opcode,
-    Mmu, RegFlag, Registers,
+    Button, Mmu, RegFlag, Registers,
     Target::{A, B, C, D, E, H, L},
     DISPLAY_HEIGHT, DISPLAY_WIDTH,
 };
@@ -116,6 +116,22 @@ impl Cpu {
     /// 3 -> Black
     pub fn get_pixels(&self) -> &[u8; DISPLAY_WIDTH * DISPLAY_HEIGHT] {
         &self.mmu.ppu.data_output
+    }
+
+    /// Handle a button press.
+    pub fn button_down(&mut self, button: Button, debug: bool) {
+        let data = self.mmu.joypad.button_down(button);
+        if debug {
+            println!("BUTTON_DOWN: {button} DATA: {:010b}", data.read_byte());
+        }
+    }
+
+    /// Handle a button release.
+    pub fn button_up(&mut self, button: Button, debug: bool) {
+        let data = self.mmu.joypad.button_up(button);
+        if debug {
+            println!("BUTTON_UP: {button} DATA: {:010b}", data.read_byte());
+        }
     }
 
     /// Perform one cycle. Return number of T-cycles taken.

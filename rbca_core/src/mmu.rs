@@ -19,7 +19,7 @@ pub struct Mmu {
     /// Echo RAM. Mirror of 0xC000-0xDDFF.
     eram: [u8; 0x1E00],
     /// Joypad input.
-    joypad: Joypad,
+    pub joypad: Joypad,
     /// Serial transfer data.
     serial_data: u8,
     /// Serial transfer control.
@@ -185,7 +185,7 @@ impl Mmu {
     pub fn cycle(&mut self, t_cycles: u32) -> u32 {
         // Cycle the timer.
         self.timer.cycle(t_cycles);
-        // Update IF register in the timer triggered any interrupts.
+        // Update IF register if the timer triggered any interrupts.
         self.if_reg |= self.timer.interrupt_flags;
         self.timer.interrupt_flags.write_byte(0x00);
 
@@ -195,6 +195,9 @@ impl Mmu {
 
         // Cycle the PPU.
         self.ppu.cycle(t_cycles);
+        // Update IF register if the PPU triggered any interrupts.
+        self.if_reg |= self.ppu.interrupt_flags;
+        self.ppu.interrupt_flags.write_byte(0x00);
 
         // TODO cycle sound.
         self.audio.cycle(t_cycles);

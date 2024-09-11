@@ -1,4 +1,4 @@
-use std::default::Default;
+use std::{default::Default, fmt::Display};
 
 use crate::{mmu::If, Flags, FlagsEnum};
 
@@ -63,8 +63,8 @@ impl Joypad {
         self.data = (self.data & Flags::new(0b1111_0000)) | new_vals;
     }
 
-    /// Handle a pressed button.
-    pub fn button_down(&mut self, button: Button) {
+    /// Handle a pressed button, returning a copy of the updated data.
+    pub fn button_down(&mut self, button: Button) -> Flags {
         match button {
             Up => self.internal_dpad.set(SelectUp, false),
             Down => self.internal_dpad.set(StartDown, false),
@@ -76,10 +76,11 @@ impl Joypad {
             Select => self.internal_buttons.set(SelectUp, false),
         }
         self.update();
+        self.data
     }
 
-    /// Handle a released button.
-    pub fn button_up(&mut self, button: Button) {
+    /// Handle a released button, returning a copy of the updated data.
+    pub fn button_up(&mut self, button: Button) -> Flags {
         match button {
             Up => self.internal_dpad.set(SelectUp, true),
             Down => self.internal_dpad.set(StartDown, true),
@@ -91,6 +92,7 @@ impl Joypad {
             Select => self.internal_buttons.set(SelectUp, true),
         }
         self.update();
+        self.data
     }
 }
 impl Default for Joypad {
@@ -102,14 +104,40 @@ impl Default for Joypad {
 /// Button enum.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Button {
+    /// "Up" direction on the D-Pad.
     Up,
+    /// "Down" direction on the D-Pad.
     Down,
+    /// "Left" direction on the D-Pad.
     Left,
+    /// "Right" direction on the D-Pad.
     Right,
+    /// The "A" Button.
     A,
+    /// The "B" Button.
     B,
+    /// The "Start" Button.
     Start,
+    /// The "Select" Button.
     Select,
+}
+impl Display for Button {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Up => "Up",
+                Down => "Down",
+                Left => "Left",
+                Right => "Right",
+                A => "A",
+                B => "B",
+                Start => "Start",
+                Select => "Select",
+            }
+        )
+    }
 }
 
 /// Joypad enum.
