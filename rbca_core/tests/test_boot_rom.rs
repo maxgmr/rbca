@@ -7,6 +7,7 @@ use rbca_core::Cpu;
 #[test]
 #[ignore]
 fn test_boot_rom() {
+    const INSTR_DEBUG: bool = true;
     const SLOW: bool = false;
     const WAIT_MS: u64 = 10;
 
@@ -16,7 +17,7 @@ fn test_boot_rom() {
     let mut t_cycles = 0;
     'testloop: loop {
         let t_start = Instant::now();
-        t_cycles += cpu.cycle();
+        t_cycles += cpu.cycle(INSTR_DEBUG);
 
         if cpu.pc == 0x0100 {
             break 'testloop;

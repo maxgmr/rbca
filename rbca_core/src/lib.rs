@@ -20,7 +20,6 @@ pub use boot::{DMG_BOOT, DMG_BOOT_SIZE};
 pub use cartridge::Cartridge;
 pub use cpu::Cpu;
 pub use flags::*;
-pub use instructions::DEBUG as DEBUG_INSTRUCTIONS;
 pub use joypad::Joypad;
 pub use mmu::Mmu;
 pub use ppu::{DISPLAY_HEIGHT, DISPLAY_WIDTH, PPU};

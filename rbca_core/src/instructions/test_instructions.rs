@@ -14,19 +14,19 @@ fn test_ld_n_nn() {
     cpu.pc = 0x0000;
     assert_eq!(cpu.pc, 0x0000);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0003);
     assert_eq!(cpu.regs.get_virt_reg(BC), 0x3412);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0006);
     assert_eq!(cpu.regs.get_virt_reg(DE), 0x7856);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0009);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0xBC9A);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x000C);
     assert_eq!(cpu.sp, 0xF0DE);
 }
@@ -36,7 +36,7 @@ fn test_ld_hld_a() {
     let mut cpu = Cpu::new();
     cpu.regs.set_virt_reg(HL, 0x1234);
     cpu.regs.set_reg(A, 0xDC);
-    execute_opcode(&mut cpu, 0x32);
+    execute_opcode(&mut cpu, 0x32, true);
     assert_eq!(cpu.mmu.read_byte(0x1234), 0xDC);
 }
 
@@ -51,7 +51,7 @@ fn test_bit_b_r() {
     cpu.regs.reset_flags();
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0002);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
@@ -96,7 +96,7 @@ fn test_jumps() {
     let data_1 = [0xC3, 0x34, 0x12];
     cpu.load(0x0000, &data_1);
     cpu.pc = 0x0000;
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x1234);
 
     // (Testing JP ~cc,nn) Don't do these jumps; conditions not met. Then, jump to address
@@ -108,23 +108,23 @@ fn test_jumps() {
 
     cpu.regs.reset_flags();
     cpu.regs.set_flag(RegFlag::Z, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x1234 + 0x3);
 
     cpu.regs.set_flag(RegFlag::Z, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x1234 + 0x6);
 
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x1234 + 0x9);
 
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x1234 + 0xC);
 
     cpu.regs.reset_flags();
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x2000);
 
     // (Testing JP cc,nn) Do all these jumps; the conditions are met.
@@ -138,30 +138,30 @@ fn test_jumps() {
     cpu.load(0x2030, &data_6);
 
     cpu.regs.reset_flags();
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x2010);
 
     cpu.regs.set_flag(RegFlag::Z, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x2020);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x2030);
 
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x2040);
 
     // (Testing JP (HL)) Jump to address 0x2050.
     cpu.regs.set_virt_reg(HL, 0x2050);
     cpu.mmu.write_byte(0x2040, 0xE9);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x2050);
 
     // (Testing JR n) Add 0x28 to address and jump to 0x207A.
     let data_7 = [0x18, 0x28];
     cpu.load(0x2050, &data_7);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x207A);
 
     // (Testing JR ~cc,n) Don't do these jumps; conditions not met. Then, jump to 0x3000.
@@ -172,22 +172,22 @@ fn test_jumps() {
     cpu.regs.reset_flags();
 
     cpu.regs.set_flag(RegFlag::Z, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x207A + 2);
 
     cpu.regs.set_flag(RegFlag::Z, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x207A + 4);
 
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x207A + 6);
 
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x207A + 8);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x3000);
 
     // (Testing JR cc,n) Conditions met; do all of these jumps.
@@ -201,18 +201,18 @@ fn test_jumps() {
     cpu.load(0x3036, &data_12);
     cpu.regs.reset_flags();
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x3012);
 
     cpu.regs.set_flag(RegFlag::Z, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x3024);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x3036);
 
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x3048);
 
     // Test negative jumps (-5 & -113)
@@ -222,10 +222,10 @@ fn test_jumps() {
     cpu.load(0x3045, &data_14);
     cpu.regs.reset_flags();
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x3045);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x2FD6);
 }
 
@@ -241,24 +241,24 @@ fn test_push_pop_nn() {
     cpu.load(0x0000, &data);
     assert_eq!(cpu.sp, 0xFFFE);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFFC);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFFA);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFFC);
     assert_eq!(cpu.regs.get_virt_reg(AF), 0x5670);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFFA);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFFC);
     assert_eq!(cpu.regs.get_virt_reg(BC), 0x9ABC);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFFE);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x1234);
 
@@ -267,10 +267,10 @@ fn test_push_pop_nn() {
     let data_2 = [0xF5, 0xD1];
     cpu.load(0x0006, &data_2);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFFC);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFFE);
     assert_eq!(cpu.regs.get_virt_reg(DE), 0xFED0);
 }
@@ -297,35 +297,35 @@ fn test_rst_n() {
     cpu.mmu.write_byte(0x0030, 0xFF);
     assert_eq!(cpu.sp, 0xFFFE);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFFC);
     assert_eq!(cpu.pc, 0x0000);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFFA);
     assert_eq!(cpu.pc, 0x0008);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFF8);
     assert_eq!(cpu.pc, 0x0010);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFF6);
     assert_eq!(cpu.pc, 0x0018);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFF4);
     assert_eq!(cpu.pc, 0x0020);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFF2);
     assert_eq!(cpu.pc, 0x0028);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFF0);
     assert_eq!(cpu.pc, 0x0030);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFFEE);
     assert_eq!(cpu.pc, 0x0038);
 
@@ -353,17 +353,17 @@ fn test_ld_nn_n() {
     cpu.regs.set_reg(H, 0x00);
     cpu.regs.set_reg(L, 0x00);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(B), 0x01);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(C), 0x23);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(D), 0x45);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(E), 0x67);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(H), 0x89);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(L), 0xAB);
     assert_eq!(cpu.mmu.read_byte(cpu.pc), 0x00);
 }
@@ -426,7 +426,7 @@ fn test_ld_r1_r2() {
     let data = [0x36, 0x2A];
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0002);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0x2A);
 }
@@ -453,29 +453,29 @@ fn test_ld_a_n() {
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x01);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x23);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x45);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x67);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x89);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xC0);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFF);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFE);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xDC);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xBA);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x2A);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x3A);
 }
 
@@ -496,25 +496,25 @@ fn test_ld_n_a() {
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFF);
     assert_eq!(cpu.regs.get_reg(B), 0x00);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(B), 0xFF);
     assert_eq!(cpu.regs.get_reg(C), 0x00);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(C), 0xFF);
     assert_eq!(cpu.regs.get_reg(D), 0x00);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(D), 0xFF);
     assert_eq!(cpu.regs.get_reg(E), 0x00);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(E), 0xFF);
     assert_eq!(cpu.regs.get_reg(H), 0x00);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(H), 0xFF);
     assert_eq!(cpu.regs.get_reg(L), 0x00);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(L), 0xFF);
 
     // Set regs to point to different addresses for testing
@@ -528,16 +528,16 @@ fn test_ld_n_a() {
     cpu.mmu.write_2_bytes(0x6666, 0x0000);
     cpu.mmu.write_2_bytes(0x7777, 0x0000);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_2_bytes(0x4444), 0x00FF);
     assert_eq!(cpu.mmu.read_2_bytes(0x5555), 0x0000);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_2_bytes(0x5555), 0x00FF);
     assert_eq!(cpu.mmu.read_2_bytes(0x6666), 0x0000);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_2_bytes(0x6666), 0x00FF);
     assert_eq!(cpu.mmu.read_2_bytes(0x7777), 0x0000);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_2_bytes(0x7777), 0x00FF);
 }
 
@@ -553,11 +553,11 @@ fn test_ld_a_c_c_a() {
     cpu.mmu.write_byte(0x0001, 0xE2);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFF);
 
     cpu.regs.set_reg(C, 0x34);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFF);
     assert_eq!(cpu.mmu.read_byte(0xFF34), 0xFF);
 }
@@ -571,7 +571,7 @@ fn test_a_hld() {
     cpu.mmu.write_byte(0x0000, 0x3A);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFF);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x1233);
 }
@@ -589,17 +589,17 @@ fn test_a_hli_hli_a() {
     cpu.mmu.write_byte(0x0002, 0x22);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(0x1234), 0xFF);
     assert_eq!(cpu.regs.get_reg(A), 0xFF);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x1235);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(0x1235), 0xEE);
     assert_eq!(cpu.regs.get_reg(A), 0xEE);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x1236);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(0x1236), 0xEE);
     assert_eq!(cpu.regs.get_reg(A), 0xEE);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x1237);
@@ -615,10 +615,10 @@ fn test_ldh_n_a_a_n() {
     cpu.regs.set_reg(A, 0x00);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFF);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(0xFF34), 0xFF);
 }
 
@@ -630,7 +630,7 @@ fn test_ld_sp_hl() {
     cpu.mmu.write_byte(0x0000, 0xF9);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0x1234);
 }
 
@@ -646,7 +646,7 @@ fn test_ld_hl_sp_n() {
 
     // Set HL = SP (0xFFFE) + 0x01.
     cpu.mmu.write_2_bytes(0x0000, 0x01F8);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0xFFFF);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -656,7 +656,7 @@ fn test_ld_hl_sp_n() {
     cpu.sp = 0xF00E;
     // Set HL = SP (0xF00E) + 0x02; should set H flag.
     cpu.mmu.write_2_bytes(0x0002, 0x02F8);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0xF010);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -666,7 +666,7 @@ fn test_ld_hl_sp_n() {
     cpu.sp = 0xF0D0;
     // Set HL = SP (0xF0D0) + 0x51; should set C flag.
     cpu.mmu.write_2_bytes(0x0004, 0x51F8);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0xF121);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -676,7 +676,7 @@ fn test_ld_hl_sp_n() {
     cpu.sp = 0xF0DC;
     // Set HL = SP (0xF0DC) + 0x34; should set H & C flags.
     cpu.mmu.write_2_bytes(0x0006, 0x34F8);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0xF110);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -693,7 +693,7 @@ fn test_ld_nn_sp() {
     let data = [0x08, 0x21, 0x43];
     cpu.load(0x0000, &data);
     cpu.mmu.write_2_bytes(0x1234, 0x0000);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(0x4321), 0x34);
     assert_eq!(cpu.mmu.read_byte(0x4322), 0x12);
 }
@@ -718,42 +718,42 @@ fn test_add_a_n() {
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x00);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x12);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x46);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x9C);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x14);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xAE);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -761,21 +761,21 @@ fn test_add_a_n() {
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     cpu.regs.set_reg(A, 0xF0);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xAC);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xBA);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xBB);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -799,63 +799,63 @@ fn test_adc_a_n() {
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x00);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x01);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x00);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x51);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x60);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFF);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFE);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFE);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x00);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -878,7 +878,7 @@ fn test_sub_n() {
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x00);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
@@ -886,56 +886,56 @@ fn test_sub_n() {
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     cpu.regs.set_reg(A, 0xFE);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xEF);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xEE);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFE);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFE);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x31);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xCA);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xC9);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xC7);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
@@ -959,7 +959,7 @@ fn test_sbc_n() {
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x00);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
@@ -967,21 +967,21 @@ fn test_sbc_n() {
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     cpu.regs.set_reg(A, 0xFE);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xEF);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xEE);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFE);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
@@ -989,35 +989,35 @@ fn test_sbc_n() {
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     cpu.regs.set_reg(A, 0x00);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x00);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x00);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFE);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xFB);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0xF8);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
@@ -1055,42 +1055,42 @@ fn test_and_n() {
     cpu.regs.set_flag(RegFlag::H, false);
     cpu.regs.set_flag(RegFlag::C, true);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1111_1011);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1111_1010);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1111_1000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1111_0000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1110_0000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1110_0000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0110_0000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0100_0000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0000_0000);
     assert!(cpu.regs.get_flag(RegFlag::Z));
 }
@@ -1125,42 +1125,42 @@ fn test_or_n() {
     ];
     cpu.load(0x0000, &data);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0000_0000);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1000_0001);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1000_1001);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1100_1001);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1110_1001);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1110_1001);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1110_1001);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1110_1101);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1111_1101);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 }
@@ -1195,43 +1195,43 @@ fn test_xor_n() {
     ];
     cpu.load(0x0000, &data);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0000_0000);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0101_0101);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0011_0011);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0110_1000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0110_0010);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1000_0110);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1000_0101);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1000_0001);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
     cpu.regs.set_virt_reg(HL, 0b0110_0100_0000_0011);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0111_0001);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 }
@@ -1255,56 +1255,56 @@ fn test_cp_n() {
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x80);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x80);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x80);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x80);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x80);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x80);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x80);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x80);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x80);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::H));
@@ -1333,7 +1333,7 @@ fn test_inc_dec_n() {
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x01);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -1341,34 +1341,34 @@ fn test_inc_dec_n() {
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(B), 0x11);
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(C), 0x10);
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(D), 0x00);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::H));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(E), 0x20);
     assert!(cpu.regs.get_flag(RegFlag::H));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(H), 0xD1);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(L), 0x12);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(0xF112), 0x24);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 
@@ -1378,7 +1378,7 @@ fn test_inc_dec_n() {
     cpu.regs.set_flag(RegFlag::H, false);
     cpu.regs.set_flag(RegFlag::C, false);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x00);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
@@ -1386,34 +1386,34 @@ fn test_inc_dec_n() {
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(B), 0x10);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(C), 0x0F);
     assert!(cpu.regs.get_flag(RegFlag::H));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(D), 0xFF);
     assert!(cpu.regs.get_flag(RegFlag::H));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(E), 0x1F);
     assert!(cpu.regs.get_flag(RegFlag::H));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(H), 0xD0);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(L), 0x11);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 
     cpu.regs.set_virt_reg(HL, 0xD112);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(0xD112), 0x23);
     assert!(!cpu.regs.get_flag(RegFlag::H));
 }
@@ -1433,7 +1433,7 @@ fn test_add_hl_n() {
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x0F00);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -1441,19 +1441,19 @@ fn test_add_hl_n() {
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     cpu.regs.set_flag(RegFlag::Z, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x1000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x0F01);
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     cpu.regs.set_virt_reg(HL, 0xFF00);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x1000);
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
@@ -1484,7 +1484,7 @@ fn test_add_sp_n() {
     ];
     cpu.load(0x0000, &data);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0x0001);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -1492,31 +1492,31 @@ fn test_add_sp_n() {
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     cpu.sp = 0x0002;
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0x0011);
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     cpu.sp = 0x0030;
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0x002F);
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     cpu.sp = 0x0091; // 145
-    cpu.cycle(); // - 127
+    cpu.cycle(true); // - 127
     assert_eq!(cpu.sp, 0x0012); // 18
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     cpu.sp = 0xFFFE; // default
-    cpu.cycle(); // + 127
+    cpu.cycle(true); // + 127
     assert_eq!(cpu.sp, 0x007D); // 125
     assert!(cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     cpu.sp = 0x0000; // test underflow with subtraction
-    cpu.cycle(); // -1
+    cpu.cycle(true); // -1
     assert_eq!(cpu.sp, 0xFFFF); // underflow
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
@@ -1534,28 +1534,28 @@ fn test_inc_dec_nn() {
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(BC), 0x0020);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(DE), 0x0000);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x1000);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFF31);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(BC), 0x001F);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(DE), 0xFFFF);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_virt_reg(HL), 0x0FFF);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.sp, 0xFF30);
 }
 
@@ -1581,43 +1581,43 @@ fn test_swap_n() {
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, true);
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0000_0000);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(B), 0b1010_1010);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(C), 0b0000_1111);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(D), 0b1111_0000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(E), 0b1001_0110);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(H), 0b0101_1010);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(L), 0b0000_0100);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
     cpu.regs.set_reg(H, 0xC8);
     cpu.regs.set_reg(L, 0x88);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(0xC888), 0xBA);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 }
@@ -1632,7 +1632,7 @@ fn test_daa() {
     // Test convert 0x73 + 0x23 = 0x96; no change necessary.
     cpu.regs.reset_flags();
     cpu.regs.set_reg(A, 0x96);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x96);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -1642,7 +1642,7 @@ fn test_daa() {
     // Test convert 0x39 + 0x26 = 0x5F; want 0x65.
     cpu.regs.reset_flags();
     cpu.regs.set_reg(A, 0x5F);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x65);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
@@ -1653,7 +1653,7 @@ fn test_daa() {
     cpu.regs.reset_flags();
     cpu.regs.set_flag(RegFlag::C, true);
     cpu.regs.set_reg(A, 0x10);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x70);
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
@@ -1662,7 +1662,7 @@ fn test_daa() {
     cpu.regs.reset_flags();
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_reg(A, 0x11);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x17);
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
@@ -1670,7 +1670,7 @@ fn test_daa() {
     // Test convert 0x70 + 0x30 = 0xA0; want 0x00 + carry.
     cpu.regs.reset_flags();
     cpu.regs.set_reg(A, 0xA0);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x00);
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
@@ -1678,7 +1678,7 @@ fn test_daa() {
     // Test convert 0x02 + 0x09 = 0x0B; want 0x11.
     cpu.regs.reset_flags();
     cpu.regs.set_reg(A, 0x0B);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x11);
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
@@ -1689,7 +1689,7 @@ fn test_daa() {
 
     // Test convert 0x19 - 0x07 = 0x12; no change necessary.
     cpu.regs.set_reg(A, 0x12);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x12);
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
@@ -1697,7 +1697,7 @@ fn test_daa() {
     // Test convert 0x10 - 0x01 = 0x0F + half carry; want 0x09.
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_reg(A, 0x0F);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x09);
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
@@ -1706,7 +1706,7 @@ fn test_daa() {
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, true);
     cpu.regs.set_reg(A, 0xFF);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x99);
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
@@ -1715,7 +1715,7 @@ fn test_daa() {
     cpu.regs.set_flag(RegFlag::H, false);
     cpu.regs.set_flag(RegFlag::C, true);
     cpu.regs.set_reg(A, 0xF3);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0x93);
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
@@ -1733,7 +1733,7 @@ fn test_cpl() {
     cpu.regs.set_flag(RegFlag::H, false);
     cpu.regs.set_flag(RegFlag::C, true);
     cpu.regs.set_reg(A, 0b0000_0000);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1111_1111);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::N));
@@ -1743,17 +1743,17 @@ fn test_cpl() {
     cpu.regs.set_flag(RegFlag::Z, false);
     cpu.regs.set_flag(RegFlag::C, false);
     cpu.regs.set_reg(A, 0b1111_1111);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0000_0000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
     cpu.regs.set_reg(A, 0b1010_1010);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0101_0101);
 
     cpu.regs.set_reg(A, 0b1001_0110);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0110_1001);
 }
 
@@ -1768,7 +1768,7 @@ fn test_ccf_scf() {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
@@ -1777,7 +1777,7 @@ fn test_ccf_scf() {
     cpu.regs.set_flag(RegFlag::Z, false);
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
@@ -1786,7 +1786,7 @@ fn test_ccf_scf() {
     cpu.regs.set_flag(RegFlag::Z, true);
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
@@ -1795,7 +1795,7 @@ fn test_ccf_scf() {
     cpu.regs.set_flag(RegFlag::Z, false);
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
@@ -1803,7 +1803,7 @@ fn test_ccf_scf() {
 
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
@@ -1815,7 +1815,7 @@ fn test_good_stop() {
     cpu.pc = 0x0000;
     cpu.mmu.write_byte(0x0000, 0x10);
     cpu.mmu.write_byte(0x0001, 0x00);
-    cpu.cycle();
+    cpu.cycle(true);
 }
 
 #[test]
@@ -1825,7 +1825,7 @@ fn test_bad_stop() {
     cpu.pc = 0x0000;
     cpu.mmu.write_byte(0x0000, 0x10);
     cpu.mmu.write_byte(0x0001, 0xFF);
-    cpu.cycle();
+    cpu.cycle(true);
 }
 
 #[test]
@@ -1840,47 +1840,47 @@ fn test_ei_di() {
     cpu.di_countdown = 0;
     cpu.ei_countdown = 0;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 2);
     assert_eq!(cpu.ei_countdown, 0);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 1);
     assert_eq!(cpu.ei_countdown, 0);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 0);
     assert_eq!(cpu.ei_countdown, 0);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 0);
     assert_eq!(cpu.ei_countdown, 0);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 0);
     assert_eq!(cpu.ei_countdown, 2);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 0);
     assert_eq!(cpu.ei_countdown, 1);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 0);
     assert_eq!(cpu.ei_countdown, 0);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 2);
     assert_eq!(cpu.ei_countdown, 0);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 1);
     assert_eq!(cpu.ei_countdown, 2);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 0);
     assert_eq!(cpu.ei_countdown, 1);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 0);
     assert_eq!(cpu.ei_countdown, 0);
@@ -1901,14 +1901,14 @@ fn test_ra() {
     cpu.load(0x0000, &data);
 
     // Test RLCA
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1010_0110);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0100_1101);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
@@ -1917,18 +1917,18 @@ fn test_ra() {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1001_1011);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0011_0110);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0110_1101);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
@@ -1937,14 +1937,14 @@ fn test_ra() {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1011_0110);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0101_1011);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
@@ -1953,41 +1953,41 @@ fn test_ra() {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0010_1101);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1001_0110);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1100_1011);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0110_0101);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     // Test zero flag
     cpu.regs.reset_flags();
     cpu.regs.set_reg(A, 0x00);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
     cpu.regs.reset_flags();
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
     cpu.regs.reset_flags();
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 
     cpu.regs.reset_flags();
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
 }
 
@@ -2046,14 +2046,14 @@ fn test_rotates() {
         cpu.regs.set_reg(target, 0b0101_0011);
 
         // Test RLC
-        cpu.cycle();
+        cpu.cycle(true);
         assert_eq!(cpu.regs.get_reg(target), 0b1010_0110);
         assert!(!cpu.regs.get_flag(RegFlag::Z));
         assert!(!cpu.regs.get_flag(RegFlag::N));
         assert!(!cpu.regs.get_flag(RegFlag::H));
         assert!(!cpu.regs.get_flag(RegFlag::C));
 
-        cpu.cycle();
+        cpu.cycle(true);
         assert_eq!(cpu.regs.get_reg(target), 0b0100_1101);
         assert!(cpu.regs.get_flag(RegFlag::C));
 
@@ -2062,18 +2062,18 @@ fn test_rotates() {
         cpu.regs.set_flag(RegFlag::N, true);
         cpu.regs.set_flag(RegFlag::H, true);
         cpu.regs.set_flag(RegFlag::C, true);
-        cpu.cycle();
+        cpu.cycle(true);
         assert_eq!(cpu.regs.get_reg(target), 0b1001_1011);
         assert!(!cpu.regs.get_flag(RegFlag::Z));
         assert!(!cpu.regs.get_flag(RegFlag::N));
         assert!(!cpu.regs.get_flag(RegFlag::H));
         assert!(!cpu.regs.get_flag(RegFlag::C));
 
-        cpu.cycle();
+        cpu.cycle(true);
         assert_eq!(cpu.regs.get_reg(target), 0b0011_0110);
         assert!(cpu.regs.get_flag(RegFlag::C));
 
-        cpu.cycle();
+        cpu.cycle(true);
         assert_eq!(cpu.regs.get_reg(target), 0b0110_1101);
         assert!(!cpu.regs.get_flag(RegFlag::C));
 
@@ -2082,14 +2082,14 @@ fn test_rotates() {
         cpu.regs.set_flag(RegFlag::N, true);
         cpu.regs.set_flag(RegFlag::H, true);
         cpu.regs.set_flag(RegFlag::C, false);
-        cpu.cycle();
+        cpu.cycle(true);
         assert_eq!(cpu.regs.get_reg(target), 0b1011_0110);
         assert!(!cpu.regs.get_flag(RegFlag::Z));
         assert!(!cpu.regs.get_flag(RegFlag::N));
         assert!(!cpu.regs.get_flag(RegFlag::H));
         assert!(cpu.regs.get_flag(RegFlag::C));
 
-        cpu.cycle();
+        cpu.cycle(true);
         assert_eq!(cpu.regs.get_reg(target), 0b0101_1011);
         assert!(!cpu.regs.get_flag(RegFlag::C));
 
@@ -2098,41 +2098,41 @@ fn test_rotates() {
         cpu.regs.set_flag(RegFlag::N, true);
         cpu.regs.set_flag(RegFlag::H, true);
         cpu.regs.set_flag(RegFlag::C, false);
-        cpu.cycle();
+        cpu.cycle(true);
         assert_eq!(cpu.regs.get_reg(target), 0b0010_1101);
         assert!(!cpu.regs.get_flag(RegFlag::Z));
         assert!(!cpu.regs.get_flag(RegFlag::N));
         assert!(!cpu.regs.get_flag(RegFlag::H));
         assert!(cpu.regs.get_flag(RegFlag::C));
 
-        cpu.cycle();
+        cpu.cycle(true);
         assert_eq!(cpu.regs.get_reg(target), 0b1001_0110);
         assert!(cpu.regs.get_flag(RegFlag::C));
 
-        cpu.cycle();
+        cpu.cycle(true);
         assert_eq!(cpu.regs.get_reg(target), 0b1100_1011);
         assert!(!cpu.regs.get_flag(RegFlag::C));
 
-        cpu.cycle();
+        cpu.cycle(true);
         assert_eq!(cpu.regs.get_reg(target), 0b0110_0101);
         assert!(cpu.regs.get_flag(RegFlag::C));
 
         // Test zero flag
         cpu.regs.reset_flags();
         cpu.regs.set_reg(target, 0x00);
-        cpu.cycle();
+        cpu.cycle(true);
         assert!(cpu.regs.get_flag(RegFlag::Z));
 
         cpu.regs.reset_flags();
-        cpu.cycle();
+        cpu.cycle(true);
         assert!(cpu.regs.get_flag(RegFlag::Z));
 
         cpu.regs.reset_flags();
-        cpu.cycle();
+        cpu.cycle(true);
         assert!(cpu.regs.get_flag(RegFlag::Z));
 
         cpu.regs.reset_flags();
-        cpu.cycle();
+        cpu.cycle(true);
         assert!(cpu.regs.get_flag(RegFlag::Z));
     }
 
@@ -2145,14 +2145,14 @@ fn test_rotates() {
     cpu.mmu.write_byte(address, 0b0101_0011);
 
     // Test RLC
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(address), 0b1010_0110);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(address), 0b0100_1101);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
@@ -2161,18 +2161,18 @@ fn test_rotates() {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(address), 0b1001_1011);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(address), 0b0011_0110);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(address), 0b0110_1101);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
@@ -2181,14 +2181,14 @@ fn test_rotates() {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(address), 0b1011_0110);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(address), 0b0101_1011);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
@@ -2197,41 +2197,41 @@ fn test_rotates() {
     cpu.regs.set_flag(RegFlag::N, true);
     cpu.regs.set_flag(RegFlag::H, true);
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(address), 0b0010_1101);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(address), 0b1001_0110);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(address), 0b1100_1011);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(address), 0b0110_0101);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     // Test zero flag
     cpu.regs.reset_flags();
     cpu.mmu.write_byte(address, 0x00);
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.regs.get_flag(RegFlag::Z));
 
     cpu.regs.reset_flags();
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.regs.get_flag(RegFlag::Z));
 
     cpu.regs.reset_flags();
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.regs.get_flag(RegFlag::Z));
 
     cpu.regs.reset_flags();
-    cpu.cycle();
+    cpu.cycle(true);
     assert!(cpu.regs.get_flag(RegFlag::Z));
 }
 
@@ -2262,67 +2262,67 @@ fn test_sla_sra_srl() {
 
     // SLA n
     setup(&mut cpu);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0000_0000);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(B), 0b0000_0000);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(C), 0b0000_0010);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(D), 0b0101_0100);
     assert!(cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(E), 0b1010_1010);
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(H), 0b1101_0010);
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(L), 0b1111_1100);
     assert!(!cpu.regs.get_flag(RegFlag::C));
     cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b0101_0100);
     assert!(cpu.regs.get_flag(RegFlag::C));
 
     // SRA n
     setup(&mut cpu);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b1100_0000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(B), 0b0000_0000);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(C), 0b0000_0000);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(D), 0b1101_0101);
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(E), 0b0010_1010);
     assert!(cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(H), 0b0011_0100);
     assert!(cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(L), 0b0011_1111);
     assert!(!cpu.regs.get_flag(RegFlag::C));
     cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1101_0101);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 
@@ -2335,34 +2335,34 @@ fn test_sla_sra_srl() {
     // cpu.regs.set_reg(E, 0b0101_0101);
     // cpu.regs.set_reg(H, 0b0110_1001);
     // cpu.regs.set_reg(L, 0b0111_1110);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(A), 0b0100_0000);
     assert!(!cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::N));
     assert!(!cpu.regs.get_flag(RegFlag::H));
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(B), 0b0000_0000);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(C), 0b0000_0000);
     assert!(cpu.regs.get_flag(RegFlag::Z));
     assert!(cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(D), 0b0101_0101);
     assert!(!cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(E), 0b0010_1010);
     assert!(cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(H), 0b0011_0100);
     assert!(cpu.regs.get_flag(RegFlag::C));
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.regs.get_reg(L), 0b0011_1111);
     assert!(!cpu.regs.get_flag(RegFlag::C));
     cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b0101_0101);
     assert!(!cpu.regs.get_flag(RegFlag::C));
 }
@@ -2398,27 +2398,27 @@ fn test_set_b_r() {
 
     for target in Target::iter() {
         for i in 0..8 {
-            cpu.cycle();
+            cpu.cycle(true);
             assert_eq!((cpu.regs.get_reg(target) & 2_u8.pow(i)) >> i, 1);
         }
     }
 
     cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1011,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1011,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1111,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1111,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1011_1111,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1011_1111,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1111_1111,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1111_1111,);
 }
 
@@ -2453,27 +2453,27 @@ fn test_res_b_r() {
 
     for target in Target::iter() {
         for i in 0..8 {
-            cpu.cycle();
+            cpu.cycle(true);
             assert_eq!((cpu.regs.get_reg(target) & 2_u8.pow(i)) >> i, 0);
         }
     }
 
     cpu.mmu.write_byte(cpu.regs.get_virt_reg(HL), 0b1010_1010);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1010,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1000,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_1000,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_0000,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1010_0000,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1000_0000,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b1000_0000,);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL)), 0b0000_0000,);
 }
 
@@ -2483,7 +2483,7 @@ fn test_call_nn() {
     let data = [0xCD, 0x34, 0x12];
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x1234);
     assert_eq!(cpu.pop_stack(), 0x0003);
 }
@@ -2505,30 +2505,30 @@ fn test_call_cc_nn() {
 
     // Conditions not met- should not jump.
     cpu.regs.set_flag(RegFlag::Z, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0003);
     cpu.regs.set_flag(RegFlag::Z, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0006);
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0009);
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x000C);
 
     // Conditions met- should jump!
     cpu.regs.set_flag(RegFlag::Z, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0100);
     cpu.regs.set_flag(RegFlag::Z, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0200);
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0300);
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0400);
 
     assert_eq!(cpu.pop_stack(), 0x0303);
@@ -2548,11 +2548,11 @@ fn test_ret() {
     cpu.mmu.write_byte(0x5678, 0xC9);
     cpu.pc = 0x0000;
 
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x1234);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x5678);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x9ABC);
 }
 
@@ -2572,30 +2572,30 @@ fn test_ret_cc() {
 
     // Conditions not met- should not jump.
     cpu.regs.set_flag(RegFlag::Z, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0001);
     cpu.regs.set_flag(RegFlag::Z, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0002);
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0003);
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0004);
 
     // Conditions met- should jump!
     cpu.regs.set_flag(RegFlag::Z, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0100);
     cpu.regs.set_flag(RegFlag::Z, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0200);
     cpu.regs.set_flag(RegFlag::C, false);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0300);
     cpu.regs.set_flag(RegFlag::C, true);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x0400);
 }
 
@@ -2608,12 +2608,12 @@ fn test_reti() {
     cpu.pc = 0x0000;
 
     let initial_sp = cpu.sp;
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.pc, 0x1234);
     assert_eq!(cpu.sp - 2, initial_sp);
     assert_eq!(cpu.ei_countdown, 1);
     assert!(!cpu.interrupts_enabled);
-    cpu.cycle();
+    cpu.cycle(true);
     assert_eq!(cpu.ei_countdown, 0);
     assert!(cpu.interrupts_enabled);
 }
@@ -2625,5 +2625,5 @@ fn illegal_opcode() {
     let data = [0xD3];
     cpu.load(0x0000, &data);
     cpu.pc = 0x0000;
-    cpu.cycle();
+    cpu.cycle(true);
 }

@@ -106,7 +106,7 @@ impl Cpu {
     }
 
     /// Perform one cycle. Return number of T-cycles taken.
-    pub fn cycle(&mut self) -> u32 {
+    pub fn cycle(&mut self, debug: bool) -> u32 {
         self.update_interrupt_countdown();
         let interrupt = self.handle_interrupt();
 
@@ -116,7 +116,7 @@ impl Cpu {
             4
         } else {
             let opcode = self.mmu.read_byte(self.pc);
-            execute_opcode(self, opcode)
+            execute_opcode(self, opcode, debug)
         };
 
         self.mmu.cycle(t_cycles)
