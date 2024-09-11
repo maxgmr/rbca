@@ -1,6 +1,6 @@
 use std::default::Default;
 
-use crate::{Flags, FlagsEnum};
+use crate::{mmu::If, Flags, FlagsEnum};
 
 use Button::{Down, Left, Right, Select, Start, Up, A, B};
 use Joyp::{ARight, BLeft, SelectButtons, SelectDPad, SelectUp, StartDown};
@@ -56,7 +56,7 @@ impl Joypad {
         // If no buttons were pressed, but now some are...
         if old_vals == 0b0000_1111 && new_vals != Flags::new(0b0000_1111) {
             // ...activate interrupt flag.
-            self.interrupt_flags |= Flags::new(0b0001_0000);
+            self.interrupt_flags.set(If::Joypad, true);
         }
 
         // Update buttons pressed, but not the "Select" state
