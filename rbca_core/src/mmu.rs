@@ -104,20 +104,27 @@ impl Mmu {
             0xC000..=0xDFFF => self.wram[address as usize - 0xC000],
             0xE000..=0xFDFF => self.eram[address as usize - 0xE000],
             0xFE00..=0xFE9F => self.ppu.read_byte(address),
+            0xFEA0..=0xFEFF => 0xFF,
             0xFF00 => self.joypad.read_byte(),
             0xFF01 => self.serial_data,
             0xFF02 => self.serial_control.read_byte(),
+            0xFF03 => 0xFF,
             0xFF04..=0xFF07 => self.timer.read_byte(address),
+            0xFF08..=0xFF0E => 0xFF,
             0xFF0F => self.if_reg.read_byte(),
-            0xFF10..=0xFF3F => self.audio.read_byte(address),
+            0xFF10..=0xFF26 => self.audio.read_byte(address),
+            0xFF27..=0xFF2F => 0xFF,
+            0xFF30..=0xFF3F => self.audio.read_byte(address),
             0xFF40..=0xFF4F => self.ppu.read_byte(address),
             0xFF50 => self.disable_boot_rom,
             0xFF51..=0xFF55 => self.ppu.read_byte(address),
+            0xFF56..=0xFF67 => 0xFF,
             0xFF68..=0xFF6B => self.ppu.read_byte(address),
+            0xFF6C..=0xFF6F => 0xFF,
+            0xFF70 => self.ppu.read_byte(address),
+            0xFF71..=0xFF7F => 0xFF,
             0xFF80..=0xFFFE => self.hram[address as usize - 0xFF80],
             0xFFFF => self.ie_reg.read_byte(),
-            _ => 0xFF,
-            // _ => panic!("MMU: read illegal address {:#06X}.", address),
         }
     }
 
@@ -144,18 +151,27 @@ impl Mmu {
             0xDE00..=0xDFFF => self.wram[address as usize - 0xC000] = value,
             0xE000..=0xFDFF => {}
             0xFE00..=0xFE9F => self.ppu.write_byte(address, value),
+            0xFEA0..=0xFEFF => {}
             0xFF00 => self.joypad.write_byte(value),
             0xFF01 => self.serial_data = value,
             0xFF02 => self.serial_control.write_byte(value),
+            0xFF03 => {}
             0xFF04..=0xFF07 => self.timer.write_byte(address, value),
+            0xFF08..=0xFF0E => {}
             0xFF0F => self.if_reg.write_byte(value),
-            0xFF10..=0xFF3F => self.audio.write_byte(address, value),
+            0xFF10..=0xFF26 => self.audio.write_byte(address, value),
+            0xFF27..=0xFF2F => {}
+            0xFF30..=0xFF3F => self.audio.write_byte(address, value),
             0xFF40..=0xFF4F => self.ppu.write_byte(address, value),
             0xFF50 => self.disable_boot_rom = value,
+            0xFF51..=0xFF55 => self.ppu.write_byte(address, value),
+            0xFF56..=0xFF67 => {}
             0xFF68..=0xFF6B => self.ppu.write_byte(address, value),
+            0xFF6C..=0xFF6F => {}
+            0xFF70 => self.ppu.write_byte(address, value),
+            0xFF71..=0xFF7F => {}
             0xFF80..=0xFFFE => self.hram[address as usize - 0xFF80] = value,
             0xFFFF => self.ie_reg.write_byte(value),
-            _ => {} // _ => panic!("MMU: write illegal address {:#06X}.", address),
         }
     }
 

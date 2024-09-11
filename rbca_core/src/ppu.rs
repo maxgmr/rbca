@@ -2,7 +2,8 @@ use std::default::Default;
 
 use crate::{mmu::If, Flags, FlagsEnum};
 
-const LY_STUBBED: bool = false;
+/// For debug: lock read value of lcd_y_coord to 0x90.
+pub const LY_STUBBED: bool = false;
 
 /// Width of the Game Boy display in pixels.
 pub const DISPLAY_WIDTH: usize = 160;
@@ -25,7 +26,7 @@ pub struct PPU {
     pub interrupt_flags: Flags,
     /// 8KiB Video RAM (VRAM).
     pub vram: [u8; 0x2000],
-    // Object attribute memory.
+    /// Object attribute memory.
     pub oam: [u8; 0x00A0],
     // Clock to keep track of timing while in a given PPU mode.
     mode_clock: u32,
@@ -125,10 +126,7 @@ impl PPU {
             0xFF4A => self.win_y,
             0xFF4B => self.win_x,
             // CGB only
-            0xFF4C => 0xFF,
-            0xFF4D => 0xFF,
-            0xFF4E => 0xFF,
-            0xFF4F => 0xFF,
+            0xFF4C..=0xFF4F => 0xFF,
             0xFF51..=0xFF55 | 0xFF68..=0xFF6B | 0xFF70 => 0xFF,
             _ => panic!("PPU: read illegal address {:#06X}.", address),
         }
@@ -155,10 +153,7 @@ impl PPU {
             0xFF4A => self.win_y = value,
             0xFF4B => self.win_x = value,
             // CGB only
-            0xFF4C => {}
-            0xFF4D => {}
-            0xFF4E => {}
-            0xFF4F => {}
+            0xFF4C..=0xFF4F => {}
             0xFF51..=0xFF55 | 0xFF68..=0xFF6B | 0xFF70 => {}
             _ => panic!("PPU: write illegal address {:#06X}.", address),
         }

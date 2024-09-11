@@ -94,6 +94,7 @@ impl Audio {
             0xFF12 => self.c1_vol_env.read_byte(),
             0xFF13 => 0xFF,
             0xFF14 => self.c1_period_high_control.read_byte(),
+            0xFF15 => 0xFF,
             0xFF16 => self.c2_len_duty.read_byte(),
             0xFF17 => self.c2_vol_env.read_byte(),
             0xFF18 => 0xFF,
@@ -103,6 +104,7 @@ impl Audio {
             0xFF1C => self.c3_out_level.read_byte(),
             0xFF1D => 0xFF,
             0xFF1E => self.c3_period_high_control.read_byte(),
+            0xFF1F => 0xFF,
             0xFF20 => self.c4_len_timer.read_byte(),
             0xFF21 => self.c4_vol_env.read_byte(),
             0xFF22 => self.c4_freq_rand.read_byte(),
@@ -111,7 +113,7 @@ impl Audio {
             0xFF25 => self.sound_panning.read_byte(),
             0xFF26 => self.audio_master_control.read_byte(),
             0xFF30..=0xFF3F => self.wave_pattern_ram[(address - 0xFF30) as usize],
-            _ => panic!("Timer: read illegal address {:#06X}.", address),
+            _ => panic!("Audio: read illegal address {:#06X}.", address),
         }
     }
 
@@ -123,6 +125,7 @@ impl Audio {
             0xFF12 => self.c1_vol_env.write_byte(value),
             0xFF13 => self.c1_period_low.write_byte(value),
             0xFF14 => self.c1_period_high_control.write_byte(value),
+            0xFF15 => {}
             0xFF16 => self.c2_len_duty.write_byte(value),
             0xFF17 => self.c2_vol_env.write_byte(value),
             0xFF18 => self.c2_period_low.write_byte(value),
@@ -132,6 +135,7 @@ impl Audio {
             0xFF1C => self.c3_out_level.write_byte(value),
             0xFF1D => self.c3_period_low.write_byte(value),
             0xFF1E => self.c3_period_high_control.write_byte(value),
+            0xFF1F => {}
             0xFF20 => self.c4_len_timer.write_byte(value),
             0xFF21 => self.c4_vol_env.write_byte(value),
             0xFF22 => self.c4_freq_rand.write_byte(value),
