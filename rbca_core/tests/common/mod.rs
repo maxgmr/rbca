@@ -10,6 +10,35 @@ use rbca_core::{
 };
 use text_io::read;
 
+pub fn read_blargg_mem_output(cpu: &Cpu) -> Option<String> {
+    let first_byte = cpu.mmu.read_byte(0xA000);
+    if first_byte == 0x80 {
+        return None;
+    }
+
+    if cpu.mmu.read_byte(0xA001) != 0xDE
+        || cpu.mmu.read_byte(0xA002) != 0xB0
+        || cpu.mmu.read_byte(0xA003) != 0x61
+    {
+        return None;
+    }
+
+    let mut addr: u16 = 0xA004;
+    let mut result: String = format!("[{}] ", first_byte);
+
+    loop {
+        let byte = cpu.mmu.read_byte(addr);
+        println!("{:#04X}", byte);
+        if byte == 0x00 {
+            break;
+        }
+        result.push(byte.into());
+        addr += 1;
+    }
+
+    Some(result)
+}
+
 pub fn blargg_test_common(rom_name: &str, rom_path: &str) {
     const INSTR_DEBUG: bool = true;
     // const INSTR_DEBUG: bool = false;
@@ -20,6 +49,8 @@ pub fn blargg_test_common(rom_name: &str, rom_path: &str) {
     const WAIT_MS: u64 = 50;
     // const LOG: bool = true;
     const LOG: bool = false;
+    const MEM_OUT: bool = true;
+    // const MEM_OUT: bool = false;
 
     #[allow(unused_variables)]
     fn is_breakpoint(
@@ -118,6 +149,14 @@ pub fn blargg_test_common(rom_name: &str, rom_path: &str) {
                 print!("{c}");
             }
             cpu.mmu.write_byte(0xFF02, 0x00);
+        }
+
+        // blargg mem output
+        if MEM_OUT {
+            if let Some(out) = read_blargg_mem_output(&cpu) {
+                println!("{out}");
+                return;
+            }
         }
 
         // breakpoints
