@@ -13,7 +13,7 @@ pub struct Mmu {
     /// The [Cartridge] loaded from the computer.
     pub cart: Box<dyn Cartridge>,
     /// The boot ROM.
-    boot_rom: Option<[u8; 0x0100]>,
+    pub boot_rom: Option<[u8; 0x0100]>,
     /// Work RAM.
     wram: [u8; 0x2000],
     /// Echo RAM. Mirror of 0xC000-0xDDFF.
