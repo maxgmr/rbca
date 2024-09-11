@@ -196,7 +196,10 @@ impl Cartridge for CartMBC1 {
         if !self.ram_enable {
             return 0xFF_u8;
         }
-        self.ram[self.internal_addr(address)]
+        *self
+            .ram
+            .get(self.internal_addr(address))
+            .unwrap_or(&0xFF_u8)
     }
 
     fn write_rom(&mut self, address: u16, value: u8) {
@@ -222,7 +225,9 @@ impl Cartridge for CartMBC1 {
             return;
         }
         let addr = self.internal_addr(address);
-        self.ram[addr] = value;
+        if addr < self.ram.len() {
+            self.ram[addr] = value;
+        }
     }
 }
 
