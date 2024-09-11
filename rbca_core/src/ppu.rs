@@ -250,9 +250,9 @@ impl PPU {
 
     /// Render a line of pixels on the LCD.
     fn render_scanline(&mut self) {
-        // Reset line
+        // Reset line by setting all pixels to white
         for x in 0..DISPLAY_WIDTH {
-            self.set_pixel(x, self.lcd_y_coord as usize, 255);
+            self.set_pixel(x, 0);
         }
 
         self.render_bg_line();
@@ -338,7 +338,7 @@ impl PPU {
                     "Unreachable colour index {colour_index}. Bad `get_colour_index` function."
                 ),
             };
-            let data_output_index = ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x as usize);
+            self.set_pixel(x as usize, colour);
         }
     }
 
@@ -371,11 +371,9 @@ impl PPU {
     }
 
     /// Set the colour of a pixel.
-    fn set_pixel(&mut self, x: usize, y: usize, colour: u8) {
-        let pixel_index = (y * DISPLAY_WIDTH * 3) + (x * 3);
-        self.data_output[pixel_index] = colour;
-        self.data_output[pixel_index + 1] = colour;
-        self.data_output[pixel_index + 2] = colour;
+    fn set_pixel(&mut self, x: usize, colour: u8) {
+        let data_output_index = ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x as usize);
+        self.data_output[data_output_index] = colour;
     }
 
     /// If LYC int select and LYC == LY, activate the LCD status interrupt.
