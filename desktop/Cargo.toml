@@ -9,3 +9,4 @@ repository = "https://github.com/maxgmr/rbca"
 color-eyre = "0.6"
 rbca_core = { path = "../rbca_core" }
 sdl2 = "0.37"
+text_io = "0.1"
