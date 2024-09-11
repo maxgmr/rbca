@@ -25,3 +25,49 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 ### Instruction Timing Tests
 
 - Passed
+
+### Memory Timing Tests
+
+- 01: Untested
+- 02: Untested
+- 03: Untested
+
+### Memory-2 Timing Tests
+
+- 01: Untested
+- 02: Untested
+- 03: Untested
+
+### Interrupt Timing Test
+
+- Untested
+
+### DMG Sound Tests
+
+- 01: Untested
+- 02: Untested
+- 03: Untested
+- 04: Untested
+- 05: Untested
+- 06: Untested
+- 07: Untested
+- 08: Untested
+- 09: Untested
+- 10: Untested
+- 11: Untested
+- 12: Untested
+
+### OAM Bug Tests
+
+- 1: Untested
+- 2: Untested
+- 3: Untested
+- 4: Untested
+- 5: Untested
+- 6: Untested
+- 7: Untested
+- 8: Untested
+
+### Halt Bug Test
+
+- Untested
