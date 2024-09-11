@@ -8,8 +8,9 @@ pub struct Timer {
     /// Used to alert MMU that the timer triggered some interrupt flags.
     pub interrupt_flags: Flags,
     // Internal helper counter.
-    timer_internal_clocksum: u32,
-    timer_clocksum: u32,
+    internal_divsum: u32,
+    // Internal helper counter.
+    internal_clocksum: u32,
     divider: u8,
     timer_counter: u8,
     timer_modulo: u8,
@@ -20,8 +21,8 @@ impl Timer {
     pub fn new() -> Self {
         Self {
             interrupt_flags: Flags::new(0b0000_0000),
-            timer_internal_clocksum: 0,
-            timer_clocksum: 0,
+            internal_divsum: 0,
+            internal_clocksum: 0,
             divider: 0x00,
             timer_counter: 0x00,
             timer_modulo: 0x00,
@@ -54,49 +55,51 @@ impl Timer {
     /// Perform one timer cycle.
     pub fn cycle(&mut self, t_cycles: u32) {
         // Set timer divider.
-        self.timer_internal_clocksum += t_cycles;
-        if self.timer_internal_clocksum >= 256 {
+        self.internal_divsum += t_cycles;
+        if self.internal_divsum >= 256 {
             self.divider = self.divider.wrapping_add(1);
-            self.timer_internal_clocksum -= 256;
+            self.internal_divsum -= 256;
         }
 
         // Check whether TIMA gets incremented.
-        if self.timer_control.get(Tac::Enable) {
-            // Increase helper counter.
-            self.timer_clocksum += t_cycles;
+        if !self.timer_control.get(Tac::Enable) {
+            return;
+        }
 
-            // Get frequency from TAC register.
-            // Increment every <frequency> t-cycles.
-            let frequency = match (
-                self.timer_control.get(Tac::ClockSelect1),
-                self.timer_control.get(Tac::ClockSelect0),
-            ) {
-                // Increment every...
-                // 0b11: 64 m-cycles
-                (true, true) => 64 * 4,
-                // 0b01: 4 m-cycles
-                (false, true) => 4 * 4,
-                // 0b10: 16 m-cycles
-                (true, false) => 16 * 4,
-                // 0b00: 256 m-cycles
-                _ => 256 * 4,
-            };
+        // Increase helper counter.
+        self.internal_clocksum += t_cycles;
 
-            // Increment the timer according to the frequency.
-            while self.timer_clocksum >= frequency {
-                // Increase TIMA
-                self.timer_counter = self.timer_counter.wrapping_add(1);
+        // Get frequency from TAC register.
+        // Increment every <frequency> t-cycles.
+        let frequency = match (
+            self.timer_control.get(Tac::ClockSelect1),
+            self.timer_control.get(Tac::ClockSelect0),
+        ) {
+            // Increment every...
+            // 0b11: 64 m-cycles
+            (true, true) => 64 * 4,
+            // 0b01: 4 m-cycles
+            (false, true) => 4 * 4,
+            // 0b10: 16 m-cycles
+            (true, false) => 16 * 4,
+            // 0b00: 256 m-cycles
+            _ => 256 * 4,
+        };
 
-                // If TIMA overflows...
-                if self.timer_counter == 0x00 {
-                    // eset to TMA value.
-                    self.timer_counter = self.timer_modulo;
-                    // Request an interrupt.
-                    self.interrupt_flags.set(If::Timer, true);
-                }
+        // Increment the timer according to the frequency.
+        while self.internal_clocksum >= frequency {
+            // Increase TIMA
+            self.timer_counter = self.timer_counter.wrapping_add(1);
 
-                self.timer_clocksum -= frequency;
+            // If TIMA overflows...
+            if self.timer_counter == 0x00 {
+                // Reset to TMA value.
+                self.timer_counter = self.timer_modulo;
+                // Request an interrupt.
+                self.interrupt_flags.set(If::Timer, true);
             }
+
+            self.internal_clocksum -= frequency;
         }
     }
 }
