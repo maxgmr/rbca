@@ -372,7 +372,7 @@ impl PPU {
 
     /// Set the colour of a pixel.
     fn set_pixel(&mut self, x: usize, colour: u8) {
-        let data_output_index = ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x as usize);
+        let data_output_index = ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + x;
         self.data_output[data_output_index] = colour;
     }
 
