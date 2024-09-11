@@ -17,7 +17,7 @@ use rbca_core::{
 };
 use text_io::read;
 
-fn test_common(rom_name: &str) {
+fn test_common(rom_name: &str, rom_path: &str) {
     // const BREAKPOINTS: bool = true;
     const BREAKPOINTS: bool = false;
     // const SLOW: bool = true;
@@ -55,10 +55,7 @@ fn test_common(rom_name: &str) {
         .open(file_name)
         .unwrap();
 
-    let mut cpu = Cpu::new_cart(format!(
-        "../roms/gb-test-roms/cpu_instrs/individual/{}",
-        rom_name
-    ));
+    let mut cpu = Cpu::new_cart(rom_path);
 
     println!("{}", cpu.mmu.cart.header_info());
     println!(
@@ -167,69 +164,108 @@ fn test_common(rom_name: &str) {
     }
 }
 
+#[test]
+#[ignore]
+fn test_cpu_all() {
+    test_common("ALL", "../roms/gb-test-roms/cpu_instrs/cpu_instrs.gb")
+}
+
 // Example usage: cargo t 01 -- --nocapture --ignored
 #[test]
 #[ignore]
 fn test_cpu_01() {
-    test_common("01-special.gb");
+    test_common(
+        "01",
+        "../roms/gb-test-roms/cpu_instrs/individual/01-special.gb",
+    );
 }
 
 #[test]
 #[ignore]
 fn test_cpu_02() {
-    test_common("02-interrupts.gb");
+    test_common(
+        "02",
+        "../roms/gb-test-roms/cpu_instrs/individual/02-interrupts.gb",
+    );
 }
 
 #[test]
 #[ignore]
 fn test_cpu_03() {
-    test_common("03-op sp,hl.gb");
+    test_common(
+        "03",
+        "../roms/gb-test-roms/cpu_instrs/individual/03-op sp,hl.gb",
+    );
 }
 
 #[test]
 #[ignore]
 fn test_cpu_04() {
-    test_common("04-op r,imm.gb");
+    test_common(
+        "04",
+        "../roms/gb-test-roms/cpu_instrs/individual/04-op r,imm.gb",
+    );
 }
 
 #[test]
 #[ignore]
 fn test_cpu_05() {
-    test_common("05-op rp.gb");
+    test_common(
+        "05",
+        "../roms/gb-test-roms/cpu_instrs/individual/05-op rp.gb",
+    );
 }
 
 #[test]
 #[ignore]
 fn test_cpu_06() {
-    test_common("06-ld r,r.gb");
+    test_common(
+        "06",
+        "../roms/gb-test-roms/cpu_instrs/individual/06-ld r,r.gb",
+    );
 }
 
 #[test]
 #[ignore]
 fn test_cpu_07() {
-    test_common("07-jr,jp,call,ret,rst.gb");
+    test_common(
+        "07",
+        "../roms/gb-test-roms/cpu_instrs/individual/07-jr,jp,call,ret,rst.gb",
+    );
 }
 
 #[test]
 #[ignore]
 fn test_cpu_08() {
-    test_common("08-misc instrs.gb");
+    test_common(
+        "08",
+        "../roms/gb-test-roms/cpu_instrs/individual/08-misc instrs.gb",
+    );
 }
 
 #[test]
 #[ignore]
 fn test_cpu_09() {
-    test_common("09-op r,r.gb");
+    test_common(
+        "09",
+        "../roms/gb-test-roms/cpu_instrs/individual/09-op r,r.gb",
+    );
 }
 
 #[test]
 #[ignore]
 fn test_cpu_10() {
-    test_common("10-bit ops.gb");
+    test_common(
+        "10",
+        "../roms/gb-test-roms/cpu_instrs/individual/10-bit ops.gb",
+    );
 }
 
 #[test]
 #[ignore]
 fn test_cpu_11() {
-    test_common("11-op a,(hl).gb");
+    test_common(
+        "11",
+        "../roms/gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb",
+    );
 }
