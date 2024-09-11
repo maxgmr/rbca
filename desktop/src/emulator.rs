@@ -1,13 +1,19 @@
 use std::time::Instant;
 
 use color_eyre::eyre::{self, eyre};
-use rbca_core::{Cpu, DISPLAY_HEIGHT, DISPLAY_WIDTH};
+use rbca_core::{
+    Button::{self, Down, Left, Right, Select, Start, Up, A, B},
+    Cpu, DISPLAY_HEIGHT, DISPLAY_WIDTH,
+};
 use sdl2::{
     event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window,
     EventPump,
 };
 
-use super::INSTR_DEBUG;
+use super::{
+    BTN_A, BTN_B, BTN_DEBUG, BTN_DOWN, BTN_LEFT, BTN_RIGHT, BTN_SELECT, BTN_START, BTN_UP,
+    INSTR_DEBUG,
+};
 
 const SCALE: u32 = 5;
 
@@ -23,12 +29,12 @@ const DARK_GREY: (u8, u8, u8) = (0x6C, 0x7D, 0x41);
 // 3
 const BLACK: (u8, u8, u8) = (0x3B, 0x46, 0x20);
 
-pub struct Display {
+pub struct Emulator {
     cpu: Cpu,
     canvas: Canvas<Window>,
     event_pump: EventPump,
 }
-impl Display {
+impl Emulator {
     pub fn new(cpu: Cpu) -> eyre::Result<Self> {
         let sdl_context = match sdl2::init() {
             Ok(sdlc) => sdlc,
@@ -75,6 +81,20 @@ impl Display {
                     } => {
                         break 'main_loop;
                     }
+                    Event::KeyDown {
+                        keycode: Some(kc), ..
+                    } => {
+                        if let Some(btn) = match_keycode_button(&kc) {
+                            self.cpu.button_down(btn, BTN_DEBUG);
+                        }
+                    }
+                    Event::KeyUp {
+                        keycode: Some(kc), ..
+                    } => {
+                        if let Some(btn) = match_keycode_button(&kc) {
+                            self.cpu.button_up(btn, BTN_DEBUG);
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -117,5 +137,19 @@ impl Display {
 
         self.canvas.present();
         Ok(())
+    }
+}
+
+fn match_keycode_button(kc: &Keycode) -> Option<Button> {
+    match *kc {
+        BTN_UP => Some(Up),
+        BTN_DOWN => Some(Down),
+        BTN_LEFT => Some(Left),
+        BTN_RIGHT => Some(Right),
+        BTN_A => Some(A),
+        BTN_B => Some(B),
+        BTN_START => Some(Start),
+        BTN_SELECT => Some(Select),
+        _ => None,
     }
 }

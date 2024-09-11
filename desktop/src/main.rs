@@ -2,14 +2,25 @@ use std::env;
 
 use color_eyre::eyre::{self, eyre};
 use rbca_core::Cpu;
+use sdl2::keyboard::Keycode;
 use text_io::read;
 
-mod display;
+mod emulator;
 
-use display::Display;
+use emulator::Emulator;
 
-const INSTR_DEBUG: bool = true;
-const USE_BOOT_ROM: bool = false;
+const INSTR_DEBUG: bool = false;
+const BTN_DEBUG: bool = false;
+const USE_BOOT_ROM: bool = true;
+
+const BTN_UP: Keycode = Keycode::W;
+const BTN_DOWN: Keycode = Keycode::S;
+const BTN_LEFT: Keycode = Keycode::A;
+const BTN_RIGHT: Keycode = Keycode::D;
+const BTN_A: Keycode = Keycode::Comma;
+const BTN_B: Keycode = Keycode::Period;
+const BTN_START: Keycode = Keycode::Return;
+const BTN_SELECT: Keycode = Keycode::Backspace;
 
 fn main() -> eyre::Result<()> {
     let args: Vec<_> = env::args().collect();
@@ -34,10 +45,10 @@ fn main() -> eyre::Result<()> {
     let _: String = read!();
     println!("-------");
 
-    // Create desktop UI
-    let mut desktop = Display::new(cpu)?;
+    // Create desktop emulator
+    let mut desktop = Emulator::new(cpu)?;
 
-    // Run desktop UI
+    // Run desktop emulator
     desktop.run()?;
 
     Ok(())
