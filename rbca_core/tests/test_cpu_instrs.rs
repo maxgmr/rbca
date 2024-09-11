@@ -20,8 +20,6 @@ use text_io::read;
 fn test_common(rom_name: &str) {
     // const BREAKPOINTS: bool = true;
     const BREAKPOINTS: bool = false;
-    const STEP_FORWARD: bool = true;
-    // const STEP_FORWARD: bool = false;
     // const SLOW: bool = true;
     const SLOW: bool = false;
     const WAIT_MS: u64 = 50;
