@@ -94,6 +94,8 @@ impl Timer {
                     // Request an interrupt.
                     self.interrupt_flags.set(If::Timer, true);
                 }
+
+                self.timer_clocksum -= frequency;
             }
         }
     }
