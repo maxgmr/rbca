@@ -31,7 +31,7 @@ pub struct Mmu {
     /// Audio.
     audio: Audio,
     /// Pixel processing unit.
-    ppu: PPU,
+    pub ppu: PPU,
     /// Diable boot ROM flag.
     disable_boot_rom: u8,
     /// High RAM.

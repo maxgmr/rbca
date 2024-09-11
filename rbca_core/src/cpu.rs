@@ -7,6 +7,7 @@ use crate::{
     instructions::execute_opcode,
     Mmu, RegFlag, Registers,
     Target::{A, B, C, D, E, H, L},
+    DISPLAY_HEIGHT, DISPLAY_WIDTH,
 };
 
 const INTERRUPT_FLAG_REGISTER_ADDR: u16 = 0xFF0F;
@@ -103,6 +104,18 @@ impl Cpu {
         cpu.regs.set_flag(RegFlag::H, true);
         cpu.regs.set_flag(RegFlag::C, true);
         cpu
+    }
+
+    /// Get the output of the PPU. This is an array of values ranging from 0-3. Each value
+    /// represents one pixel.
+    ///
+    /// To render this output, perform the following conversion:
+    /// 0 -> White
+    /// 1 -> Light grey
+    /// 2 -> Dark grey
+    /// 3 -> Black
+    pub fn get_pixels(&self) -> &[u8; DISPLAY_WIDTH * DISPLAY_HEIGHT] {
+        &self.mmu.ppu.data_output
     }
 
     /// Perform one cycle. Return number of T-cycles taken.
