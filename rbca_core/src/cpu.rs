@@ -217,6 +217,26 @@ impl Cpu {
         self.sp = self.sp.wrapping_add(2);
         popped_val
     }
+
+    /// Get some emulator info formatted as a nice String.
+    pub fn emu_info(&self) -> String {
+        format!(
+            "RBCA Emulator Info
+\tBoot ROM\t\t{}
+
+{}",
+            if self.mmu.boot_rom.is_some() {
+                "Yes"
+            } else {
+                "No"
+            },
+            if self.mmu.cart.is_empty() {
+                String::from("No Cartridge")
+            } else {
+                self.mmu.cart.header_info()
+            }
+        )
+    }
 }
 impl Default for Cpu {
     fn default() -> Self {
