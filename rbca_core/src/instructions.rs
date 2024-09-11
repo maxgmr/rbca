@@ -2163,7 +2163,7 @@ fn srl_n_helper(cpu: &mut Cpu, original_val: u8) -> u8 {
 // BIT b,r: Iff bit b in register r == 0, set Z flag = 1. Else, set Z flag = 0.
 fn bit_b_r(cpu: &mut Cpu, b: usize, target: Target) -> (u16, u32, String) {
     let size = 2;
-    let cycles = 4;
+    let cycles = 8;
     let instruction_string = format!("BIT {b},{target}");
 
     bit_b_r_helper(cpu, b, cpu.regs.get_reg(target));
@@ -2173,7 +2173,7 @@ fn bit_b_r(cpu: &mut Cpu, b: usize, target: Target) -> (u16, u32, String) {
 }
 fn bit_b_r_hl(cpu: &mut Cpu, b: usize) -> (u16, u32, String) {
     let size = 2;
-    let cycles = 16;
+    let cycles = 12;
     let instruction_string = format!("BIT {b},(HL)");
 
     let target_byte = cpu.mmu.read_byte(cpu.regs.get_virt_reg(HL));
@@ -2242,7 +2242,7 @@ fn res_b_r_hl(cpu: &mut Cpu, b: usize) -> (u16, u32, String) {
 // JP nn: Jump to address nn.
 fn jp_nn(cpu: &mut Cpu) -> (u16, u32, String) {
     let size = 3;
-    let cycles = 12;
+    let cycles = 16;
     let instruction_string = "JP nn";
 
     let nn = cpu.get_next_2_bytes();
@@ -2254,7 +2254,7 @@ fn jp_nn(cpu: &mut Cpu) -> (u16, u32, String) {
 // JP cc,nn: Iff C/Z flag == true/false, jump to address nn.
 fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> (u16, u32, String) {
     let size = 3;
-    let cycles = 12;
+    let cycles;
     let instruction_string = format!("JP {},nn", cc_print(flag, expected_value));
 
     let test_val = match flag {
@@ -2263,9 +2263,11 @@ fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> (u16, u32, St
     };
 
     if test_val == expected_value {
+        cycles = 16;
         let nn = cpu.get_next_2_bytes();
         jp_helper(cpu, nn);
     } else {
+        cycles = 12;
         cpu.pc += size;
     }
     (size, cycles, instruction_string)
@@ -2284,7 +2286,7 @@ fn jp_hl(cpu: &mut Cpu) -> (u16, u32, String) {
 // JR n: Add n to current address & jump to it.
 fn jr_n(cpu: &mut Cpu) -> (u16, u32, String) {
     let size = 2;
-    let cycles = 4;
+    let cycles = 12;
     let instruction_string = "JR n";
 
     let n = cpu.get_next_byte() as i8;
@@ -2297,7 +2299,7 @@ fn jr_n(cpu: &mut Cpu) -> (u16, u32, String) {
 // JR cc,n: Iff C/Z flag == true/false, add n to current address & jump to it.
 fn jr_cc_n(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> (u16, u32, String) {
     let size = 2;
-    let cycles = 8;
+    let cycles;
     let instruction_string = format!("JR {},n", cc_print(flag, expected_value));
 
     let test_val = match flag {
@@ -2307,9 +2309,11 @@ fn jr_cc_n(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> (u16, u32, Str
 
     if test_val == expected_value {
         let n = cpu.get_next_byte() as i8;
+        cycles = 12;
         cpu.pc += size;
         jp_helper(cpu, ((cpu.pc as u32 as i32) + (n as i32)) as u16);
     } else {
+        cycles = 8;
         cpu.pc += size;
     }
     (size, cycles, instruction_string)
@@ -2323,7 +2327,7 @@ fn jp_helper(cpu: &mut Cpu, address: u16) {
 // CALL nn: Push address of next instruction onto stack. Jump to address nn.
 fn call_nn(cpu: &mut Cpu) -> (u16, u32, String) {
     let size = 3;
-    let cycles = 12;
+    let cycles = 24;
     let instruction_string = "CALL nn";
 
     cpu.push_stack(cpu.pc + 3);
@@ -2336,7 +2340,7 @@ fn call_nn(cpu: &mut Cpu) -> (u16, u32, String) {
 // nn.
 fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> (u16, u32, String) {
     let size = 3;
-    let cycles = 4;
+    let cycles;
     let instruction_string = format!("CALL {},nn", cc_print(flag, expected_value));
 
     let test_val = match flag {
@@ -2344,9 +2348,11 @@ fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> (u16, u32, 
         _ => panic!("call_cc_nn: Cannot use flag {:?}. C or Z flags only.", flag),
     };
     if test_val == expected_value {
+        cycles = 24;
         cpu.push_stack(cpu.pc + size);
         cpu.pc = cpu.get_next_2_bytes();
     } else {
+        cycles = 12;
         cpu.pc += size;
     }
 
@@ -2356,7 +2362,7 @@ fn call_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> (u16, u32, 
 // RST n: Push current address to stack. Jump to address 0x0000 + n.
 fn rst_n(cpu: &mut Cpu, n: u8) -> (u16, u32, String) {
     let size = 1;
-    let cycles = 32;
+    let cycles = 16;
     let instruction_string = "RST n";
 
     cpu.pc += size;
@@ -2369,7 +2375,7 @@ fn rst_n(cpu: &mut Cpu, n: u8) -> (u16, u32, String) {
 // RET: Pop two bytes from the stack. Jump to that address.
 fn ret(cpu: &mut Cpu) -> (u16, u32, String) {
     let size = 1;
-    let cycles = 8;
+    let cycles = 16;
     let instruction_string = "RET";
 
     cpu.pc = cpu.pop_stack();
@@ -2379,7 +2385,7 @@ fn ret(cpu: &mut Cpu) -> (u16, u32, String) {
 // RET cc: Iff condition cc == true, pop two bytes from the stack & jump to that address.
 fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> (u16, u32, String) {
     let size = 1;
-    let cycles = 8;
+    let cycles;
     let instruction_string = format!("RET {}", cc_print(flag, expected_value));
 
     let test_val = match flag {
@@ -2387,8 +2393,10 @@ fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> (u16, u32, Stri
         _ => panic!("call_cc_nn: Cannot use flag {:?}. C or Z flags only.", flag),
     };
     if test_val == expected_value {
+        cycles = 20;
         cpu.pc = cpu.pop_stack();
     } else {
+        cycles = 8;
         cpu.pc += 1;
     }
 
@@ -2398,7 +2406,7 @@ fn ret_cc(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> (u16, u32, Stri
 // RETI: Pop two bytes from stack. Jump to the address. Enable interrupts.
 fn reti(cpu: &mut Cpu) -> (u16, u32, String) {
     let size = 1;
-    let cycles = 8;
+    let cycles = 16;
     let instruction_string = "RETI";
 
     cpu.pc = cpu.pop_stack();

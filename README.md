@@ -24,4 +24,4 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 
 ### Instruction Timing Tests
 
-- Failed #255
+- Passed
