@@ -34,13 +34,13 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 
 ### Memory-2 Timing Tests
 
-- 01: Untested
-- 02: Untested
-- 03: Untested
+- 01: Failed
+- 02: Failed
+- 03: Failed
 
 ### Interrupt Timing Test
 
-- Failed: Gets stuck at 0xC9C9
+- Failed
 
 ### DMG Sound Tests
 
@@ -59,15 +59,15 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 
 ### OAM Bug Tests
 
-- 1: Untested
-- 2: Untested
-- 3: Untested
-- 4: Untested
-- 5: Untested
-- 6: Untested
-- 7: Untested
-- 8: Untested
+- 1: Turning LCD on starts too late in scanline (Failed #2)
+- 2: LD DE, $FE00 : INC DE (Failed #2)
+- 3: Passed
+- 4: INC DE at first corruption (Failed #3)
+- 5: Should corrupt at beginning of first scanline (Failed #2)
+- 6: Passed
+- 7: 00000000 Failed
+- 8: 00000000 INC/DEC rp pattern is wrong (Failed #2)
 
 ### Halt Bug Test
 
-- Untested
+- Failed
