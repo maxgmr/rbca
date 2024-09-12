@@ -113,7 +113,7 @@ impl PPU {
         }
     }
 
-    /// Directly read the byte of a given address.
+    /// Directly read the byte at the given address.
     pub fn read_byte(&self, address: u16) -> u8 {
         match address {
             0x8000..=0x9FFF => {
@@ -155,7 +155,7 @@ impl PPU {
         }
     }
 
-    /// Directly replace the byte at the given address. Not recommended.
+    /// Directly write to the byte at the given address.
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
             0x8000..=0x9FFF => {
@@ -275,7 +275,8 @@ impl PPU {
     fn render_scanline(&mut self) {
         // Reset line by setting all pixels to white
         for x in 0..DISPLAY_WIDTH {
-            self.set_pixel(x, 0);
+            let data_output_index = ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + x;
+            self.set_pixel(data_output_index, 0);
         }
 
         if self.lcd_control.get(Lcdc::BGWindowEnablePriority) {
@@ -406,7 +407,11 @@ impl PPU {
             let obj_flags: Flags = Flags::new(self.oam[obj_start_addr + 3]);
 
             // If tile doesn't intersect current scanline, move on
-            // println!("[{:#06X}] = {obj_y}", obj_start_addr);
+            // for i in self.oam.iter() {
+            //     if *i != 0 {
+            //         println!("{:#?}", self.oam);
+            //     }
+            // }
             // println!(
             //     "{} < {} || {} >= ({} + {})",
             //     i32::from(self.lcd_y_coord),
