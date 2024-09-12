@@ -13,6 +13,11 @@ fn test_mmu_read_write() {
         if (0xE000..=0xFDFF).contains(&address) {
             // Attempt to write garbage to ERAM to ensure that it is a duplicate of WRAM
             mmu.write_byte(address, 0xFF);
+        } else if address == 0xFF46 {
+            // Simulate waiting for the OAM DMA transfer to finish so reads & writes outside WRAM
+            // become available again
+            mmu.write_byte(address, value);
+            mmu.oam_dma_remaining_cycles = 0;
         } else {
             // Write to MMU at all non-illegal addresses
             mmu.write_byte(address, value);
@@ -232,4 +237,71 @@ fn test_mmu_read_write() {
         // Ensure read_byte returns correct value
         assert_eq!(mmu.read_byte(address), expected_val);
     }
+}
+
+#[test]
+fn test_oam_dma_transfer() {
+    let mut mmu = Mmu::new();
+    let vals: Vec<u8> = (0x00..=0x9F).collect();
+    mmu.wram[0x0000..=0x009F].copy_from_slice(&vals);
+    mmu.wram[0x00A0] = 0xFF;
+
+    mmu.write_byte(0xCFAB, 0x00);
+
+    // Should be able to read & write
+    assert_eq!(mmu.oam_dma_remaining_cycles, 0);
+    mmu.write_byte(0xD000, 0xAB);
+    assert_eq!(mmu.read_byte(0xD000), 0xAB);
+
+    // Target = 0xC000; 0xC000 / 0x0100 = 0x00C0
+    mmu.oam_dma_transfer(0xC0);
+    assert_eq!(mmu.oam_dma_remaining_cycles, 640);
+
+    // Shouldn't be able to read or write anywhere except HRAM
+    for address in 0x0000..=0xFF7F {
+        mmu.write_byte(address, 0xCD);
+        assert_eq!(mmu.read_byte(address), 0xFF);
+    }
+    mmu.write_byte(0xFFFF, 0xCD);
+    assert_eq!(mmu.read_byte(0xFFFF), 0xFF);
+
+    // Should take 640 T-cycles to return to normal
+    // take 635 cycles to do 127 checks on all 127 HRAM locations
+    for offset in 0..=0x7E_u8 {
+        // ensure that HRAM works
+        mmu.write_byte(0xFF80 + (offset as u16), offset);
+        assert_eq!(mmu.read_byte(0xFF80 + (offset as u16)), offset);
+
+        // ensure that other memory locations are still unusable
+        mmu.write_byte(0xC000 + (offset as u16), offset);
+        assert_eq!(mmu.read_byte(0xC000 + (offset as u16)), 0xFF);
+
+        mmu.cycle(5);
+    }
+
+    // ensure that HRAM works
+    mmu.write_byte(0xFF80, 0xAB);
+    assert_eq!(mmu.read_byte(0xFF80), 0xAB);
+
+    // ensure that other memory locations are still unusable
+    mmu.write_byte(0xC000, 0xCD);
+    assert_eq!(mmu.read_byte(0xC000), 0xFF);
+
+    // ensure that OAM DMA goes to 0 on overflow
+    mmu.cycle(8);
+    assert_eq!(mmu.oam_dma_remaining_cycles, 0);
+
+    // ensure that HRAM still works
+    mmu.write_byte(0xFF81, 0xCF);
+    assert_eq!(mmu.read_byte(0xFF81), 0xCF);
+
+    // ensure that other memory locations were not written to during OAM DMA
+    assert_eq!(mmu.read_byte(0xCFAB), 0x00);
+
+    // ensure that other memory locations now work again
+    mmu.write_byte(0xCFAB, 0xDE);
+    assert_eq!(mmu.read_byte(0xCFAB), 0xDE);
+
+    mmu.oam_dma_transfer(0xC0);
+    assert_eq!(mmu.oam_dma_remaining_cycles, 640);
 }

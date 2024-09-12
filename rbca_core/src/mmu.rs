@@ -7,6 +7,8 @@ use crate::{
     Audio, Flags, FlagsEnum, Joypad, Timer, PPU,
 };
 
+const OAM_DMA_TRANSFER_T_CYCLES: u16 = 640;
+
 /// Memory management unit. Routes reads and writes and controls device state.
 #[derive(Debug)]
 pub struct Mmu {
@@ -38,6 +40,8 @@ pub struct Mmu {
     hram: [u8; 0x007F],
     /// Interrupt enable register.
     ie_reg: Flags,
+    /// Remaining OAM DMA transfer cycles. 0 = no transfer currently happening.
+    oam_dma_remaining_cycles: u16,
 }
 impl Mmu {
     /// Create a new [Mmu] with a cartridge and a boot ROM.
@@ -83,11 +87,20 @@ impl Mmu {
             disable_boot_rom: if have_boot_rom { 0x00 } else { 0x01 },
             hram: [0x00; 0x007F],
             ie_reg: Flags::new(0b0000_0000),
+            oam_dma_remaining_cycles: 0,
         }
     }
 
     /// Directly read the byte at the given address.
     pub fn read_byte(&self, address: u16) -> u8 {
+        // Can only access HRAM during OAM DMA transfer
+        if self.oam_dma_remaining_cycles > 0 {
+            return match address {
+                0xFF80..=0xFFFE => self.hram[address as usize - 0xFF80],
+                _ => 0xFF,
+            };
+        }
+
         match address {
             0x0000..=0x00FF => {
                 if self.read_byte(0xFF50) != 0 {
@@ -135,6 +148,14 @@ impl Mmu {
 
     /// Directly write to the byte at the given address.
     pub fn write_byte(&mut self, address: u16, value: u8) {
+        // Can only access HRAM during OAM DMA transfer
+        if self.oam_dma_remaining_cycles > 0 {
+            if (0xFF80..=0xFFFE).contains(&address) {
+                self.hram[address as usize - 0xFF80] = value;
+            };
+            return;
+        }
+
         match address {
             0x0000..=0x00FF => {
                 if self.read_byte(0xFF50) != 0 {
@@ -162,7 +183,9 @@ impl Mmu {
             0xFF10..=0xFF26 => self.audio.write_byte(address, value),
             0xFF27..=0xFF2F => {}
             0xFF30..=0xFF3F => self.audio.write_byte(address, value),
-            0xFF40..=0xFF4F => self.ppu.write_byte(address, value),
+            0xFF40..=0xFF45 => self.ppu.write_byte(address, value),
+            0xFF46 => self.oam_dma_transfer(value),
+            0xFF47..=0xFF4F => self.ppu.write_byte(address, value),
             0xFF50 => self.disable_boot_rom = value,
             0xFF51..=0xFF55 => self.ppu.write_byte(address, value),
             0xFF56..=0xFF67 => {}
@@ -183,6 +206,13 @@ impl Mmu {
 
     /// Perform one full cycle, returning the PPU t-cycles.
     pub fn cycle(&mut self, t_cycles: u32) -> u32 {
+        // Advance time for OAM DMA.
+        if self.oam_dma_remaining_cycles > 0 {
+            self.oam_dma_remaining_cycles = self
+                .oam_dma_remaining_cycles
+                .saturating_sub(t_cycles as u16);
+        }
+
         // Cycle the timer.
         self.timer.cycle(t_cycles);
         // Update IF register if the timer triggered any interrupts.
@@ -205,6 +235,18 @@ impl Mmu {
         // TODO check for serial interrupts.
 
         t_cycles
+    }
+
+    /// Perform an OAM DMA transfer.
+    fn oam_dma_transfer(&mut self, address: u8) {
+        let start_addr = (address as u16) << 8;
+
+        for offset in 0..=0x9F {
+            let source = self.read_byte(start_addr + offset);
+            self.ppu.oam[offset as usize] = source;
+        }
+
+        self.oam_dma_remaining_cycles = OAM_DMA_TRANSFER_T_CYCLES;
     }
 }
 
