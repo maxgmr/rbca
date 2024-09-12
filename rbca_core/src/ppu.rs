@@ -36,6 +36,8 @@ const TILEDATA_START_1: u16 = 0x8000;
 pub struct PPU {
     /// Data output of screen.
     pub data_output: [u8; DISPLAY_WIDTH * DISPLAY_HEIGHT],
+    // Denotes which pixels were set to transparent by background/window.
+    data_bg_win_transparent: [bool; DISPLAY_WIDTH * DISPLAY_HEIGHT],
     /// Clone of interrupt flags to keep track of any interrupts set by the PPU.
     pub interrupt_flags: Flags,
     /// 8KiB Video RAM (VRAM).
@@ -93,6 +95,7 @@ impl PPU {
         }
         Self {
             data_output: [0x00; DISPLAY_WIDTH * DISPLAY_HEIGHT],
+            data_bg_win_transparent: [false; DISPLAY_WIDTH * DISPLAY_HEIGHT],
             interrupt_flags: Flags::new(0b0000_0000),
             vram: [0x00; 0x2000],
             oam: [0x00; 0x00A0],
@@ -212,6 +215,7 @@ impl PPU {
 
                     if self.lcd_y_coord as usize == DISPLAY_HEIGHT {
                         // Lines done. Set VBlank interrupt & enter VBlank mode
+                        self.data_bg_win_transparent = [false; DISPLAY_WIDTH * DISPLAY_HEIGHT];
                         self.interrupt_flags.set(If::VBlank, true);
                         if self.lcd_status.get(Stat::Mode1IntSelect) {
                             self.interrupt_flags.set(If::Lcd, true);
@@ -255,11 +259,18 @@ impl PPU {
             self.set_pixel(x, 0);
         }
 
-        self.render_bg_line();
-        self.render_obj_line();
+        if self.lcd_control.get(Lcdc::BGWindowEnablePriority) {
+            self.render_bg_line();
+        }
+        if self.lcd_control.get(Lcdc::OBJEnable) {
+            self.render_obj_line();
+        }
     }
 
     /// Draw the background layer on the LCD.
+    ///
+    /// Thanks to [gbemulator](https://github.com/p4ddy1/gbemulator/tree/master) for help with this
+    /// implementation
     fn render_bg_line(&mut self) {
         let bg_map_y = self.lcd_y_coord.wrapping_add(self.bg_view_y);
 
@@ -338,7 +349,109 @@ impl PPU {
                     "Unreachable colour index {colour_index}. Bad `get_colour_index` function."
                 ),
             };
-            self.set_pixel(x as usize, colour);
+            let data_output_index = ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x as usize);
+            // OBJs will always write pixel at this location if BG/window is transparent
+            if colour_index == 0 {
+                self.data_bg_win_transparent[data_output_index] = true;
+            }
+            self.set_pixel(data_output_index, colour);
+        }
+    }
+
+    /// Draw the OBJ layer on the LCD.
+    ///
+    /// Thanks to [gbemulator](https://github.com/p4ddy1/gbemulator/tree/master) for help with this
+    /// implementation
+    fn render_obj_line(&mut self) {
+        let obj_height = if self.lcd_control.get(Lcdc::OBJSize) {
+            16
+        } else {
+            8
+        };
+
+        let mut num_objs_on_scanline: u32 = 0;
+        for obj_num in 0..40 {
+            if num_objs_on_scanline == 10 {
+                break;
+            }
+            // Get OBJ data
+            let obj_start_addr: usize = obj_num * 4;
+            let obj_y: u8 = self.oam[obj_start_addr];
+            let obj_y_pos: i32 = i32::from(obj_y) - 16;
+            let obj_x: u8 = self.oam[obj_start_addr + 1];
+            let obj_x_pos: i32 = i32::from(obj_x) - 8;
+            let obj_tile_num: u8 = self.oam[obj_start_addr + 2];
+            let obj_flags: Flags = Flags::new(self.oam[obj_start_addr + 3]);
+
+            // If tile doesn't intersect current scanline, move on
+            if i32::from(self.lcd_y_coord) < obj_y_pos
+                || i32::from(self.lcd_y_coord) >= (obj_y_pos + obj_height)
+            {
+                continue;
+            }
+
+            // Add obj to limit
+            num_objs_on_scanline += 1;
+
+            let tile_begin_addr = (obj_tile_num as u16) * 16;
+            let line_offset = if obj_flags.get(ObjAttrs::YFlip) {
+                obj_height - 1 - (i32::from(self.lcd_y_coord) - obj_y_pos)
+            } else {
+                i32::from(self.lcd_y_coord) - obj_y_pos
+            };
+
+            let left_byte_addr = tile_begin_addr + ((line_offset as u16) * 2);
+            let right_byte_addr = left_byte_addr + 1;
+
+            let left_byte = self.vram[left_byte_addr as usize];
+            let right_byte = self.vram[right_byte_addr as usize];
+
+            // Render each pixel of sprite
+            for x in 0..8_u8 {
+                let x_offset = obj_x_pos + (i32::from(x));
+                // Check if on screen
+                if x_offset < 0 || (x_offset as usize) >= DISPLAY_WIDTH {
+                    continue;
+                }
+
+                let bit_index = if obj_flags.get(ObjAttrs::XFlip) {
+                    x
+                } else {
+                    7 - x
+                };
+                // Assemble the colour index from left & right bytes.
+                let colour_index = Self::get_colour_index(left_byte, right_byte, bit_index);
+                // Colour 0 = transparent for objs
+                if colour_index == 0 {
+                    continue;
+                }
+
+                let palette = if obj_flags.get(ObjAttrs::DMGPalette) {
+                    self.obj_palette_1
+                } else {
+                    self.obj_palette_0
+                };
+                let colour = match colour_index {
+                    3 => palette.read_byte() >> 6,
+                    2 => (palette.read_byte() & 0b0011_0000) >> 4,
+                    1 => (palette.read_byte() & 0b0000_1100) >> 2,
+                    _ => unreachable!(
+                        "Unreachable colour index {colour_index}. Bad `get_colour_index` function."
+                    ),
+                };
+
+                let data_output_index =
+                    ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x as usize);
+
+                // Don't set pixel if background has priority and it isn't transparent
+                if obj_flags.get(ObjAttrs::Priority)
+                    && !self.data_bg_win_transparent[data_output_index]
+                {
+                    continue;
+                }
+
+                self.set_pixel(data_output_index, colour);
+            }
         }
     }
 
@@ -361,18 +474,8 @@ impl PPU {
         (start + (((y_offset as u16) / 8) * 32) + ((x_offset as u16) / 8)) as usize
     }
 
-    /// Draw the sprites layer on the LCD.
-    fn render_obj_line(&mut self) {
-        if !self.lcd_control.get(Lcdc::OBJEnable) {
-            return;
-        }
-
-        // TODO
-    }
-
     /// Set the colour of a pixel.
-    fn set_pixel(&mut self, x: usize, colour: u8) {
-        let data_output_index = ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + x;
+    fn set_pixel(&mut self, data_output_index: usize, colour: u8) {
         self.data_output[data_output_index] = colour;
     }
 
@@ -434,8 +537,34 @@ impl Default for PPU {
     }
 }
 
+/// OBJ attributes enum.
+enum ObjAttrs {
+    Priority,
+    YFlip,
+    XFlip,
+    DMGPalette,
+    Bank,
+    CGBPalette2,
+    CGBPalette1,
+    CGBPalette0,
+}
+impl FlagsEnum for ObjAttrs {
+    fn val(&self) -> u8 {
+        match self {
+            ObjAttrs::Priority => 0b1000_0000,
+            ObjAttrs::YFlip => 0b0100_0000,
+            ObjAttrs::XFlip => 0b0010_0000,
+            ObjAttrs::DMGPalette => 0b0001_0000,
+            ObjAttrs::Bank => 0b0000_1000,
+            ObjAttrs::CGBPalette2 => 0b0000_0100,
+            ObjAttrs::CGBPalette1 => 0b0000_0010,
+            ObjAttrs::CGBPalette0 => 0b0000_0001,
+        }
+    }
+}
+
 /// LCD control enum.
-pub enum Lcdc {
+enum Lcdc {
     LcdPpuEnable,
     WindowTileMapArea,
     WindowEnable,
@@ -461,7 +590,7 @@ impl FlagsEnum for Lcdc {
 }
 
 /// LCD status enum.
-pub enum Stat {
+enum Stat {
     LycIntSelect,
     Mode2IntSelect,
     Mode1IntSelect,
@@ -492,7 +621,7 @@ impl FlagsEnum for Stat {
 /// 0b01 = light grey
 /// 0b10 = dark grey
 /// 0b11 = black
-pub enum ColorID {
+enum ColorID {
     ID3Bit1,
     ID3Bit0,
     ID2Bit1,
@@ -520,7 +649,7 @@ impl FlagsEnum for ColorID {
 }
 
 /// Background colour palette index
-pub enum Bcps {
+enum Bcps {
     AutoInc,
     AddrBit5,
     AddrBit4,
@@ -544,7 +673,7 @@ impl FlagsEnum for Bcps {
 }
 
 /// Colour palette data 0 (bits 0..=7)
-pub enum Cpd0 {
+enum Cpd0 {
     G2,
     G1,
     G0,
@@ -570,7 +699,7 @@ impl FlagsEnum for Cpd0 {
 }
 
 /// Colour palette data 1 (bits 8..=15)
-pub enum Cpd1 {
+enum Cpd1 {
     B4,
     B3,
     B2,
