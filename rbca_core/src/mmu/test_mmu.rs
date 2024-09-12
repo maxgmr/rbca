@@ -5,6 +5,9 @@ use super::*;
 #[test]
 fn test_mmu_read_write() {
     let mut mmu = Mmu::new();
+    let lcd_status_initial: u8 = mmu.read_byte(0xFF41);
+    assert_eq!(lcd_status_initial, 0b1000_0100);
+
     for address in 0x0000..=0xFFFF {
         let value = (address & 0x00FF) as u8;
         if (0xE000..=0xFDFF).contains(&address) {
@@ -151,7 +154,15 @@ fn test_mmu_read_write() {
                 assert_eq!(mmu.audio.read_byte(address), value);
                 expected_val = value;
             }
-            0xFF40..=0xFF43 => {
+            0xFF40 => {
+                assert_eq!(mmu.ppu.read_byte(address), value);
+                expected_val = value;
+            }
+            0xFF41 => {
+                assert_eq!(mmu.ppu.read_byte(address), 0b0100_0000);
+                expected_val = 0b0100_0000;
+            }
+            0xFF42 | 0xFF43 => {
                 assert_eq!(mmu.ppu.read_byte(address), value);
                 expected_val = value;
             }

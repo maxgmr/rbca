@@ -169,7 +169,12 @@ impl PPU {
                 }
             }
             0xFF40 => self.lcd_control.write_byte(value),
-            0xFF41 => self.lcd_status.write_byte(value),
+            // bits 1 & 0 are read only
+            0xFF41 => {
+                self.lcd_status =
+                    Flags::new((self.lcd_status.read_byte() & 0b0000_0011) | (value & 0b1111_1100))
+            }
+
             0xFF42 => self.bg_view_y = value,
             0xFF43 => self.bg_view_x = value,
             0xFF44 => {}
@@ -368,6 +373,7 @@ impl PPU {
             if colour_index == 0 {
                 self.data_bg_win_transparent[data_output_index] = true;
             }
+            // TODO Tennis attempts to access addr 0x5B40 (max addr 0x5BFF)
             self.set_pixel(data_output_index, colour);
         }
     }
@@ -785,10 +791,10 @@ mod tests {
         // Check Y coord == 0
         assert_eq!(ppu.read_byte(0xFF44), 0x00);
         // Enable LCD & PPU
-        ppu.write_byte(0xFF40, 0b1000_0000 | ppu.read_byte(0xFF40));
+        ppu.lcd_control.set(Lcdc::LcdPpuEnable, true);
         // Set mode to OAM (2)
-        ppu.write_byte(0xFF41, 0b0000_0010 | ppu.read_byte(0xFF41));
-        ppu.write_byte(0xFF41, !0b0000_0001 & ppu.read_byte(0xFF41));
+        ppu.lcd_status.set(Stat::PpuModeBit1, true);
+        ppu.lcd_status.set(Stat::PpuModeBit0, false);
         // Advance 70 cycles
         ppu.cycle(70);
         assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 2);
@@ -848,5 +854,104 @@ mod tests {
         ppu.cycle(456);
         assert_eq!(ppu.read_byte(0xFF44), 0);
         assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 2);
+    }
+
+    #[test]
+    fn test_read_write_vram_oam() {
+        let mut ppu = PPU::new();
+        assert!(!ppu.lcd_control.get(Lcdc::LcdPpuEnable));
+        assert_eq!(ppu.get_mode(), 0);
+
+        fn write_then_read(
+            ppu: &mut PPU,
+            vram_w_1: u8,
+            vram_w_2: u8,
+            oam_w_1: u8,
+            oam_w_2: u8,
+        ) -> (u8, u8, u8, u8, u8, u8, u8, u8) {
+            ppu.vram[0x0000] = 0x00;
+            ppu.vram[0x1FFF] = 0x00;
+            ppu.oam[0x0000] = 0x00;
+            ppu.oam[0x009F] = 0x00;
+            ppu.write_byte(0x8000, vram_w_1);
+            ppu.write_byte(0x9FFF, vram_w_2);
+            ppu.write_byte(0xFE00, oam_w_1);
+            ppu.write_byte(0xFE9F, oam_w_2);
+            (
+                ppu.vram[0x0000],
+                ppu.vram[0x1FFF],
+                ppu.oam[0x0000],
+                ppu.oam[0x009F],
+                ppu.read_byte(0x8000),
+                ppu.read_byte(0x9FFF),
+                ppu.read_byte(0xFE00),
+                ppu.read_byte(0xFE9F),
+            )
+        }
+
+        // Should be able to read to & write from VRAM & OAM.
+        let out = write_then_read(&mut ppu, 0x12, 0x34, 0xAB, 0xCD);
+        assert_eq!(out, (0x12, 0x34, 0xAB, 0xCD, 0x12, 0x34, 0xAB, 0xCD));
+
+        // Enable LCD & PPU.
+        ppu.lcd_control.set(Lcdc::LcdPpuEnable, true);
+        assert!(ppu.lcd_control.get(Lcdc::LcdPpuEnable));
+        assert_eq!(ppu.get_mode(), 0);
+
+        // Should be able to read to & write from VRAM & OAM.
+        let out = write_then_read(&mut ppu, 0x12, 0x34, 0xAB, 0xCD);
+        assert_eq!(out, (0x12, 0x34, 0xAB, 0xCD, 0x12, 0x34, 0xAB, 0xCD));
+
+        // Set mode to OAM.
+        ppu.lcd_status.set(Stat::PpuModeBit1, true);
+        ppu.lcd_status.set(Stat::PpuModeBit0, false);
+        assert_eq!(ppu.get_mode(), 2);
+
+        // Should only be able to access VRAM, not OAM.
+        let out = write_then_read(&mut ppu, 0x12, 0x34, 0xAB, 0xCD);
+        assert_eq!(out, (0x12, 0x34, 0x00, 0x00, 0x12, 0x34, 0xFF, 0xFF));
+
+        // Disable LCD & PPU.
+        ppu.lcd_control.set(Lcdc::LcdPpuEnable, false);
+        assert!(!ppu.lcd_control.get(Lcdc::LcdPpuEnable));
+
+        // Should be able to read to & write from VRAM & OAM.
+        let out = write_then_read(&mut ppu, 0x12, 0x34, 0xAB, 0xCD);
+        assert_eq!(out, (0x12, 0x34, 0xAB, 0xCD, 0x12, 0x34, 0xAB, 0xCD));
+
+        // Set mode to draw pixels.
+        ppu.lcd_status.set(Stat::PpuModeBit1, true);
+        ppu.lcd_status.set(Stat::PpuModeBit0, true);
+        assert_eq!(ppu.get_mode(), 3);
+
+        // Should be able to read to & write from VRAM & OAM.
+        let out = write_then_read(&mut ppu, 0x12, 0x34, 0xAB, 0xCD);
+        assert_eq!(out, (0x12, 0x34, 0xAB, 0xCD, 0x12, 0x34, 0xAB, 0xCD));
+
+        // Enable LCD & PPU.
+        ppu.lcd_control.set(Lcdc::LcdPpuEnable, true);
+        assert!(ppu.lcd_control.get(Lcdc::LcdPpuEnable));
+
+        // VRAM & OAM should be inaccessible.
+        let out = write_then_read(&mut ppu, 0x12, 0x34, 0xAB, 0xCD);
+        assert_eq!(out, (0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF));
+
+        // Set mode to HBlank.
+        ppu.lcd_status.set(Stat::PpuModeBit1, false);
+        ppu.lcd_status.set(Stat::PpuModeBit0, false);
+        assert_eq!(ppu.get_mode(), 0);
+
+        // VRAM & OAM should be accessible.
+        let out = write_then_read(&mut ppu, 0x12, 0x34, 0xAB, 0xCD);
+        assert_eq!(out, (0x12, 0x34, 0xAB, 0xCD, 0x12, 0x34, 0xAB, 0xCD));
+
+        // Set mode to VBlank.
+        ppu.lcd_status.set(Stat::PpuModeBit1, false);
+        ppu.lcd_status.set(Stat::PpuModeBit0, true);
+        assert_eq!(ppu.get_mode(), 1);
+
+        // VRAM & OAM should be accessible.
+        let out = write_then_read(&mut ppu, 0x12, 0x34, 0xAB, 0xCD);
+        assert_eq!(out, (0x12, 0x34, 0xAB, 0xCD, 0x12, 0x34, 0xAB, 0xCD));
     }
 }
