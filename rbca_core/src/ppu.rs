@@ -17,9 +17,6 @@ const VBLANK_CYCLES: u32 = 456;
 
 const MAX_SCANLINES: u8 = 153;
 
-const TILE_MAP_SIZE: usize = 0x0400;
-const TILE_DATA_SIZE: usize = 0x1000;
-
 const VRAM_ADDR_OFFSET: u16 = 0x8000;
 
 const WINMAP_START_0: u16 = 0x9800;
@@ -27,9 +24,6 @@ const WINMAP_START_1: u16 = 0x9C00;
 
 const BGMAP_START_0: u16 = 0x9800;
 const BGMAP_START_1: u16 = 0x9C00;
-
-const TILEDATA_START_0: u16 = 0x8800;
-const TILEDATA_START_1: u16 = 0x8000;
 
 /// Pixel processing unit.
 #[derive(Debug, Clone)]
@@ -122,8 +116,20 @@ impl PPU {
     /// Directly read the byte of a given address.
     pub fn read_byte(&self, address: u16) -> u8 {
         match address {
-            0x8000..=0x9FFF => self.vram[address as usize - 0x8000],
-            0xFE00..=0xFE9F => self.oam[address as usize - 0xFE00],
+            0x8000..=0x9FFF => {
+                if !self.lcd_control.get(Lcdc::LcdPpuEnable) || self.get_mode() != 3 {
+                    self.vram[address as usize - 0x8000]
+                } else {
+                    0xFF
+                }
+            }
+            0xFE00..=0xFE9F => {
+                if !self.lcd_control.get(Lcdc::LcdPpuEnable) || (0..=1).contains(&self.get_mode()) {
+                    self.oam[address as usize - 0xFE00]
+                } else {
+                    0xFF
+                }
+            }
             0xFF40 => self.lcd_control.read_byte(),
             0xFF41 => self.lcd_status.read_byte(),
             0xFF42 => self.bg_view_y,
@@ -152,8 +158,16 @@ impl PPU {
     /// Directly replace the byte at the given address. Not recommended.
     pub fn write_byte(&mut self, address: u16, value: u8) {
         match address {
-            0x8000..=0x9FFF => self.vram[address as usize - 0x8000] = value,
-            0xFE00..=0xFE9F => self.oam[address as usize - 0xFE00] = value,
+            0x8000..=0x9FFF => {
+                if !self.lcd_control.get(Lcdc::LcdPpuEnable) || self.get_mode() != 3 {
+                    self.vram[address as usize - 0x8000] = value
+                }
+            }
+            0xFE00..=0xFE9F => {
+                if !self.lcd_control.get(Lcdc::LcdPpuEnable) || (0..=1).contains(&self.get_mode()) {
+                    self.oam[address as usize - 0xFE00] = value
+                }
+            }
             0xFF40 => self.lcd_control.write_byte(value),
             0xFF41 => self.lcd_status.write_byte(value),
             0xFF42 => self.bg_view_y = value,
@@ -370,10 +384,12 @@ impl PPU {
         };
 
         let mut num_objs_on_scanline: u32 = 0;
+        let mut lowest_x_written_at_location = [i32::MAX; DISPLAY_WIDTH * DISPLAY_HEIGHT];
         for obj_num in 0..40 {
             if num_objs_on_scanline == 10 {
                 break;
             }
+
             // Get OBJ data
             let obj_start_addr: usize = obj_num * 4;
             let obj_y: u8 = self.oam[obj_start_addr];
@@ -384,6 +400,15 @@ impl PPU {
             let obj_flags: Flags = Flags::new(self.oam[obj_start_addr + 3]);
 
             // If tile doesn't intersect current scanline, move on
+            // println!("[{:#06X}] = {obj_y}", obj_start_addr);
+            // println!(
+            //     "{} < {} || {} >= ({} + {})",
+            //     i32::from(self.lcd_y_coord),
+            //     obj_y_pos,
+            //     i32::from(self.lcd_y_coord),
+            //     obj_y_pos,
+            //     obj_height
+            // );
             if i32::from(self.lcd_y_coord) < obj_y_pos
                 || i32::from(self.lcd_y_coord) >= (obj_y_pos + obj_height)
             {
@@ -443,7 +468,13 @@ impl PPU {
                 let data_output_index =
                     ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x as usize);
 
-                // Don't set pixel if background has priority and it isn't transparent
+                // Only set the pixel if this is the smallest X-coord OBJ.
+                if lowest_x_written_at_location[data_output_index] <= x.into() {
+                    continue;
+                }
+                lowest_x_written_at_location[data_output_index] = x.into();
+
+                // Don't set the pixel if background has priority and it isn't transparent.
                 if obj_flags.get(ObjAttrs::Priority)
                     && !self.data_bg_win_transparent[data_output_index]
                 {
