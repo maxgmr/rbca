@@ -1,10 +1,12 @@
 # rbca
 
-Rustbucket Colour Adjustor. Game Boy/Game Boy Color emulator.
+Rustbucket Colour Adjustor. Game Boy/Game Boy Color emulator made from scratch.
 
 ## Current Status
 
-Boots fine, seems to run Tetris, Bomberman GB fine.
+DMG mode only for now.
+
+Boots fine, seems to run Tetris, Bomberman GB, Tennis, Link's Awakening fine.
 
 Appears to run somewhat slow sometimes, e.g. ~48 FPS in Kirby's Dream Land. Need to test whether this is due to the (likely inefficient) SDL2 Desktop frontend rendering method, or for another reason.
 
@@ -18,9 +20,9 @@ No audio, serial data transfer, config, or save files... yet!
 
 Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.htm#cgbregisters).
 
-## Blargg Test Status
+## Tests Status
 
-### CPU Instruction Tests
+### Blargg's CPU Instruction Tests
 
 - 01: Passed
 - 02: Passed
@@ -34,27 +36,27 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 - 10: Passed
 - 11: Passed
 
-### Instruction Timing Tests
+### Blargg's Instruction Timing Tests
 
 - Passed
 
-### Memory Timing Tests
+### Blargg's Memory Timing Tests
 
 - 01: Failed
 - 02: Failed
 - 03: Failed
 
-### Memory-2 Timing Tests
+### Blargg's Memory-2 Timing Tests
 
 - 01: Failed
 - 02: Failed
 - 03: Failed
 
-### Interrupt Timing Test
+### Blargg's Interrupt Timing Test
 
 - Failed
 
-### DMG Sound Tests
+### Blargg's DMG Sound Tests
 
 - 01: Untested
 - 02: Untested
@@ -69,7 +71,7 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 - 11: Untested
 - 12: Untested
 
-### OAM Bug Tests
+### Blargg's OAM Bug Tests
 
 - 1: Turning LCD on starts too late in scanline (Failed #2)
 - 2: LD DE, $FE00 : INC DE (Failed #2)
@@ -80,6 +82,16 @@ Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.h
 - 7: 00000000 Failed
 - 8: 00000000 INC/DEC rp pattern is wrong (Failed #2)
 
-### Halt Bug Test
+### Blargg's Halt Bug Test
 
 - Failed
+
+### dmg-acid2
+
+- Fail hair visible: background enable (bit 0)
+- Fail tongue visible: object enable (bit 1)
+- Fail half of mouth missing: object size (bit 2)
+- Fail footer missing: background tile map (bit 3)
+- Fail right chin missing: window tile map (bit 6)
+- Fail left eye mole visible: background tile data is read from 0x8000-0x8FFF instead of 0x8800-97FF.
+- Fail left nose mole visible: object priority lower X coordinate
