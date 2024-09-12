@@ -407,19 +407,6 @@ impl PPU {
             let obj_flags: Flags = Flags::new(self.oam[obj_start_addr + 3]);
 
             // If tile doesn't intersect current scanline, move on
-            // for i in self.oam.iter() {
-            //     if *i != 0 {
-            //         println!("{:#?}", self.oam);
-            //     }
-            // }
-            // println!(
-            //     "{} < {} || {} >= ({} + {})",
-            //     i32::from(self.lcd_y_coord),
-            //     obj_y_pos,
-            //     i32::from(self.lcd_y_coord),
-            //     obj_y_pos,
-            //     obj_height
-            // );
             if i32::from(self.lcd_y_coord) < obj_y_pos
                 || i32::from(self.lcd_y_coord) >= (obj_y_pos + obj_height)
             {
@@ -477,7 +464,7 @@ impl PPU {
                 };
 
                 let data_output_index =
-                    ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x as usize);
+                    ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x_offset as usize);
 
                 // Only set the pixel if this is the smallest X-coord OBJ.
                 if lowest_x_written_at_location[data_output_index] <= x.into() {
