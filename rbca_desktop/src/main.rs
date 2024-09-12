@@ -6,6 +6,7 @@ use sdl2::keyboard::Keycode;
 use text_io::read;
 
 mod emulator;
+mod utils;
 
 use emulator::Emulator;
 

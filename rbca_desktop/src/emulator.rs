@@ -22,12 +22,16 @@ const WINDOW_HEIGHT: u32 = (DISPLAY_HEIGHT as u32) * SCALE;
 
 // 0
 const WHITE: (u8, u8, u8) = (0xD7, 0xEC, 0xA1);
+// const WHITE: (u8, u8, u8) = (0xCA, 0xB8, 0xE3);
 // 1
 const LIGHT_GREY: (u8, u8, u8) = (0xA6, 0xBB, 0x72);
+// const LIGHT_GREY: (u8, u8, u8) = (0x76, 0x5B, 0x87);
 // 2
 const DARK_GREY: (u8, u8, u8) = (0x6C, 0x7D, 0x41);
+// const DARK_GREY: (u8, u8, u8) = (0x3C, 0x25, 0x4A);
 // 3
 const BLACK: (u8, u8, u8) = (0x3B, 0x46, 0x20);
+// const BLACK: (u8, u8, u8) = (0x1A, 0x02, 0x21);
 
 pub struct Emulator {
     cpu: Cpu,
@@ -68,6 +72,8 @@ impl Emulator {
 
     pub fn run(&mut self) -> eyre::Result<()> {
         let mut cycles: u128 = 0;
+        let mut last_frame_time = Instant::now();
+
         'main_loop: loop {
             let start = Instant::now();
 
@@ -105,7 +111,9 @@ impl Emulator {
             // Approximately one frame
             if cycles >= 70224 {
                 cycles %= 70224;
+                // println!("{:.0}", 1_f64 / last_frame_time.elapsed().as_secs_f64());
                 self.draw_screen()?;
+                last_frame_time = Instant::now();
                 // Wait until can start next frame
                 if start.elapsed().as_nanos() < 16_750_000 {}
             }
