@@ -164,6 +164,7 @@ impl PPU {
                 }
             }
             0xFE00..=0xFE9F => {
+                println!("write {:#04X} to OAM", value);
                 if !self.lcd_control.get(Lcdc::LcdPpuEnable) || (0..=1).contains(&self.get_mode()) {
                     self.oam[address as usize - 0xFE00] = value
                 }
