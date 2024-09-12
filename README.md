@@ -2,6 +2,18 @@
 
 Rustbucket Colour Adjustor. Game Boy/Game Boy Color emulator.
 
+## Current Status
+
+Boots fine, seems to run Tetris, Bomberman GB fine.
+
+Appears to run somewhat slow sometimes, e.g. ~48 FPS in Kirby's Dream Land. Need to test whether this is due to the (likely inefficient) SDL2 Desktop frontend rendering method, or for another reason.
+
+Screen can have horizontal tears sometimes.
+
+A few layering issues.
+
+No audio, serial data transfer, config, or save files... yet!
+
 ## Sources
 
 Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.htm#cgbregisters).
