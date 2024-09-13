@@ -3,36 +3,59 @@ use std::default::Default;
 use camino::Utf8PathBuf;
 use color_eyre::eyre::{self, eyre};
 use config::{Config, File};
+use sdl2::keyboard::Scancode;
+use serde::Deserialize;
 
 use crate::{
     palette::{Palette, PresetPalette},
-    utils,
+    scancodes, utils,
 };
 
 const DEFAULT_CONFIG_DIR: &str = "~/.config/rbca_desktop/";
 
-#[derive(Debug, Default, serde::Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
+#[allow(unused)]
+pub struct KeyBindings {
+    #[serde(with = "scancodes")]
+    pub up: Scancode,
+    #[serde(with = "scancodes")]
+    pub down: Scancode,
+    #[serde(with = "scancodes")]
+    pub left: Scancode,
+    #[serde(with = "scancodes")]
+    pub right: Scancode,
+    #[serde(with = "scancodes")]
+    pub a: Scancode,
+    #[serde(with = "scancodes")]
+    pub b: Scancode,
+    #[serde(with = "scancodes")]
+    pub start: Scancode,
+    #[serde(with = "scancodes")]
+    pub select: Scancode,
+}
+
+#[derive(Debug, Default, Clone, Deserialize)]
 #[allow(unused)]
 pub struct PathSettings {
     pub boot_rom_path: Option<Utf8PathBuf>,
     pub saves_dir: Utf8PathBuf,
 }
 
-#[derive(Debug, Default, serde::Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
 #[allow(unused)]
 pub struct PaletteSettings {
     pub preset_palette: PresetPalette,
     pub custom_palette: CustomPalette,
 }
 
-#[derive(Debug, Default, serde::Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
 #[allow(unused)]
 pub struct CustomPalette {
     pub enabled: bool,
     pub palette: Palette,
 }
 
-#[derive(Debug, Default, serde::Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
 #[allow(unused)]
 pub struct DebugSettings {
     pub general_debug: bool,
@@ -43,9 +66,10 @@ pub struct DebugSettings {
 }
 
 /// The user configuration settings.
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[allow(unused)]
 pub struct UserConfig {
+    pub key_bindings: KeyBindings,
     pub path_settings: PathSettings,
     pub palette_settings: PaletteSettings,
     pub debug_settings: DebugSettings,
@@ -90,6 +114,46 @@ impl UserConfig {
             }
             Err(e) => Err(eyre!("{e}")),
         }
+    }
+
+    /// Directly access the "Up" scancode.
+    pub fn up_code(&self) -> &Scancode {
+        &self.key_bindings.up
+    }
+
+    /// Directly access the "Down" scancode.
+    pub fn down_code(&self) -> &Scancode {
+        &self.key_bindings.down
+    }
+
+    /// Directly access the "Left" scancode.
+    pub fn left_code(&self) -> &Scancode {
+        &self.key_bindings.left
+    }
+
+    /// Directly access the "Right" scancode.
+    pub fn right_code(&self) -> &Scancode {
+        &self.key_bindings.right
+    }
+
+    /// Directly access the "A" scancode.
+    pub fn a_code(&self) -> &Scancode {
+        &self.key_bindings.a
+    }
+
+    /// Directly access the "B" scancode.
+    pub fn b_code(&self) -> &Scancode {
+        &self.key_bindings.b
+    }
+
+    /// Directly access the "Start" scancode.
+    pub fn start_code(&self) -> &Scancode {
+        &self.key_bindings.start
+    }
+
+    /// Directly access the "Select" scancode.
+    pub fn select_code(&self) -> &Scancode {
+        &self.key_bindings.select
     }
 
     /// Directly access the boot ROM path.

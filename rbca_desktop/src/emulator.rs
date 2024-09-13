@@ -5,12 +5,11 @@ use rbca_core::{
     Button::{self, Down, Left, Right, Select, Start, Up, A, B},
     Cpu, DISPLAY_HEIGHT, DISPLAY_WIDTH,
 };
-use sdl2::{event::Event, keyboard::Keycode, rect::Rect, render::Canvas, video::Window, EventPump};
-
-use super::{
-    config::UserConfig, palette::hex_to_sdl, BTN_A, BTN_B, BTN_DOWN, BTN_LEFT, BTN_RIGHT,
-    BTN_SELECT, BTN_START, BTN_UP,
+use sdl2::{
+    event::Event, keyboard::Scancode, rect::Rect, render::Canvas, video::Window, EventPump,
 };
+
+use super::{config::UserConfig, palette::hex_to_sdl};
 
 const SCALE: u32 = 5;
 
@@ -69,22 +68,22 @@ impl<'a> Emulator<'a> {
                 match event {
                     Event::Quit { .. }
                     | Event::KeyDown {
-                        keycode: Some(Keycode::Escape),
+                        scancode: Some(Scancode::Escape),
                         ..
                     } => {
                         break 'main_loop;
                     }
                     Event::KeyDown {
-                        keycode: Some(kc), ..
+                        scancode: Some(sc), ..
                     } => {
-                        if let Some(btn) = match_keycode_button(&kc) {
+                        if let Some(btn) = match_scancode_button(self.config, &sc) {
                             self.cpu.button_down(btn, self.config.btn_debug());
                         }
                     }
                     Event::KeyUp {
-                        keycode: Some(kc), ..
+                        scancode: Some(sc), ..
                     } => {
-                        if let Some(btn) = match_keycode_button(&kc) {
+                        if let Some(btn) = match_scancode_button(self.config, &sc) {
                             self.cpu.button_up(btn, self.config.btn_debug());
                         }
                     }
@@ -134,16 +133,24 @@ impl<'a> Emulator<'a> {
     }
 }
 
-fn match_keycode_button(kc: &Keycode) -> Option<Button> {
-    match *kc {
-        BTN_UP => Some(Up),
-        BTN_DOWN => Some(Down),
-        BTN_LEFT => Some(Left),
-        BTN_RIGHT => Some(Right),
-        BTN_A => Some(A),
-        BTN_B => Some(B),
-        BTN_START => Some(Start),
-        BTN_SELECT => Some(Select),
-        _ => None,
+fn match_scancode_button(config: &UserConfig, sc: &Scancode) -> Option<Button> {
+    if sc == config.up_code() {
+        Some(Up)
+    } else if sc == config.down_code() {
+        Some(Down)
+    } else if sc == config.left_code() {
+        Some(Left)
+    } else if sc == config.right_code() {
+        Some(Right)
+    } else if sc == config.a_code() {
+        Some(A)
+    } else if sc == config.b_code() {
+        Some(B)
+    } else if sc == config.start_code() {
+        Some(Start)
+    } else if sc == config.select_code() {
+        Some(Select)
+    } else {
+        None
     }
 }

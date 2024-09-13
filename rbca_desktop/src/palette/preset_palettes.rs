@@ -28,6 +28,7 @@ pub const CLASSIC_GREEN: Palette = Palette {
         a: 0xFF,
     },
 };
+
 pub const WHY_HE_OURPLE: Palette = Palette {
     lightest: HexColor {
         r: 0xCA,
@@ -54,9 +55,5 @@ pub const WHY_HE_OURPLE: Palette = Palette {
         a: 0xFF,
     },
 };
+
 // TODO add more preset palettes
-// debug ourple palette:
-// const WHITE: (u8, u8, u8) = (0xCA, 0xB8, 0xE3);
-// const LIGHT_GREY: (u8, u8, u8) = (0x76, 0x5B, 0x87);
-// const DARK_GREY: (u8, u8, u8) = (0x3C, 0x25, 0x4A);
-// const BLACK: (u8, u8, u8) = (0x1A, 0x02, 0x21);

@@ -16,7 +16,6 @@ pub enum PresetPalette {
 impl PresetPalette {
     /// Retrieve the static [Palette] that corresponds with this palette preset.
     pub fn get(&self) -> &Palette {
-        // TODO add more preset palettes
         match *self {
             Self::ClassicGreen => &CLASSIC_GREEN,
             Self::WhyHeOurple => &WHY_HE_OURPLE,

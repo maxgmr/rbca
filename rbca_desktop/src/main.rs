@@ -1,27 +1,18 @@
 use clap::Parser;
 use color_eyre::eyre;
 use rbca_core::Cpu;
-use sdl2::keyboard::Keycode;
 use text_io::read;
 
 mod arg_parser;
 mod config;
 mod emulator;
 mod palette;
+mod scancodes;
 mod utils;
 
 use arg_parser::Args;
 use config::UserConfig;
 use emulator::Emulator;
-
-const BTN_UP: Keycode = Keycode::W;
-const BTN_DOWN: Keycode = Keycode::S;
-const BTN_LEFT: Keycode = Keycode::A;
-const BTN_RIGHT: Keycode = Keycode::D;
-const BTN_A: Keycode = Keycode::Comma;
-const BTN_B: Keycode = Keycode::Period;
-const BTN_START: Keycode = Keycode::Return;
-const BTN_SELECT: Keycode = Keycode::Backspace;
 
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
