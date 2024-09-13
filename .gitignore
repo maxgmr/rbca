@@ -28,3 +28,6 @@ rbca_core/*_LOG
 
 # correct logdbg logs
 logdbg/correct_logs/*
+
+# test screenshots
+rbca_core/screenshots/
