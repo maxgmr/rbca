@@ -75,8 +75,8 @@ impl Mmu {
         Self {
             cart,
             boot_rom,
-            wram: [0x00; 0x2000],
-            eram: [0x00; 0x1E00],
+            wram: [0xFF; 0x2000],
+            eram: [0xFF; 0x1E00],
             joypad: Joypad::new(),
             serial_data: 0x00,
             serial_control: Flags::new(0b0000_0000),
@@ -85,7 +85,7 @@ impl Mmu {
             audio: Audio::new(),
             ppu: PPU::new(),
             disable_boot_rom: if have_boot_rom { 0x00 } else { 0x01 },
-            hram: [0x00; 0x007F],
+            hram: [0xFF; 0x007F],
             ie_reg: Flags::new(0b0000_0000),
             oam_dma_remaining_cycles: 0,
         }
