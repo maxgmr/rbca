@@ -60,7 +60,7 @@ impl Cpu {
     fn new_with_boot_helper<P: AsRef<Utf8Path>>(cart_path: Option<P>, boot_rom_path: P) -> Self {
         // TODO random vals
         Self {
-            regs: Registers::default(),
+            regs: Registers::new(),
             pc: 0x0000,
             sp: 0x0000,
             mmu: if let Some(cp) = cart_path {
@@ -78,7 +78,7 @@ impl Cpu {
 
     fn new_no_boot_helper<P: AsRef<Utf8Path>>(cart_path: Option<P>) -> Self {
         let mut cpu = Self {
-            regs: Registers::default(),
+            regs: Registers::new_after_boot_rom(),
             pc: 0x0100,
             sp: 0xFFFE,
             mmu: if let Some(cp) = cart_path {

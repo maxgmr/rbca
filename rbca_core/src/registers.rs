@@ -128,22 +128,28 @@ impl Registers {
     /// Create new [Registers], all initialised to zero.
     pub fn new() -> Self {
         Self {
-            // a: 0x01,
             a: 0x00,
-            // b: 0x00,
             b: 0x00,
-            // c: 0x13,
             c: 0x00,
-            // d: 0x00,
             d: 0x00,
-            // e: 0xD8,
             e: 0x00,
-            // f: Flags::new(RegFlag::Z.val() | RegFlag::H.val() | RegFlag::C.val()),
             f: Flags::new(0x00),
-            // h: 0x01,
             h: 0x00,
-            // l: 0x4D,
             l: 0x00,
+        }
+    }
+
+    /// Create new [Registers], all initialised to their values after the boot ROM.
+    pub fn new_after_boot_rom() -> Self {
+        Self {
+            a: 0x01,
+            b: 0x00,
+            c: 0x13,
+            d: 0x00,
+            e: 0xD8,
+            f: Flags::new(RegFlag::Z.val() | RegFlag::H.val() | RegFlag::C.val()),
+            h: 0x01,
+            l: 0x4D,
         }
     }
 
