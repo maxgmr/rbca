@@ -117,7 +117,8 @@ impl Mmu {
             0xC000..=0xDFFF => self.wram[address as usize - 0xC000],
             0xE000..=0xFDFF => self.eram[address as usize - 0xE000],
             0xFE00..=0xFE9F => self.ppu.read_byte(address),
-            0xFEA0..=0xFEFF => 0xFF,
+            // TODO reads during OAM block should trigger OAM corruption.
+            0xFEA0..=0xFEFF => 0x00,
             0xFF00 => self.joypad.read_byte(),
             0xFF01 => self.serial_data,
             0xFF02 => self.serial_control.read_byte(),
