@@ -8,6 +8,8 @@ DMG mode only for now.
 
 Boots fine, seems to run Tetris, Bomberman GB, Tennis, Link's Awakening fine.
 
+Dr. Mario freezes after pressing START on game select screen.
+
 Appears to run somewhat slow sometimes, e.g. ~48 FPS in Kirby's Dream Land. Need to test whether this is due to the (likely inefficient) SDL2 Desktop frontend rendering method, or for another reason.
 
 Screen can have horizontal tears sometimes.
