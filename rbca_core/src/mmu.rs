@@ -93,13 +93,13 @@ impl Mmu {
 
     /// Directly read the byte at the given address.
     pub fn read_byte(&self, address: u16) -> u8 {
-        // // Can only access HRAM during OAM DMA transfer
-        // if self.oam_dma_remaining_cycles > 0 {
-        //     return match address {
-        //         0xFF80..=0xFFFE => self.hram[address as usize - 0xFF80],
-        //         _ => 0xFF,
-        //     };
-        // }
+        // Can only access HRAM during OAM DMA transfer
+        if self.oam_dma_remaining_cycles > 0 {
+            return match address {
+                0xFF80..=0xFFFE => self.hram[address as usize - 0xFF80],
+                _ => 0xFF,
+            };
+        }
 
         match address {
             0x0000..=0x00FF => {
@@ -149,13 +149,13 @@ impl Mmu {
 
     /// Directly write to the byte at the given address.
     pub fn write_byte(&mut self, address: u16, value: u8) {
-        // // Can only access HRAM during OAM DMA transfer
-        // if self.oam_dma_remaining_cycles > 0 {
-        //     if (0xFF80..=0xFFFE).contains(&address) {
-        //         self.hram[address as usize - 0xFF80] = value;
-        //     };
-        //     return;
-        // }
+        // Can only access HRAM during OAM DMA transfer
+        if self.oam_dma_remaining_cycles > 0 {
+            if (0xFF80..=0xFFFE).contains(&address) {
+                self.hram[address as usize - 0xFF80] = value;
+            };
+            return;
+        }
 
         match address {
             0x0000..=0x00FF => {
