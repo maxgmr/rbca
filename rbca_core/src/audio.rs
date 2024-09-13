@@ -1,10 +1,12 @@
+use std::default::Default;
+
 use crate::Flags;
 
 /// Device audio.
 // TODO
 #[derive(Debug)]
 pub struct Audio {
-    // Used to alert MMU that the timer triggered some interrupt flags.
+    /// Used to alert MMU that the timer triggered some interrupt flags.
     pub interrupt_flags: Flags,
     // 0xFF10
     c1_sweep: Flags,
@@ -151,5 +153,10 @@ impl Audio {
     /// Perform one audio cycle.
     pub fn cycle(&mut self, _t_cycles: u32) {
         // TODO
+    }
+}
+impl Default for Audio {
+    fn default() -> Self {
+        Self::new()
     }
 }
