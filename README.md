@@ -14,7 +14,7 @@ Screen can have horizontal tears sometimes.
 
 A few layering issues.
 
-No audio, serial data transfer, config, or save files... yet!
+No reset button, audio, serial data transfer, or save files... yet!
 
 ## Sources
 

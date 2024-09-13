@@ -1,18 +1,18 @@
-use std::env;
-
-use color_eyre::eyre::{self, eyre};
+use clap::Parser;
+use color_eyre::eyre;
 use rbca_core::Cpu;
 use sdl2::keyboard::Keycode;
 use text_io::read;
 
+mod arg_parser;
+mod config;
 mod emulator;
+mod palette;
 mod utils;
 
+use arg_parser::Args;
+use config::UserConfig;
 use emulator::Emulator;
-
-const INSTR_DEBUG: bool = false;
-const BTN_DEBUG: bool = false;
-const USE_BOOT_ROM: bool = true;
 
 const BTN_UP: Keycode = Keycode::W;
 const BTN_DOWN: Keycode = Keycode::S;
@@ -24,30 +24,39 @@ const BTN_START: Keycode = Keycode::Return;
 const BTN_SELECT: Keycode = Keycode::Backspace;
 
 fn main() -> eyre::Result<()> {
-    let args: Vec<_> = env::args().collect();
+    color_eyre::install()?;
 
-    if USE_BOOT_ROM && args.len() != 3 {
-        return Err(eyre!(
-            "Incorrect usage.\r\nUsage: cargo r path/to/boot/rom path/to/gb/rom"
-        ));
-    } else if !USE_BOOT_ROM && args.len() != 2 {
-        return Err(eyre!("Incorrect usage.\r\nUsage: cargo r path/to/gb/rom"));
-    }
+    // Load args
+    let args = Args::parse();
+
+    // Load config & set up file dirs
+    let config: UserConfig = utils::setup()?;
 
     // Load ROM
-    let cpu = if USE_BOOT_ROM {
-        Cpu::new_boot_cart(&args[2], &args[1])
-    } else {
-        Cpu::new_cart(&args[1])
+    let cpu = match (config.boot_rom_path(), &args.rom_path) {
+        (Some(boot_path), Some(rom_path)) => Cpu::new_boot_cart(rom_path, boot_path),
+        (Some(boot_path), None) => Cpu::new_boot(boot_path),
+        (None, Some(rom_path)) => Cpu::new_cart(rom_path),
+        (None, None) => Cpu::new(),
     };
 
-    println!("{}", cpu.emu_info());
-    println!("Enter any text to start...");
-    let _: String = read!();
-    println!("-------");
+    if config.config_debug() {
+        // Pretty print the config
+        println!("RBCA CONFIG");
+        println!("{:#?}", config);
+        println!("-------");
+    }
+
+    if config.general_debug() {
+        // Display cart info & wait to start
+        println!("{}", cpu.emu_info());
+        println!("Enter any text to start...");
+        let _: String = read!();
+        println!("-------");
+    }
 
     // Create desktop emulator
-    let mut desktop = Emulator::new(cpu)?;
+    let mut desktop = Emulator::new(cpu, &config)?;
 
     // Run desktop emulator
     desktop.run()?;

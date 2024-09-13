@@ -5,14 +5,11 @@ use rbca_core::{
     Button::{self, Down, Left, Right, Select, Start, Up, A, B},
     Cpu, DISPLAY_HEIGHT, DISPLAY_WIDTH,
 };
-use sdl2::{
-    event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window,
-    EventPump,
-};
+use sdl2::{event::Event, keyboard::Keycode, rect::Rect, render::Canvas, video::Window, EventPump};
 
 use super::{
-    BTN_A, BTN_B, BTN_DEBUG, BTN_DOWN, BTN_LEFT, BTN_RIGHT, BTN_SELECT, BTN_START, BTN_UP,
-    INSTR_DEBUG,
+    config::UserConfig, palette::hex_to_sdl, BTN_A, BTN_B, BTN_DOWN, BTN_LEFT, BTN_RIGHT,
+    BTN_SELECT, BTN_START, BTN_UP,
 };
 
 const SCALE: u32 = 5;
@@ -20,26 +17,14 @@ const SCALE: u32 = 5;
 const WINDOW_WIDTH: u32 = (DISPLAY_WIDTH as u32) * SCALE;
 const WINDOW_HEIGHT: u32 = (DISPLAY_HEIGHT as u32) * SCALE;
 
-// 0
-const WHITE: (u8, u8, u8) = (0xD7, 0xEC, 0xA1);
-// const WHITE: (u8, u8, u8) = (0xCA, 0xB8, 0xE3);
-// 1
-const LIGHT_GREY: (u8, u8, u8) = (0xA6, 0xBB, 0x72);
-// const LIGHT_GREY: (u8, u8, u8) = (0x76, 0x5B, 0x87);
-// 2
-const DARK_GREY: (u8, u8, u8) = (0x6C, 0x7D, 0x41);
-// const DARK_GREY: (u8, u8, u8) = (0x3C, 0x25, 0x4A);
-// 3
-const BLACK: (u8, u8, u8) = (0x3B, 0x46, 0x20);
-// const BLACK: (u8, u8, u8) = (0x1A, 0x02, 0x21);
-
-pub struct Emulator {
+pub struct Emulator<'a> {
     cpu: Cpu,
     canvas: Canvas<Window>,
     event_pump: EventPump,
+    config: &'a UserConfig,
 }
-impl Emulator {
-    pub fn new(cpu: Cpu) -> eyre::Result<Self> {
+impl<'a> Emulator<'a> {
+    pub fn new(cpu: Cpu, config: &'a UserConfig) -> eyre::Result<Self> {
         let sdl_context = match sdl2::init() {
             Ok(sdlc) => sdlc,
             Err(e) => return Err(eyre!(e)),
@@ -67,11 +52,13 @@ impl Emulator {
             cpu,
             canvas,
             event_pump,
+            config,
         })
     }
 
     pub fn run(&mut self) -> eyre::Result<()> {
         let mut cycles: u128 = 0;
+        let mut frame_count: u128 = 0;
         let mut last_frame_time = Instant::now();
 
         'main_loop: loop {
@@ -91,14 +78,14 @@ impl Emulator {
                         keycode: Some(kc), ..
                     } => {
                         if let Some(btn) = match_keycode_button(&kc) {
-                            self.cpu.button_down(btn, BTN_DEBUG);
+                            self.cpu.button_down(btn, self.config.btn_debug());
                         }
                     }
                     Event::KeyUp {
                         keycode: Some(kc), ..
                     } => {
                         if let Some(btn) = match_keycode_button(&kc) {
-                            self.cpu.button_up(btn, BTN_DEBUG);
+                            self.cpu.button_up(btn, self.config.btn_debug());
                         }
                     }
                     _ => {}
@@ -106,12 +93,18 @@ impl Emulator {
             }
 
             // Cycle CPU
-            cycles += self.cpu.cycle(INSTR_DEBUG) as u128;
+            cycles += self.cpu.cycle(self.config.instr_debug()) as u128;
 
             // Approximately one frame
             if cycles >= 70224 {
+                frame_count += 1;
+                if self.config.fps_debug() > 0
+                    && frame_count % (self.config.fps_debug() as u128) == 0
+                {
+                    println!("{:.0}", 1_f64 / last_frame_time.elapsed().as_secs_f64());
+                }
+
                 cycles %= 70224;
-                // println!("{:.0}", 1_f64 / last_frame_time.elapsed().as_secs_f64());
                 self.draw_screen()?;
                 last_frame_time = Instant::now();
                 // Wait until can start next frame
@@ -124,19 +117,12 @@ impl Emulator {
     fn draw_screen(&mut self) -> eyre::Result<()> {
         // Clear canvas
         self.canvas
-            .set_draw_color(Color::RGB(WHITE.0, WHITE.1, WHITE.2));
+            .set_draw_color(hex_to_sdl(self.config.palette().lightest()));
         self.canvas.clear();
 
         for (i, pixel) in self.cpu.get_pixels().iter().enumerate() {
-            let colour = match pixel {
-                0 => continue,
-                1 => LIGHT_GREY,
-                2 => DARK_GREY,
-                3 => BLACK,
-                _ => unreachable!("Illegal colour value."),
-            };
             self.canvas
-                .set_draw_color(Color::RGB(colour.0, colour.1, colour.2));
+                .set_draw_color(hex_to_sdl(self.config.palette().num_to_hex(*pixel)));
             let x = (i % DISPLAY_WIDTH) as u32;
             let y = (i / DISPLAY_WIDTH) as u32;
             let rect = Rect::new((x * SCALE) as i32, (y * SCALE) as i32, SCALE, SCALE);
