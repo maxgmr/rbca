@@ -253,7 +253,7 @@ impl Mmu {
 fn load_boot_rom<P: AsRef<Utf8Path>>(filepath: P) -> [u8; 0x0100] {
     let mut file_buf = vec![];
     if let Err(e) = File::open(filepath.as_ref()).and_then(|mut f| f.read_to_end(&mut file_buf)) {
-        panic!("{e}");
+        panic!("Boot ROM load fail: {e} {}", filepath.as_ref());
     }
     let mut boot_rom_data: [u8; 0x0100] = [0x00; 0x0100];
     boot_rom_data.copy_from_slice(&file_buf[..0x0100]);

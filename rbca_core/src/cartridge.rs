@@ -10,8 +10,6 @@ mod rom_only;
 // Re-exports
 pub use empty::CartEmpty;
 
-const BOOT_ROM_PATH: &str = "../dmg-boot.bin";
-
 const BYTES_IN_KIB: u32 = 1024;
 
 const LOGO: [u8; 48] = [
@@ -24,7 +22,7 @@ const LOGO: [u8; 48] = [
 pub fn load_cartridge<P: AsRef<Utf8Path>>(filepath: P) -> Box<dyn Cartridge> {
     let mut file_buf = vec![];
     if let Err(e) = File::open(filepath.as_ref()).and_then(|mut f| f.read_to_end(&mut file_buf)) {
-        panic!("{e}");
+        panic!("Cartridge/ROM file error: {e} {}", filepath.as_ref());
     }
 
     let cart_features = CartFeatures::from_data(&file_buf);
