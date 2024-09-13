@@ -16,6 +16,10 @@ A few layering issues.
 
 No reset button, audio, serial data transfer, or save files... yet!
 
+Supported cartridge types: ROM, MBC1
+
+Yet-to-be-supported cartridge types: MBC2, MMM01, MBC3, MBC5, MBC6, MBC7, POCKET CAMERA, BANDAI TAMA5, HuC3, HuC1
+
 ## Sources
 
 Made with help from the [Pan Docs specifications](http://bgb.bircd.org/pandocs.htm#cgbregisters).
