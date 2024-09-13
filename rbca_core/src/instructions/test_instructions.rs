@@ -1035,6 +1035,8 @@ fn test_and_n() {
     cpu.regs.set_reg(E, 0b1110_1111);
     cpu.regs.set_reg(H, 0b1110_0000);
     cpu.regs.set_reg(L, 0b0111_0110);
+    cpu.mmu
+        .write_byte(0b1110_0000_0111_0110 - 0x2000, 0b0000_0000);
     cpu.mmu.write_byte(0b0110_0000_0111_0110, 0b0000_1111);
     let data = [
         0xA7,
