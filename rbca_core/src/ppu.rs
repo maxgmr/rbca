@@ -40,6 +40,8 @@ pub struct PPU {
     pub oam: [u8; 0x00A0],
     // Clock to keep track of timing while in a given PPU mode.
     mode_clock: u32,
+    // Keeps track of T-cycle penalty incurred by mode 3 in the current scanline.
+    mode_3_penalty: u32,
     /// [0xFF40]
     pub lcd_control: Flags,
     /// [0xFF44] read-only
@@ -91,9 +93,10 @@ impl PPU {
             data_output: [0x00; DISPLAY_WIDTH * DISPLAY_HEIGHT],
             data_bg_win_transparent: [false; DISPLAY_WIDTH * DISPLAY_HEIGHT],
             interrupt_flags: Flags::new(0b0000_0000),
-            vram: [0x00; 0x2000],
-            oam: [0x00; 0x00A0],
+            vram: [0xFF; 0x2000],
+            oam: [0xFF; 0x00A0],
             mode_clock: 0,
+            mode_3_penalty: 0,
             lcd_control: Flags::new(0b0101_1000),
             lcd_y_coord: 0b0000_0000,
             ly_compare: 0b0000_0000,
@@ -215,6 +218,11 @@ impl PPU {
             }
             // Drawing pixels. Send pixels to the LCD. OAM (except by DMA) & VRAM inaccessible.
             3 => {
+                // 12-cycle delay at start of mode 3.
+                if self.mode_clock < 12 {
+                    return;
+                }
+
                 if self.mode_clock >= DRAW_PX_CYCLES {
                     self.render_scanline();
                     // Enter HBlank mode
@@ -307,35 +315,9 @@ impl PPU {
 
             let px_is_window = row_is_window && col_is_window;
 
-            // Calc index of px in tile data.
-            let tile_num = if px_is_window {
-                let start = (if self.lcd_control.get(Lcdc::WindowTileMapArea) {
-                    WINMAP_START_1
-                } else {
-                    WINMAP_START_0
-                }) - VRAM_ADDR_OFFSET;
-                let x_addr_offset = x.wrapping_sub(self.win_x.wrapping_sub(7));
-                let y_addr_offset = self.lcd_y_coord.wrapping_sub(self.win_y);
-                let addr = Self::get_map_addr(start, x_addr_offset, y_addr_offset);
-                self.vram[addr]
-            } else {
-                let start = (if self.lcd_control.get(Lcdc::BGTileMapArea) {
-                    BGMAP_START_1
-                } else {
-                    BGMAP_START_0
-                }) - VRAM_ADDR_OFFSET;
-                let addr = Self::get_map_addr(start, bg_map_x, bg_map_y);
-                self.vram[addr]
-            };
+            let tile_num = self.tile_num(px_is_window, x, bg_map_x, bg_map_y);
 
-            // Each tile occupies 16 bytes.
-            // https://gbdev.io/pandocs/Tile_Data.html
-            let tile_data_start_addr =
-                if self.lcd_control.get(Lcdc::BGWindowTileDataArea) || tile_num > 0x7F {
-                    (tile_num as u16) << 4
-                } else {
-                    0x1000 | ((tile_num as u16) << 4)
-                };
+            let tile_data_start_addr = self.tile_data_start_addr(tile_num);
 
             // Each line of the tile occupies 2 bytes.
             let y_tile_data_addr_offset = ((if px_is_window {
@@ -376,6 +358,40 @@ impl PPU {
             }
             // TODO Tennis attempts to access addr 0x5B40 (max addr 0x5BFF)
             self.set_pixel(data_output_index, colour);
+        }
+    }
+
+    // Calculate the index of the given location within tile data.
+    fn tile_num(&self, in_window: bool, x: u8, bg_map_x: u8, bg_map_y: u8) -> u8 {
+        if in_window {
+            let start = (if self.lcd_control.get(Lcdc::WindowTileMapArea) {
+                WINMAP_START_1
+            } else {
+                WINMAP_START_0
+            }) - VRAM_ADDR_OFFSET;
+            let x_addr_offset = x.wrapping_sub(self.win_x.wrapping_sub(7));
+            let y_addr_offset = self.lcd_y_coord.wrapping_sub(self.win_y);
+            let addr = Self::get_map_addr(start, x_addr_offset, y_addr_offset);
+            self.vram[addr]
+        } else {
+            let start = (if self.lcd_control.get(Lcdc::BGTileMapArea) {
+                BGMAP_START_1
+            } else {
+                BGMAP_START_0
+            }) - VRAM_ADDR_OFFSET;
+            let addr = Self::get_map_addr(start, bg_map_x, bg_map_y);
+            self.vram[addr]
+        }
+    }
+
+    // Get relative start address for tile data in VRAM.
+    // Each tile occupies 16 bytes.
+    // https://gbdev.io/pandocs/Tile_Data.html
+    fn tile_data_start_addr(&self, tile_num: u8) -> u16 {
+        if self.lcd_control.get(Lcdc::BGWindowTileDataArea) || tile_num > 0x7F {
+            (tile_num as u16) << 4
+        } else {
+            0x1000 | ((tile_num as u16) << 4)
         }
     }
 
