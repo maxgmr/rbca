@@ -163,6 +163,8 @@ impl Cpu {
             return 0;
         }
 
+        let halted_penalty = if self.is_halted { 4 } else { 0 };
+
         self.is_halted = false;
         if !self.interrupts_enabled {
             return 0;
@@ -178,7 +180,7 @@ impl Cpu {
             .write_byte(0xFF0F, interrupt_flag_register & !(0b1 << offset));
         self.push_stack(self.pc);
         self.pc = 0x0040 | ((offset as u16) << 3);
-        20
+        20 + halted_penalty
     }
 
     fn update_interrupt_countdown(&mut self) {
