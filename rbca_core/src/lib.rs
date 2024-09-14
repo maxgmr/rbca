@@ -18,7 +18,7 @@ mod timer;
 pub use audio::Audio;
 pub use boot::{DMG_BOOT, DMG_BOOT_SIZE};
 pub use cartridge::Cartridge;
-pub use cpu::Cpu;
+pub use cpu::{Cpu, EmuState};
 pub use flags::*;
 pub use joypad::{Button, Joypad};
 pub use mmu::Mmu;

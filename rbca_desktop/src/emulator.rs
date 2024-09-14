@@ -1,13 +1,14 @@
-use std::time::Instant;
+use std::{collections::VecDeque, time::Instant};
 
 use color_eyre::eyre::{self, eyre};
 use rbca_core::{
     Button::{self, Down, Left, Right, Select, Start, Up, A, B},
-    Cpu, DISPLAY_HEIGHT, DISPLAY_WIDTH,
+    Cpu, EmuState, DISPLAY_HEIGHT, DISPLAY_WIDTH,
 };
 use sdl2::{
     event::Event, keyboard::Scancode, rect::Rect, render::Canvas, video::Window, EventPump,
 };
+use text_io::read;
 
 use super::{config::UserConfig, palette::hex_to_sdl};
 
@@ -59,6 +60,8 @@ impl<'a> Emulator<'a> {
         let mut cycles: u128 = 0;
         let mut frame_count: u128 = 0;
         let mut last_frame_time = Instant::now();
+        let mut history: VecDeque<EmuState> = VecDeque::with_capacity(self.config.history());
+        let mut step_forward: bool = false;
 
         'main_loop: loop {
             let start = Instant::now();
@@ -92,7 +95,19 @@ impl<'a> Emulator<'a> {
             }
 
             // Cycle CPU
-            cycles += self.cpu.cycle(self.config.instr_debug()) as u128;
+            let cycles_and_state = self
+                .cpu
+                .cycle(self.config.instr_debug(), self.config.breakpoints_enabled());
+            cycles += cycles_and_state.0 as u128;
+
+            // Match with breakpoint & add to history
+            if let Some(emu_state) = cycles_and_state.1 {
+                step_forward = self.match_breakpoint(&emu_state, &history, step_forward);
+                if history.len() >= self.config.history() {
+                    history.pop_front();
+                }
+                history.push_back(emu_state);
+            }
 
             // Approximately one frame
             if cycles >= 70224 {
@@ -130,6 +145,80 @@ impl<'a> Emulator<'a> {
 
         self.canvas.present();
         Ok(())
+    }
+
+    fn match_breakpoint(
+        &self,
+        emu_state: &EmuState,
+        history: &VecDeque<EmuState>,
+        step_forward: bool,
+    ) -> bool {
+        let byte_2_compare = ((emu_state.byte_1 as u16) << 8) | (emu_state.byte_0 as u16);
+        let byte_3_compare = ((emu_state.byte_2 as u32) << 8) | (byte_2_compare as u32);
+
+        if step_forward
+            || self
+                .config
+                .breakpoints()
+                .program_counter
+                .contains(&emu_state.pc)
+            || self
+                .config
+                .breakpoints()
+                .opcode_1_byte
+                .contains(&emu_state.byte_0)
+            || self
+                .config
+                .breakpoints()
+                .opcode_2_byte
+                .contains(&byte_2_compare)
+            || self
+                .config
+                .breakpoints()
+                .opcode_3_byte
+                .contains(&byte_3_compare)
+            || self.config.breakpoints().a_reg.contains(&emu_state.a_reg)
+            || self.config.breakpoints().b_reg.contains(&emu_state.b_reg)
+            || self.config.breakpoints().c_reg.contains(&emu_state.c_reg)
+            || self.config.breakpoints().d_reg.contains(&emu_state.d_reg)
+            || self.config.breakpoints().e_reg.contains(&emu_state.e_reg)
+            || self.config.breakpoints().h_reg.contains(&emu_state.h_reg)
+            || self.config.breakpoints().l_reg.contains(&emu_state.l_reg)
+        {
+            if !step_forward {
+                for hist_item in history.iter().rev() {
+                    println!("{hist_item}");
+                }
+            }
+            println!("{emu_state}");
+            println!("-------");
+            if step_forward {
+                println!(" - STEP FORWARD - ");
+            } else {
+                println!(" - BREAK - ");
+            }
+            loop {
+                println!(
+                    "Enter '{}' to step forward, '{}' to continue...",
+                    self.config.step_forward_key(),
+                    self.config.continue_key()
+                );
+                let input: String = read!();
+                if !input.is_empty() {
+                    if input.chars().nth(0).unwrap().to_lowercase().next()
+                        == self.config.step_forward_key().to_lowercase().next()
+                    {
+                        return true;
+                    }
+                    if input.chars().nth(0).unwrap().to_lowercase().next()
+                        == self.config.continue_key().to_lowercase().next()
+                    {
+                        return false;
+                    }
+                }
+            }
+        }
+        false
     }
 }
 

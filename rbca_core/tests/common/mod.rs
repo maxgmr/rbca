@@ -104,7 +104,8 @@ pub fn blargg_test_common(rom_name: &str, rom_path: &str) {
 
         last_state.update(&cpu);
         let t_start = Instant::now();
-        let cycles = cpu.cycle(INSTR_DEBUG);
+        let cycles_and_state = cpu.cycle(INSTR_DEBUG, false);
+        let cycles = cycles_and_state.0;
         t_cycles += cycles;
         total_cycles += cycles as u128;
 

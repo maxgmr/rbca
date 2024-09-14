@@ -55,7 +55,7 @@ pub struct CustomPalette {
     pub palette: Palette,
 }
 
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[allow(unused)]
 pub struct DebugSettings {
     pub general_debug: bool,
@@ -63,6 +63,26 @@ pub struct DebugSettings {
     pub btn_debug: bool,
     pub fps_debug: u32,
     pub config_debug: bool,
+    pub breakpoints: bool,
+    pub history: usize,
+    pub continue_key: char,
+    pub step_forward_key: char,
+}
+
+#[derive(Debug, Default, Clone, Deserialize)]
+#[allow(unused)]
+pub struct Breakpoints {
+    pub program_counter: Vec<u16>,
+    pub opcode_1_byte: Vec<u8>,
+    pub opcode_2_byte: Vec<u16>,
+    pub opcode_3_byte: Vec<u32>,
+    pub a_reg: Vec<u8>,
+    pub b_reg: Vec<u8>,
+    pub c_reg: Vec<u8>,
+    pub d_reg: Vec<u8>,
+    pub e_reg: Vec<u8>,
+    pub h_reg: Vec<u8>,
+    pub l_reg: Vec<u8>,
 }
 
 /// The user configuration settings.
@@ -73,6 +93,7 @@ pub struct UserConfig {
     pub path_settings: PathSettings,
     pub palette_settings: PaletteSettings,
     pub debug_settings: DebugSettings,
+    pub breakpoints: Breakpoints,
 }
 impl UserConfig {
     /// Load a new [UserConfig], overwriting default values with any custom-set values.
@@ -198,6 +219,31 @@ impl UserConfig {
     /// Directly access config_debug.
     pub fn config_debug(&self) -> bool {
         self.debug_settings.config_debug
+    }
+
+    /// Directly access the breakpoints boolean.
+    pub fn breakpoints_enabled(&self) -> bool {
+        self.debug_settings.breakpoints
+    }
+
+    /// Directly access the history size.
+    pub fn history(&self) -> usize {
+        self.debug_settings.history
+    }
+
+    /// Directly access the continue key.
+    pub fn continue_key(&self) -> &char {
+        &self.debug_settings.continue_key
+    }
+
+    /// Directly access the step forward key.
+    pub fn step_forward_key(&self) -> &char {
+        &self.debug_settings.step_forward_key
+    }
+
+    /// Directly access the breakpoints.
+    pub fn breakpoints(&self) -> &Breakpoints {
+        &self.breakpoints
     }
 
     // Expand any given file paths.

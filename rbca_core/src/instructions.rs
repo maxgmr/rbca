@@ -1,12 +1,23 @@
 //! All functionality related to the CPU instructions.
 use crate::{
-    Cpu, RegFlag,
+    Cpu, EmuState, RegFlag,
     Target::{self, A, B, C, D, E, H, L},
     VirtTarget::{self, AF, BC, DE, HL},
 };
 
-/// Execute a given opcode. Return the amount of cycles the instruction takes.
-pub fn execute_opcode(cpu: &mut Cpu, opcode: u8, debug: bool) -> u32 {
+/// Execute a given opcode. Return the amount of cycles the instruction takes and any debug info.
+pub fn execute_opcode(
+    cpu: &mut Cpu,
+    opcode: u8,
+    debug: bool,
+    get_state: bool,
+) -> (u32, Option<EmuState>) {
+    let mut emu_state = if get_state {
+        Some(EmuState::new(cpu))
+    } else {
+        None
+    };
+
     let (size, cycles, instruction_string) = match opcode {
         // LD nn,n
         0x06 => ld_nn_n(cpu, B),
@@ -715,7 +726,11 @@ pub fn execute_opcode(cpu: &mut Cpu, opcode: u8, debug: bool) -> u32 {
         debug_print(cpu, size, cycles, &instruction_string);
     }
 
-    cycles
+    if let Some(ref mut es) = emu_state {
+        es.update(size, cycles, instruction_string);
+    }
+
+    (cycles, emu_state)
 }
 
 fn debug_print(cpu: &Cpu, size: u16, _cycles: u32, instruction_string: &str) {

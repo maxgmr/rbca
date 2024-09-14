@@ -1,5 +1,5 @@
 //! All functionality related to the emulated CPU of the Game Boy.
-use std::default::Default;
+use std::{default::Default, fmt::Display};
 
 use camino::{Utf8Path, Utf8PathBuf};
 
@@ -134,21 +134,23 @@ impl Cpu {
         }
     }
 
-    /// Perform one cycle. Return number of T-cycles taken.
-    pub fn cycle(&mut self, debug: bool) -> u32 {
+    /// Perform one cycle. Return number of T-cycles taken and any debug info.
+    pub fn cycle(&mut self, debug: bool, get_state: bool) -> (u32, Option<EmuState>) {
         self.update_interrupt_countdown();
         let interrupt = self.handle_interrupt();
 
-        let t_cycles: u32 = if interrupt != 0 {
-            interrupt
+        let cycles_and_state: (u32, Option<EmuState>) = if interrupt != 0 {
+            let mut emu_state = EmuState::new(self);
+            emu_state.update(0, interrupt, "INTERRUPT".to_owned());
+            (interrupt, Some(emu_state))
         } else if self.is_halted {
-            4
+            (4, None)
         } else {
             let opcode = self.mmu.read_byte(self.pc);
-            execute_opcode(self, opcode, debug)
+            execute_opcode(self, opcode, debug, get_state)
         };
 
-        self.mmu.cycle(t_cycles)
+        (self.mmu.cycle(cycles_and_state.0), cycles_and_state.1)
     }
 
     // Handle interrupts
@@ -257,6 +259,111 @@ impl Cpu {
 impl Default for Cpu {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// The state of the emulator at a specific point in time.
+pub struct EmuState {
+    /// Program counter.
+    pub pc: u16,
+    /// Stack pointer.
+    pub sp: u16,
+    /// Byte at the program counter.
+    pub byte_0: u8,
+    /// Byte after the program counter.
+    pub byte_1: u8,
+    /// Byte 2 after the program counter.
+    pub byte_2: u8,
+    /// Zero flag.
+    pub z_flag: bool,
+    /// Subtraction flag.
+    pub n_flag: bool,
+    /// Half-carry flag.
+    pub h_flag: bool,
+    /// Carry flag.
+    pub c_flag: bool,
+    /// A register.
+    pub a_reg: u8,
+    /// B register.
+    pub b_reg: u8,
+    /// C register.
+    pub c_reg: u8,
+    /// D register.
+    pub d_reg: u8,
+    /// E register.
+    pub e_reg: u8,
+    /// H register.
+    pub h_reg: u8,
+    /// L register.
+    pub l_reg: u8,
+    /// Instruction size.
+    pub size: u16,
+    /// Instruction cycles.
+    pub cycles: u32,
+    /// Instruction string.
+    pub instruction_string: String,
+}
+impl EmuState {
+    /// Create an EmuState from the current state of the CPU. Default fields for instruction info.
+    pub fn new(cpu: &Cpu) -> Self {
+        Self {
+            pc: cpu.pc,
+            sp: cpu.sp,
+            byte_0: cpu.mmu.read_byte(cpu.pc),
+            byte_1: cpu.mmu.read_byte(cpu.pc + 1),
+            byte_2: cpu.mmu.read_byte(cpu.pc + 2),
+            z_flag: cpu.regs.get_flag(RegFlag::Z),
+            n_flag: cpu.regs.get_flag(RegFlag::N),
+            h_flag: cpu.regs.get_flag(RegFlag::H),
+            c_flag: cpu.regs.get_flag(RegFlag::C),
+            a_reg: cpu.regs.get_reg(A),
+            b_reg: cpu.regs.get_reg(B),
+            c_reg: cpu.regs.get_reg(C),
+            d_reg: cpu.regs.get_reg(D),
+            e_reg: cpu.regs.get_reg(E),
+            h_reg: cpu.regs.get_reg(H),
+            l_reg: cpu.regs.get_reg(L),
+            size: 0,
+            cycles: 0,
+            instruction_string: String::new(),
+        }
+    }
+
+    /// Populate the empty fields with the info from the executed instruction.
+    pub fn update(&mut self, instr_size: u16, instr_cycles: u32, instr_string: String) {
+        self.size = instr_size;
+        self.cycles = instr_cycles;
+        self.instruction_string = instr_string;
+    }
+}
+impl Display for EmuState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut data = format!("{:#04X}", self.byte_0);
+        if self.size > 1 {
+            data.push_str(&format!(" {:#04X}", self.byte_1));
+        }
+        if self.size > 2 {
+            data.push_str(&format!(" {:#04X}", self.byte_2));
+        }
+
+        let flags: [char; 4] = [
+            if self.z_flag { 'Z' } else { '-' },
+            if self.n_flag { 'N' } else { '-' },
+            if self.h_flag { 'H' } else { '-' },
+            if self.c_flag { 'C' } else { '-' },
+        ];
+        write!(
+            f,
+            "{:#06X} | {:<14} | {:<10} | A: {:02X} F: {} BC: {:04X} DE: {:04X} HL: {:04X}",
+            self.pc,
+            data,
+            self.instruction_string,
+            self.a_reg,
+            flags.iter().collect::<String>(),
+            ((self.b_reg as u16) << 8) | (self.c_reg as u16),
+            ((self.d_reg as u16) << 8) | (self.e_reg as u16),
+            ((self.h_reg as u16) << 8) | (self.l_reg as u16),
+        )
     }
 }
 

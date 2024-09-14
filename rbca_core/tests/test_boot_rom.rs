@@ -30,7 +30,8 @@ fn test_boot_rom() {
     let mut t_cycles = 0;
     'testloop: loop {
         let t_start = Instant::now();
-        t_cycles += cpu.cycle(INSTR_DEBUG);
+        let cycles_and_state = cpu.cycle(INSTR_DEBUG, false);
+        t_cycles += cycles_and_state.0;
 
         if cpu.pc == 0x0100 {
             break 'testloop;
