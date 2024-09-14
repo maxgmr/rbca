@@ -56,4 +56,30 @@ pub const WHY_HE_OURPLE: Palette = Palette {
     },
 };
 
+pub const MALIBU_BARBARA: Palette = Palette {
+    lightest: HexColor {
+        r: 0xAB,
+        g: 0xF5,
+        b: 0xE4,
+        a: 0xFF,
+    },
+    light: HexColor {
+        r: 0xFA,
+        g: 0xDA,
+        b: 0x5A,
+        a: 0xFF,
+    },
+    dark: HexColor {
+        r: 0xFC,
+        g: 0xA4,
+        b: 0x38,
+        a: 0xFF,
+    },
+    darkest: HexColor {
+        r: 0xFA,
+        g: 0x5A,
+        b: 0xBD,
+        a: 0xFF,
+    },
+};
 // TODO add more preset palettes
