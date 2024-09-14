@@ -190,7 +190,7 @@ impl<'a> Emulator<'a> {
             || self.config.breakpoints().l_reg.contains(&emu_state.l_reg)
         {
             if !step_forward {
-                for hist_item in history.iter().rev() {
+                for hist_item in history.iter() {
                     println!("{hist_item}");
                 }
             }
