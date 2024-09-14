@@ -335,7 +335,7 @@ pub fn execute_opcode(
         0xD2 => jp_cc_nn(cpu, RegFlag::C, false),
         0xDA => jp_cc_nn(cpu, RegFlag::C, true),
 
-        // JP (HL)
+        // JP HL
         0xE9 => jp_hl(cpu),
 
         // JR n
@@ -2289,11 +2289,11 @@ fn jp_cc_nn(cpu: &mut Cpu, flag: RegFlag, expected_value: bool) -> (u16, u32, St
     (size, cycles, instruction_string)
 }
 
-// JP (HL): Jump to address contained in (HL).
+// JP HL: Jump to address contained in (HL).
 fn jp_hl(cpu: &mut Cpu) -> (u16, u32, String) {
     let size = 1;
     let cycles = 4;
-    let instruction_string = "JP (HL)";
+    let instruction_string = "JP HL";
 
     jp_helper(cpu, cpu.regs.get_virt_reg(HL));
     (size, cycles, String::from(instruction_string))
