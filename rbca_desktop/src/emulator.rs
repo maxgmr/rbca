@@ -122,7 +122,7 @@ impl<'a> Emulator<'a> {
                 self.draw_screen()?;
                 last_frame_time = Instant::now();
                 // Wait until can start next frame
-                if start.elapsed().as_nanos() < 16_750_000 {}
+                while start.elapsed().as_nanos() < 16_750_000 {}
             }
         }
         Ok(())
