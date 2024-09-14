@@ -30,4 +30,7 @@ rbca_core/*_LOG
 logdbg/correct_logs/*
 
 # test screenshots
-rbca_core/screenshots/
+rbca_core/screenshots/ 
+
+# test config files or something
+dev_files/
