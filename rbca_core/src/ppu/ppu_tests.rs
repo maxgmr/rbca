@@ -3,6 +3,29 @@ use pretty_assertions::assert_eq;
 use super::*;
 
 #[test]
+fn test_tile_data_start_addr() {
+    let mut ppu = PPU::new();
+
+    for tile_num in 0..=127 {
+        ppu.lcd_control.set(Lcdc::BGWindowTileDataArea, false);
+        assert_eq!(
+            ppu.tile_data_start_addr(tile_num),
+            0x1000 + ((tile_num as u16) * 16)
+        );
+        ppu.lcd_control.set(Lcdc::BGWindowTileDataArea, true);
+        assert_eq!(ppu.tile_data_start_addr(tile_num), (tile_num as u16) * 16);
+    }
+
+    for tile_num in 128..=255 {
+        ppu.lcd_control.set(Lcdc::BGWindowTileDataArea, false);
+        assert_eq!(
+            ppu.tile_data_start_addr(tile_num),
+            0x0800 + (((tile_num as u16) - 128) * 16)
+        )
+    }
+}
+
+#[test]
 fn test_get_mode() {
     let mut ppu = PPU::new();
     ppu.lcd_status.set(Stat::PpuModeBit1, true);
@@ -38,17 +61,23 @@ fn test_cycle_timing() {
     // Advance 10 cycles (total = 80), so should be in draw mode (3)
     ppu.cycle(10);
     assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 3);
+    assert_eq!(ppu.mode_clock, 0);
     // Advance 100 cycles, so should remain in draw mode (3)
     ppu.cycle(100);
-    assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 3);
+    assert_eq!(ppu.get_mode(), 3);
     assert_eq!(ppu.read_byte(0xFF44), 0x00);
-    // Advance 73 cycles without penalties, so should be in hblank mode (0)
-    ppu.cycle(73);
-    assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 0);
+    // Advance 76 cycles with only 6-cycle window penalty, so should remain in draw mode (3)
+    ppu.cycle(76);
+    assert_eq!(ppu.get_mode(), 3);
     assert_eq!(ppu.read_byte(0xFF44), 0x00);
-    assert_eq!(ppu.mode_clock, 1);
-    // Advance 203 cycles, so should be back in OAM mode with line advanced (2)
-    ppu.cycle(203);
+    assert_eq!(ppu.mode_clock, 176);
+    // Advance four more cycles to reach HBlank (0)
+    ppu.cycle(4);
+    assert_eq!(ppu.get_mode(), 0);
+    assert_eq!(ppu.read_byte(0xFF44), 0x00);
+    assert_eq!(ppu.mode_clock, 2);
+    // Advance 196 cycles, so should be back in OAM mode with line advanced (2)
+    ppu.cycle(196);
     assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 2);
     assert_eq!(ppu.read_byte(0xFF44), 0x01);
     assert_eq!(ppu.mode_clock, 0);
@@ -67,6 +96,7 @@ fn test_cycle_timing() {
         assert_eq!(ppu.read_byte(0xFF44), 0x03 + i);
         assert_eq!(ppu.read_byte(0xFF41) & 0b0000_0011, 2);
     }
+    println!("{}", ppu.lcd_y_coord);
     // Advance past last line, should be in VBlank mode (1)
     ppu.cycle(80);
     ppu.cycle(289);

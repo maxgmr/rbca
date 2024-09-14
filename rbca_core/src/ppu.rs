@@ -1,4 +1,4 @@
-use std::default::Default;
+use std::{cmp::Ordering, collections::BinaryHeap, default::Default};
 
 use crate::{mmu::If, Flags, FlagsEnum};
 
@@ -42,6 +42,14 @@ pub struct PPU {
     mode_clock: u32,
     // Keeps track of T-cycle penalty incurred by mode 3 in the current scanline.
     mode_3_penalty: u32,
+    // Keeps track of mode 3 progress along the scanline.
+    scanline_progress: u32,
+    // The OAM data of objects to be rendered on the current line.
+    next_objs: Vec<OamData>,
+    // Keeps track of which pixels have been set by OBJs already.
+    set_pixels: [bool; DISPLAY_WIDTH * DISPLAY_HEIGHT],
+    // Keeps track of which tiles have been considered by the OBJ penalty algorithm already.
+    considered_tiles: [bool; 0xFF],
     /// [0xFF40]
     pub lcd_control: Flags,
     /// [0xFF44] read-only
@@ -97,6 +105,10 @@ impl PPU {
             oam: [0xFF; 0x00A0],
             mode_clock: 0,
             mode_3_penalty: 0,
+            scanline_progress: 0,
+            next_objs: Vec::with_capacity(10),
+            set_pixels: [false; DISPLAY_WIDTH * DISPLAY_HEIGHT],
+            considered_tiles: [false; 0xFF],
             lcd_control: Flags::new(0b0101_1000),
             lcd_y_coord: 0b0000_0000,
             ly_compare: 0b0000_0000,
@@ -211,8 +223,16 @@ impl PPU {
             // DMA) inaccessible.
             2 => {
                 if self.mode_clock >= OAM_CYCLES {
+                    // Calculate which objects should be rendered on the line
+                    self.get_next_objs();
+
                     // Enter drawing pixels mode
                     self.mode_clock %= OAM_CYCLES;
+                    // Add background scroll & window penalties to mode 3
+                    self.mode_3_penalty += (self.bg_view_x % 8) as u32;
+                    // TODO not perfect- not sure when "the last non-window pixel is emitted", so
+                    // the penalty is simply added at the start of mode 3.
+                    self.mode_3_penalty += 6;
                     self.set_mode(3);
                 }
             }
@@ -223,25 +243,37 @@ impl PPU {
                     return;
                 }
 
-                if self.mode_clock >= DRAW_PX_CYCLES {
-                    self.render_scanline();
-                    // Enter HBlank mode
+                // At beginning of mode 3, rendering is paused for self.bg_view_x % 8 cycles.
+                if self.mode_clock < ((12 + (self.bg_view_x % 8)) as u32) {
+                    return;
+                }
+
+                // Render a number of pixels equal to the number of t-cycles which have passed.
+                self.render_pixels(t_cycles);
+
+                if self.mode_clock >= DRAW_PX_CYCLES + self.mode_3_penalty {
+                    // Scanline done. Enter HBlank mode
+                    self.next_objs.clear();
+                    self.considered_tiles = [false; 0xFF];
+                    self.scanline_progress = 0;
                     if self.lcd_status.get(Stat::Mode0IntSelect) {
                         self.interrupt_flags.set(If::Lcd, true);
                     }
-                    self.mode_clock %= DRAW_PX_CYCLES;
+                    self.mode_clock %= DRAW_PX_CYCLES + self.mode_3_penalty;
                     self.set_mode(0);
                 }
             }
             // HBlank. After the last HBlank, push the screen data to the canvas.
             0 => {
-                if self.mode_clock >= HBLANK_CYCLES {
-                    self.mode_clock %= HBLANK_CYCLES;
+                if self.mode_clock >= HBLANK_CYCLES - self.mode_3_penalty {
+                    self.mode_clock %= HBLANK_CYCLES - self.mode_3_penalty;
+                    self.mode_3_penalty = 0;
 
                     self.lcd_y_coord += 1;
 
                     if self.lcd_y_coord as usize == DISPLAY_HEIGHT {
                         // Lines done. Set VBlank interrupt & enter VBlank mode
+                        self.set_pixels = [false; DISPLAY_WIDTH * DISPLAY_HEIGHT];
                         self.data_bg_win_transparent = [false; DISPLAY_WIDTH * DISPLAY_HEIGHT];
                         self.interrupt_flags.set(If::VBlank, true);
                         if self.lcd_status.get(Stat::Mode1IntSelect) {
@@ -279,34 +311,83 @@ impl PPU {
         }
     }
 
-    /// Render a line of pixels on the LCD.
-    fn render_scanline(&mut self) {
-        // Reset line by setting all pixels to white
-        for x in 0..DISPLAY_WIDTH {
-            let data_output_index = ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + x;
+    /// Get the OAM addresses of the next objects to be rendered.
+    fn get_next_objs(&mut self) {
+        let obj_height = if self.lcd_control.get(Lcdc::OBJSize) {
+            16
+        } else {
+            8
+        };
+        let mut sorted = BinaryHeap::with_capacity(10);
+
+        for obj_num in 0..40 {
+            // Once 10 objects have been selected, selection is complete.
+            if sorted.len() == 10 {
+                break;
+            }
+            // Get OBJ data
+            let obj = OamData::new(self, obj_num);
+
+            // If tile doesn't intersect current scanline, move on
+            if i32::from(self.lcd_y_coord) < obj.y_screen_pos
+                || i32::from(self.lcd_y_coord) >= (obj.y_screen_pos + obj_height)
+            {
+                continue;
+            }
+
+            // Otherwise, put it into the binary heap, sorting by X-coord & using OAM position to
+            // break ties.
+            sorted.push(obj);
+        }
+        self.next_objs = std::mem::take(&mut sorted.into_sorted_vec());
+    }
+
+    /// Render a certain number of pixels on the LCD.
+    fn render_pixels(&mut self, t_cycles: u32) {
+        let end_index = self.scanline_progress + t_cycles;
+        let num_pixels = if end_index > (DISPLAY_WIDTH as u32) {
+            (DISPLAY_WIDTH as u32) - self.scanline_progress
+        } else {
+            t_cycles
+        };
+
+        // Reset area by setting all pixels to white
+        for x in self.scanline_progress..(num_pixels + self.scanline_progress) {
+            let data_output_index = ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x as usize);
             self.set_pixel(data_output_index, 0);
         }
 
         if self.lcd_control.get(Lcdc::BGWindowEnablePriority) {
-            self.render_bg_line();
+            self.render_bg_pixels(num_pixels);
         }
         if self.lcd_control.get(Lcdc::OBJEnable) {
-            self.render_obj_line();
+            self.render_obj_pixels(num_pixels);
         }
+
+        self.scanline_progress += num_pixels;
     }
 
-    /// Draw the background layer on the LCD.
+    /// Draw the background/window layer on the LCD for the given pixels.
     ///
     /// Thanks to [gbemulator](https://github.com/p4ddy1/gbemulator/tree/master) for help with this
     /// implementation
-    fn render_bg_line(&mut self) {
+    fn render_bg_pixels(&mut self, num_pixels: u32) {
         let bg_map_y = self.lcd_y_coord.wrapping_add(self.bg_view_y);
 
         // Check whether the current scanline is located within the window.
         let row_is_window =
             self.lcd_control.get(Lcdc::WindowEnable) && (self.lcd_y_coord >= self.win_y);
 
-        for x in 0..(DISPLAY_WIDTH as u8) {
+        // Make sure that no attempts are made to draw pixels off the screen.
+        let scanline_start: u8 = self.scanline_progress.try_into().unwrap();
+        let draw_finish: u8 = (self.scanline_progress + num_pixels).try_into().unwrap();
+        let scanline_finish: u8 = if draw_finish <= (DISPLAY_WIDTH as u8) {
+            draw_finish
+        } else {
+            DISPLAY_WIDTH as u8
+        };
+
+        for x in scanline_start..scanline_finish {
             let bg_map_x = x.wrapping_add(self.bg_view_x);
 
             // Check whether the current column is located within the window.
@@ -356,9 +437,167 @@ impl PPU {
             if colour_index == 0 {
                 self.data_bg_win_transparent[data_output_index] = true;
             }
-            // TODO Tennis attempts to access addr 0x5B40 (max addr 0x5BFF)
             self.set_pixel(data_output_index, colour);
         }
+    }
+
+    /// Draw the OBJ layer on the LCD for the given pixels.
+    ///
+    /// Thanks to [gbemulator](https://github.com/p4ddy1/gbemulator/tree/master) for help with this
+    /// implementation
+    fn render_obj_pixels(&mut self, num_pixels: u32) {
+        let obj_height = if self.lcd_control.get(Lcdc::OBJSize) {
+            16
+        } else {
+            8
+        };
+
+        // Make sure that no attempts are made to draw pixels off the screen.
+        let scanline_start: u8 = self.scanline_progress.try_into().unwrap();
+        let draw_finish: u8 = (self.scanline_progress + num_pixels).try_into().unwrap();
+        let scanline_finish: u8 = if draw_finish <= (DISPLAY_WIDTH as u8) {
+            draw_finish
+        } else {
+            DISPLAY_WIDTH as u8
+        };
+
+        let mut set_pixel_queue: Vec<(usize, u8)> = Vec::with_capacity(num_pixels as usize);
+
+        // Render each sprite in order of priority.
+        for obj in self.next_objs.iter() {
+            // Move on to next object if this one doesn't have any pixels in the rendered area.
+            if (obj.x_screen_pos + 7) < (scanline_start as i32)
+                || obj.x_screen_pos >= (scanline_finish as i32)
+            {
+                continue;
+            }
+
+            let tile_begin_addr = (obj.top_tile_index as u16) * 16;
+            let line_offset = if obj.attributes.get(ObjAttrs::YFlip) {
+                obj_height - 1 - (i32::from(self.lcd_y_coord) - obj.y_screen_pos)
+            } else {
+                i32::from(self.lcd_y_coord) - obj.y_screen_pos
+            };
+
+            let left_byte_addr = tile_begin_addr + ((line_offset as u16) * 2);
+            let right_byte_addr = left_byte_addr + 1;
+
+            let left_byte = self.vram[left_byte_addr as usize];
+            let right_byte = self.vram[right_byte_addr as usize];
+
+            // Calculate OBJ penalty algorithm for the leftmost OBJ pixel.
+            self.mode_3_penalty += self.calc_obj_penalty(obj);
+
+            for x in 0..8_u8 {
+                let x_offset = obj.x_screen_pos + (i32::from(x));
+                if x_offset >= (scanline_finish as i32) || x_offset < (scanline_start as i32) {
+                    continue;
+                }
+
+                let data_output_index =
+                    ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x_offset as usize);
+                // If this pixel has already been set during this line, it was a higher-priority
+                // object. Don't render anything.
+                if self.set_pixels[data_output_index] {
+                    continue;
+                }
+
+                // Check if on screen.
+                if x_offset < 0 || (x_offset as usize) >= DISPLAY_WIDTH {
+                    continue;
+                }
+
+                let bit_index = if obj.attributes.get(ObjAttrs::XFlip) {
+                    x
+                } else {
+                    7 - x
+                };
+
+                // Assemble the colour index from the left & right bytes.
+                let colour_index = Self::get_colour_index(left_byte, right_byte, bit_index);
+                // Colour 0 = transparent for objs
+                if colour_index == 0 {
+                    continue;
+                }
+
+                let palette = if obj.attributes.get(ObjAttrs::DMGPalette) {
+                    self.obj_palette_1
+                } else {
+                    self.obj_palette_0
+                };
+
+                let colour = match colour_index {
+                    3 => palette.read_byte() >> 6,
+                    2 => (palette.read_byte() & 0b0011_0000) >> 4,
+                    1 => (palette.read_byte() & 0b0000_1100) >> 2,
+                    _ => unreachable!(
+                        "Unreachable colour index {colour_index}. Bad `get_colour_index` function."
+                    ),
+                };
+
+                // Mark this pixel as "set" so no lower-priority objects attempt to render a pixel
+                // here.
+                self.set_pixels[data_output_index] = true;
+
+                // Don't set the pixel if background has priority and it isn't transparent.
+                if obj.attributes.get(ObjAttrs::Priority)
+                    && !self.data_bg_win_transparent[data_output_index]
+                {
+                    continue;
+                }
+
+                set_pixel_queue.push((data_output_index, colour));
+            }
+        }
+
+        for item in set_pixel_queue {
+            self.set_pixel(item.0, item.1);
+        }
+    }
+
+    fn calc_obj_penalty(&self, obj: &OamData) -> u32 {
+        // OBJ with OAM X = 0 always incurs an 11-t-cycle penalty.
+        if obj.x == 0 {
+            return 11;
+        }
+
+        // Get tile number.
+        let bg_map_y = self.lcd_y_coord.wrapping_add(self.bg_view_y);
+        let row_is_window =
+            self.lcd_control.get(Lcdc::WindowEnable) && (self.lcd_y_coord >= self.win_y);
+        let bg_map_x: u8 = TryInto::<u8>::try_into(obj.x_screen_pos)
+            .unwrap()
+            .wrapping_add(self.bg_view_x);
+        let col_is_window = self.lcd_control.get(Lcdc::WindowEnable)
+            && (obj.x_screen_pos >= (self.win_x.wrapping_sub(7) as i32));
+        let px_in_window = row_is_window && col_is_window;
+        let tile_num = self.tile_num(
+            px_in_window,
+            obj.x_screen_pos.try_into().unwrap(),
+            bg_map_x,
+            bg_map_y,
+        );
+
+        let mut penalty = 6;
+
+        if self.considered_tiles[tile_num as usize] {
+            return penalty;
+        }
+
+        // If tile hasn't been considered, add additional penalty based on how many pixels of the
+        // tile are to the right of the current pixel.
+        let diff = i32::from(if px_in_window {
+            self.win_x.wrapping_sub(7) % 8
+        } else {
+            self.bg_view_x % 8
+        }) - (obj.x_screen_pos % 8)
+            - 2;
+
+        if diff > 0 {
+            penalty += TryInto::<u32>::try_into(diff).unwrap();
+        }
+
+        penalty
     }
 
     // Calculate the index of the given location within tile data.
@@ -392,111 +631,6 @@ impl PPU {
             (tile_num as u16) << 4
         } else {
             0x1000 | ((tile_num as u16) << 4)
-        }
-    }
-
-    /// Draw the OBJ layer on the LCD.
-    ///
-    /// Thanks to [gbemulator](https://github.com/p4ddy1/gbemulator/tree/master) for help with this
-    /// implementation
-    fn render_obj_line(&mut self) {
-        let obj_height = if self.lcd_control.get(Lcdc::OBJSize) {
-            16
-        } else {
-            8
-        };
-
-        let mut num_objs_on_scanline: u32 = 0;
-        let mut lowest_x_written_at_location = [i32::MAX; DISPLAY_WIDTH * DISPLAY_HEIGHT];
-        for obj_num in 0..40 {
-            if num_objs_on_scanline == 10 {
-                break;
-            }
-
-            // Get OBJ data
-            let obj_start_addr: usize = obj_num * 4;
-            let obj_y: u8 = self.oam[obj_start_addr];
-            let obj_y_pos: i32 = i32::from(obj_y) - 16;
-            let obj_x: u8 = self.oam[obj_start_addr + 1];
-            let obj_x_pos: i32 = i32::from(obj_x) - 8;
-            let obj_tile_num: u8 = self.oam[obj_start_addr + 2];
-            let obj_flags: Flags = Flags::new(self.oam[obj_start_addr + 3]);
-
-            // If tile doesn't intersect current scanline, move on
-            if i32::from(self.lcd_y_coord) < obj_y_pos
-                || i32::from(self.lcd_y_coord) >= (obj_y_pos + obj_height)
-            {
-                continue;
-            }
-
-            // Add obj to limit
-            num_objs_on_scanline += 1;
-
-            let tile_begin_addr = (obj_tile_num as u16) * 16;
-            let line_offset = if obj_flags.get(ObjAttrs::YFlip) {
-                obj_height - 1 - (i32::from(self.lcd_y_coord) - obj_y_pos)
-            } else {
-                i32::from(self.lcd_y_coord) - obj_y_pos
-            };
-
-            let left_byte_addr = tile_begin_addr + ((line_offset as u16) * 2);
-            let right_byte_addr = left_byte_addr + 1;
-
-            let left_byte = self.vram[left_byte_addr as usize];
-            let right_byte = self.vram[right_byte_addr as usize];
-
-            // Render each pixel of sprite
-            for x in 0..8_u8 {
-                let x_offset = obj_x_pos + (i32::from(x));
-                // Check if on screen
-                if x_offset < 0 || (x_offset as usize) >= DISPLAY_WIDTH {
-                    continue;
-                }
-
-                let bit_index = if obj_flags.get(ObjAttrs::XFlip) {
-                    x
-                } else {
-                    7 - x
-                };
-                // Assemble the colour index from left & right bytes.
-                let colour_index = Self::get_colour_index(left_byte, right_byte, bit_index);
-                // Colour 0 = transparent for objs
-                if colour_index == 0 {
-                    continue;
-                }
-
-                let palette = if obj_flags.get(ObjAttrs::DMGPalette) {
-                    self.obj_palette_1
-                } else {
-                    self.obj_palette_0
-                };
-                let colour = match colour_index {
-                    3 => palette.read_byte() >> 6,
-                    2 => (palette.read_byte() & 0b0011_0000) >> 4,
-                    1 => (palette.read_byte() & 0b0000_1100) >> 2,
-                    _ => unreachable!(
-                        "Unreachable colour index {colour_index}. Bad `get_colour_index` function."
-                    ),
-                };
-
-                let data_output_index =
-                    ((self.lcd_y_coord as usize) * DISPLAY_WIDTH) + (x_offset as usize);
-
-                // Only set the pixel if this is the smallest X-coord OBJ.
-                if lowest_x_written_at_location[data_output_index] <= x.into() {
-                    continue;
-                }
-                lowest_x_written_at_location[data_output_index] = x.into();
-
-                // Don't set the pixel if background has priority and it isn't transparent.
-                if obj_flags.get(ObjAttrs::Priority)
-                    && !self.data_bg_win_transparent[data_output_index]
-                {
-                    continue;
-                }
-
-                self.set_pixel(data_output_index, colour);
-            }
         }
     }
 
@@ -581,6 +715,56 @@ impl Default for PPU {
         Self::new()
     }
 }
+
+/// OAM data for an object.
+#[derive(Debug, Clone)]
+struct OamData {
+    pub oam_start_addr: u16,
+    pub y: u8,
+    pub y_screen_pos: i32,
+    pub x: u8,
+    pub x_screen_pos: i32,
+    pub top_tile_index: u8,
+    pub attributes: Flags,
+}
+impl OamData {
+    fn new(ppu: &PPU, obj_num: usize) -> Self {
+        let oam_start_addr = (obj_num as u16) * 4;
+        let oam_start_index = oam_start_addr as usize;
+        let y = ppu.oam[oam_start_index];
+        let x = ppu.oam[oam_start_index + 1];
+        Self {
+            oam_start_addr,
+            y,
+            y_screen_pos: i32::from(y) - 16,
+            x,
+            x_screen_pos: i32::from(x) - 8,
+            top_tile_index: ppu.oam[oam_start_index + 2],
+            attributes: Flags::new(ppu.oam[oam_start_index + 3]),
+        }
+    }
+}
+impl Ord for OamData {
+    /// Used for drawing priority. Compare by X coord, using OAM order to break ties.
+    fn cmp(&self, other: &Self) -> Ordering {
+        let x_cmp = self.x.cmp(&other.x);
+        match x_cmp {
+            Ordering::Equal => self.oam_start_addr.cmp(&other.oam_start_addr),
+            _ => x_cmp,
+        }
+    }
+}
+impl PartialOrd for OamData {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl PartialEq for OamData {
+    fn eq(&self, other: &Self) -> bool {
+        self.oam_start_addr == other.oam_start_addr
+    }
+}
+impl Eq for OamData {}
 
 /// OBJ attributes enum.
 enum ObjAttrs {
