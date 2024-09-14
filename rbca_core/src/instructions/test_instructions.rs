@@ -1834,7 +1834,7 @@ fn test_bad_stop() {
 fn test_ei_di() {
     let mut cpu = Cpu::new();
     let data = [
-        0xF3, 0x00, 0x00, 0x00, 0xFB, 0x00, 0x00, 0xF3, 0xFB, 0x00, 0x00,
+        0xF3, 0x00, 0x00, 0x00, 0xFB, 0x00, 0xF3, 0xFB, 0xF3, 0x00, 0x00,
     ];
     cpu.load(0x0000, &data);
     cpu.interrupts_enabled = true;
@@ -1868,10 +1868,6 @@ fn test_ei_di() {
     assert_eq!(cpu.ei_countdown, 1);
     cpu.cycle(true, false);
     assert!(cpu.interrupts_enabled);
-    assert_eq!(cpu.di_countdown, 0);
-    assert_eq!(cpu.ei_countdown, 0);
-    cpu.cycle(true, false);
-    assert!(cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 1);
     assert_eq!(cpu.ei_countdown, 0);
     cpu.cycle(true, false);
@@ -1880,10 +1876,14 @@ fn test_ei_di() {
     assert_eq!(cpu.ei_countdown, 2);
     cpu.cycle(true, false);
     assert!(!cpu.interrupts_enabled);
-    assert_eq!(cpu.di_countdown, 0);
+    assert_eq!(cpu.di_countdown, 1);
     assert_eq!(cpu.ei_countdown, 1);
     cpu.cycle(true, false);
-    assert!(cpu.interrupts_enabled);
+    assert!(!cpu.interrupts_enabled);
+    assert_eq!(cpu.di_countdown, 0);
+    assert_eq!(cpu.ei_countdown, 0);
+    cpu.cycle(true, false);
+    assert!(!cpu.interrupts_enabled);
     assert_eq!(cpu.di_countdown, 0);
     assert_eq!(cpu.ei_countdown, 0);
 }

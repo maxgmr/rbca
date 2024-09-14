@@ -183,10 +183,18 @@ impl Cpu {
         );
         self.push_stack(self.pc);
         self.pc = 0x0040 | ((offset as u16) << 3);
-        16
+        20
     }
 
     fn update_interrupt_countdown(&mut self) {
+        self.ei_countdown = match self.ei_countdown {
+            2 => 1,
+            1 => {
+                self.interrupts_enabled = true;
+                0
+            }
+            _ => 0,
+        };
         self.di_countdown = match self.di_countdown {
             2 => 1,
             1 => {
@@ -195,14 +203,6 @@ impl Cpu {
             }
             _ => 0,
         };
-        self.ei_countdown = match self.ei_countdown {
-            2 => 1,
-            1 => {
-                self.interrupts_enabled = true;
-                0
-            }
-            _ => 0,
-        }
     }
 
     /// Load something into memory.
