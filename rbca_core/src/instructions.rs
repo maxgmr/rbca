@@ -1831,13 +1831,14 @@ fn stop(cpu: &mut Cpu) -> (u16, u32, String) {
     (size, cycles, String::from(instruction_string))
 }
 
+// DI: Disable interrupts after the instruction is executed.
 // DI: Disable interrupts after the instruction after DI is executed.
 fn di(cpu: &mut Cpu) -> (u16, u32, String) {
     let size = 1;
     let cycles = 4;
     let instruction_string = "DI";
 
-    cpu.di_countdown = 2;
+    cpu.di_countdown = 1;
 
     cpu.pc += size;
     (size, cycles, String::from(instruction_string))

@@ -1844,11 +1844,11 @@ fn test_ei_di() {
 
     cpu.cycle(true, false);
     assert!(cpu.interrupts_enabled);
-    assert_eq!(cpu.di_countdown, 2);
+    assert_eq!(cpu.di_countdown, 1);
     assert_eq!(cpu.ei_countdown, 0);
     cpu.cycle(true, false);
-    assert!(cpu.interrupts_enabled);
-    assert_eq!(cpu.di_countdown, 1);
+    assert!(!cpu.interrupts_enabled);
+    assert_eq!(cpu.di_countdown, 0);
     assert_eq!(cpu.ei_countdown, 0);
     cpu.cycle(true, false);
     assert!(!cpu.interrupts_enabled);
@@ -1872,11 +1872,11 @@ fn test_ei_di() {
     assert_eq!(cpu.ei_countdown, 0);
     cpu.cycle(true, false);
     assert!(cpu.interrupts_enabled);
-    assert_eq!(cpu.di_countdown, 2);
+    assert_eq!(cpu.di_countdown, 1);
     assert_eq!(cpu.ei_countdown, 0);
     cpu.cycle(true, false);
-    assert!(cpu.interrupts_enabled);
-    assert_eq!(cpu.di_countdown, 1);
+    assert!(!cpu.interrupts_enabled);
+    assert_eq!(cpu.di_countdown, 0);
     assert_eq!(cpu.ei_countdown, 2);
     cpu.cycle(true, false);
     assert!(!cpu.interrupts_enabled);
