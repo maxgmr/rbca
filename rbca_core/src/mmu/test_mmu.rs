@@ -68,7 +68,7 @@ fn test_mmu_read_write() {
             // Joypad only allows write to bits 4 & 5
             0xFF00 => {
                 assert_eq!(mmu.joypad.read_byte() & 0b0011_0000, value & 0b0011_0000);
-                expected_val = 0b0000_1111;
+                expected_val = 0b1100_1111;
             }
             0xFF01 => {
                 assert_eq!(mmu.serial_data, value);

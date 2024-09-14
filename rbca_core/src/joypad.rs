@@ -27,7 +27,7 @@ impl Joypad {
 
     /// Directly read the byte at the given address.
     pub fn read_byte(&self) -> u8 {
-        self.data.read_byte()
+        0b1100_0000 | self.data.read_byte()
     }
 
     /// Directly write to the byte at the given address.
@@ -178,12 +178,12 @@ mod tests {
     #[test]
     fn test_joypad() {
         let mut joypad = Joypad::new();
-        assert_eq!(joypad.read_byte(), 0b0011_1111);
+        assert_eq!(joypad.read_byte(), 0b1111_1111);
         assert_eq!(joypad.interrupt_flags.read_byte(), 0b0000_0000);
 
         // Enable reading from buttons
         joypad.write_byte(0b0001_0000);
-        assert_eq!(joypad.read_byte(), 0b0001_1111);
+        assert_eq!(joypad.read_byte(), 0b1101_1111);
 
         // Press A button
         joypad.button_down(A);
@@ -191,21 +191,21 @@ mod tests {
         joypad.interrupt_flags.write_byte(0b0000_0000);
         assert_eq!(joypad.internal_buttons.read_byte(), 0b0011_1110);
         assert_eq!(joypad.internal_dpad.read_byte(), 0b0011_1111);
-        assert_eq!(joypad.read_byte(), 0b0001_1110);
+        assert_eq!(joypad.read_byte(), 0b1101_1110);
 
         // Release A button
         joypad.button_up(A);
         assert_eq!(joypad.interrupt_flags.read_byte(), 0b0000_0000);
         assert_eq!(joypad.internal_buttons.read_byte(), 0b0011_1111);
         assert_eq!(joypad.internal_dpad.read_byte(), 0b0011_1111);
-        assert_eq!(joypad.read_byte(), 0b0001_1111);
+        assert_eq!(joypad.read_byte(), 0b1101_1111);
 
         // Press Left
         joypad.button_down(Left);
         assert_eq!(joypad.interrupt_flags.read_byte(), 0b0000_0000);
         assert_eq!(joypad.internal_buttons.read_byte(), 0b0011_1111);
         assert_eq!(joypad.internal_dpad.read_byte(), 0b0011_1101);
-        assert_eq!(joypad.read_byte(), 0b0001_1111);
+        assert_eq!(joypad.read_byte(), 0b1101_1111);
 
         // Press Start
         joypad.button_down(Start);
@@ -213,20 +213,20 @@ mod tests {
         joypad.interrupt_flags.write_byte(0b0000_0000);
         assert_eq!(joypad.internal_buttons.read_byte(), 0b0011_0111);
         assert_eq!(joypad.internal_dpad.read_byte(), 0b0011_1101);
-        assert_eq!(joypad.read_byte(), 0b0001_0111);
+        assert_eq!(joypad.read_byte(), 0b1101_0111);
 
         // Enable reading from dpad
         joypad.write_byte(0b1100_0000);
         assert_eq!(joypad.interrupt_flags.read_byte(), 0b0000_0000);
         assert_eq!(joypad.internal_buttons.read_byte(), 0b0011_0111);
         assert_eq!(joypad.internal_dpad.read_byte(), 0b0011_1101);
-        assert_eq!(joypad.read_byte(), 0b0000_0101);
+        assert_eq!(joypad.read_byte(), 0b1100_0101);
 
         // Disable reading
         joypad.write_byte(0b0011_0101);
         assert_eq!(joypad.interrupt_flags.read_byte(), 0b0000_0000);
         assert_eq!(joypad.internal_buttons.read_byte(), 0b0011_0111);
         assert_eq!(joypad.internal_dpad.read_byte(), 0b0011_1101);
-        assert_eq!(joypad.read_byte(), 0b0011_1111);
+        assert_eq!(joypad.read_byte(), 0b1111_1111);
     }
 }
