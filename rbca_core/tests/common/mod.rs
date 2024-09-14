@@ -12,7 +12,7 @@ use text_io::read;
 
 pub fn blargg_test_common(rom_name: &str, rom_path: &str) {
     // const INSTR_DEBUG: bool = true;
-    const INSTR_DEBUG: bool = false;
+    const INSTR_DEBUG: bool = true;
     // const BREAKPOINTS: bool = true;
     const BREAKPOINTS: bool = false;
     // const SLOW: bool = true;
