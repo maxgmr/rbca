@@ -110,6 +110,7 @@ impl<'a> Emulator<'a> {
             }
 
             // Approximately one frame
+            // TODO make this less hack-y
             if cycles >= 70224 {
                 frame_count += 1;
                 if self.config.fps_debug() > 0
@@ -122,6 +123,9 @@ impl<'a> Emulator<'a> {
                 self.draw_screen()?;
                 last_frame_time = Instant::now();
                 // Wait until can start next frame
+                if self.config.general_debug() && start.elapsed().as_secs_f64() >= (1.0 / 59.0) {
+                    eprintln!("Warning: emulator is running slower than it should!");
+                }
                 while start.elapsed().as_nanos() < 16_750_000 {}
             }
         }
