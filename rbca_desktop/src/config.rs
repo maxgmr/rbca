@@ -73,6 +73,7 @@ pub struct DebugSettings {
 #[allow(unused)]
 pub struct Breakpoints {
     pub program_counter: Vec<u16>,
+    pub instr_name: Vec<String>,
     pub opcode_1_byte: Vec<u8>,
     pub opcode_2_byte: Vec<u16>,
     pub opcode_3_byte: Vec<u32>,

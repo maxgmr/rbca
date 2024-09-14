@@ -169,6 +169,12 @@ impl<'a> Emulator<'a> {
             || self
                 .config
                 .breakpoints()
+                .instr_name
+                .iter()
+                .any(|name| emu_state.instruction_string.contains(name))
+            || self
+                .config
+                .breakpoints()
                 .opcode_1_byte
                 .contains(&emu_state.byte_0)
             || self
