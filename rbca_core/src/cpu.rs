@@ -10,9 +10,6 @@ use crate::{
     DISPLAY_HEIGHT, DISPLAY_WIDTH,
 };
 
-const INTERRUPT_FLAG_REGISTER_ADDR: u16 = 0xFF0F;
-const INTERRUPT_ENABLE_REGISTER_ADDR: u16 = 0xFFFF;
-
 /// The emulated CPU of the Game Boy.
 #[derive(Debug)]
 pub struct Cpu {
@@ -138,8 +135,7 @@ impl Cpu {
     pub fn cycle(&mut self, debug: bool, get_state: bool) -> (u32, Option<EmuState>) {
         self.update_interrupt_countdown();
         let interrupt = self.handle_interrupt();
-
-        let cycles_and_state: (u32, Option<EmuState>) = if interrupt != 0 {
+        let cycles_and_state = if interrupt != 0 {
             let mut emu_state = EmuState::new(self);
             emu_state.update(0, interrupt, "INTERRUPT".to_owned());
             (interrupt, Some(emu_state))
@@ -150,7 +146,8 @@ impl Cpu {
             execute_opcode(self, opcode, debug, get_state)
         };
 
-        (self.mmu.cycle(cycles_and_state.0), cycles_and_state.1)
+        self.mmu.cycle(cycles_and_state.0);
+        (cycles_and_state.0, cycles_and_state.1)
     }
 
     // Handle interrupts
@@ -159,8 +156,8 @@ impl Cpu {
             return 0;
         }
 
-        let interrupt_enable_register = self.mmu.read_byte(INTERRUPT_ENABLE_REGISTER_ADDR);
-        let interrupt_flag_register = self.mmu.read_byte(INTERRUPT_FLAG_REGISTER_ADDR);
+        let interrupt_enable_register = 0b0001_1111 & self.mmu.read_byte(0xFFFF);
+        let interrupt_flag_register = 0b0001_1111 & self.mmu.read_byte(0xFF0F);
         let interrupt_activated = interrupt_enable_register & interrupt_flag_register;
         if interrupt_activated == 0 {
             return 0;
@@ -177,10 +174,8 @@ impl Cpu {
         if offset >= 5 {
             panic!("Invalid interrupt triggered: {:#010b}", interrupt_activated);
         }
-        self.mmu.write_byte(
-            INTERRUPT_FLAG_REGISTER_ADDR,
-            interrupt_flag_register & !(0b1 << offset),
-        );
+        self.mmu
+            .write_byte(0xFF0F, interrupt_flag_register & !(0b1 << offset));
         self.push_stack(self.pc);
         self.pc = 0x0040 | ((offset as u16) << 3);
         20
