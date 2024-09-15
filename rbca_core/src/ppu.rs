@@ -34,6 +34,8 @@ pub struct PPU {
     data_bg_win_transparent: [bool; DISPLAY_WIDTH * DISPLAY_HEIGHT],
     /// Clone of interrupt flags to keep track of any interrupts set by the PPU.
     pub interrupt_flags: Flags,
+    /// Logical OR of all STAT interrupt sources.
+    pub stat_interrupt_line: bool,
     /// 8KiB Video RAM (VRAM).
     pub vram: [u8; 0x2000],
     /// Object attribute memory.
@@ -101,6 +103,7 @@ impl PPU {
             data_output: [0x00; DISPLAY_WIDTH * DISPLAY_HEIGHT],
             data_bg_win_transparent: [false; DISPLAY_WIDTH * DISPLAY_HEIGHT],
             interrupt_flags: Flags::new(0b0000_0000),
+            stat_interrupt_line: false,
             vram: [0xFF; 0x2000],
             oam: [0xFF; 0x00A0],
             mode_clock: 0,
@@ -256,7 +259,8 @@ impl PPU {
                     self.next_objs.clear();
                     self.considered_tiles = [false; 0xFF];
                     self.scanline_progress = 0;
-                    if self.lcd_status.get(Stat::Mode0IntSelect) {
+                    if self.lcd_status.get(Stat::Mode0IntSelect) && !self.stat_interrupt_line {
+                        self.stat_interrupt_line = true;
                         self.interrupt_flags.set(If::Lcd, true);
                     }
                     self.mode_clock %= DRAW_PX_CYCLES + self.mode_3_penalty;
@@ -276,13 +280,16 @@ impl PPU {
                         self.set_pixels = [false; DISPLAY_WIDTH * DISPLAY_HEIGHT];
                         self.data_bg_win_transparent = [false; DISPLAY_WIDTH * DISPLAY_HEIGHT];
                         self.interrupt_flags.set(If::VBlank, true);
-                        if self.lcd_status.get(Stat::Mode1IntSelect) {
+
+                        if self.lcd_status.get(Stat::Mode1IntSelect) && !self.stat_interrupt_line {
+                            self.stat_interrupt_line = true;
                             self.interrupt_flags.set(If::Lcd, true);
                         }
                         self.set_mode(1);
                     } else {
                         // Still more lines. Go to next line.
-                        if self.lcd_status.get(Stat::Mode2IntSelect) {
+                        if self.lcd_status.get(Stat::Mode2IntSelect) && !self.stat_interrupt_line {
+                            self.stat_interrupt_line = true;
                             self.interrupt_flags.set(If::Lcd, true);
                         }
                         self.set_mode(2);
@@ -299,7 +306,8 @@ impl PPU {
 
                     if self.lcd_y_coord > MAX_SCANLINES {
                         // Restart scanning modes
-                        if self.lcd_status.get(Stat::Mode2IntSelect) {
+                        if self.lcd_status.get(Stat::Mode2IntSelect) && !self.stat_interrupt_line {
+                            self.stat_interrupt_line = true;
                             self.interrupt_flags.set(If::Lcd, true);
                         }
                         self.set_mode(2);
@@ -660,7 +668,11 @@ impl PPU {
 
     /// If LYC int select and LYC == LY, activate the LCD status interrupt.
     fn check_lyc_ly(&mut self) {
-        if self.lcd_status.get(Stat::LycIntSelect) && (self.lcd_y_coord == self.ly_compare) {
+        if self.lcd_status.get(Stat::LycIntSelect)
+            && (self.lcd_y_coord == self.ly_compare)
+            && !self.stat_interrupt_line
+        {
+            self.stat_interrupt_line = true;
             self.interrupt_flags.set(If::Lcd, true);
         }
     }

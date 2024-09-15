@@ -229,6 +229,7 @@ impl Mmu {
         // Update IF register if the PPU triggered any interrupts.
         self.if_reg |= self.ppu.interrupt_flags;
         self.ppu.interrupt_flags.write_byte(0x00);
+        self.ppu.stat_interrupt_line = false;
 
         // TODO cycle sound.
         self.audio.cycle(t_cycles);
