@@ -163,8 +163,6 @@ impl Cpu {
             return 0;
         }
 
-        let halted_penalty = if self.is_halted { 4 } else { 0 };
-
         self.is_halted = false;
         if !self.interrupts_enabled {
             return 0;
@@ -180,7 +178,7 @@ impl Cpu {
             .write_byte(0xFF0F, interrupt_flag_register & !(0b1 << offset));
         self.push_stack(self.pc);
         self.pc = 0x0040 | ((offset as u16) << 3);
-        20 + halted_penalty
+        20
     }
 
     fn update_interrupt_countdown(&mut self) {
@@ -299,6 +297,12 @@ pub struct EmuState {
     pub cycles: u32,
     /// Instruction string.
     pub instruction_string: String,
+    /// Interrupt flags.
+    pub interrupt_flags: u8,
+    /// Interrupt enable.
+    pub interrupt_enable: u8,
+    /// Interrupt master enable.
+    pub interrupt_master_enable: bool,
 }
 impl EmuState {
     /// Create an EmuState from the current state of the CPU. Default fields for instruction info.
@@ -323,6 +327,9 @@ impl EmuState {
             size: 0,
             cycles: 0,
             instruction_string: String::new(),
+            interrupt_flags: cpu.mmu.read_byte(0xFF0F),
+            interrupt_enable: cpu.mmu.read_byte(0xFFFF),
+            interrupt_master_enable: cpu.interrupts_enabled,
         }
     }
 
@@ -332,15 +339,26 @@ impl EmuState {
         self.cycles = instr_cycles;
         self.instruction_string = instr_string;
     }
+
+    /// Format interrupt flags as chars.
+    fn interrupt_chars(flags: u8) -> [char; 5] {
+        [
+            if (flags & 0b0001_0000) != 0 { 'J' } else { '-' },
+            if (flags & 0b0000_1000) != 0 { 'S' } else { '-' },
+            if (flags & 0b0000_0100) != 0 { 'T' } else { '-' },
+            if (flags & 0b0000_0010) != 0 { 'L' } else { '-' },
+            if (flags & 0b0000_0001) != 0 { 'V' } else { '-' },
+        ]
+    }
 }
 impl Display for EmuState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut data = format!("{:#04X}", self.byte_0);
+        let mut data = format!("{:04X}", self.byte_0);
         if self.size > 1 {
-            data.push_str(&format!(" {:#04X}", self.byte_1));
+            data.push_str(&format!(" {:04X}", self.byte_1));
         }
         if self.size > 2 {
-            data.push_str(&format!(" {:#04X}", self.byte_2));
+            data.push_str(&format!(" {:04X}", self.byte_2));
         }
 
         let flags: [char; 4] = [
@@ -349,9 +367,13 @@ impl Display for EmuState {
             if self.h_flag { 'H' } else { '-' },
             if self.c_flag { 'C' } else { '-' },
         ];
+
+        let interrupt_flags = Self::interrupt_chars(self.interrupt_flags);
+        let interrupt_enable = Self::interrupt_chars(self.interrupt_enable);
+
         write!(
             f,
-            "{:#06X} | {:<14} | {:<10} | A: {:02X} F: {} BC: {:04X} DE: {:04X} HL: {:04X}",
+            "{:#06X}|{:<14}|{:<10}| A:{:02X} F:{} BC:{:04X} DE:{:04X} HL:{:04X} IF:{} IE:{} IME{}",
             self.pc,
             data,
             self.instruction_string,
@@ -360,6 +382,13 @@ impl Display for EmuState {
             ((self.b_reg as u16) << 8) | (self.c_reg as u16),
             ((self.d_reg as u16) << 8) | (self.e_reg as u16),
             ((self.h_reg as u16) << 8) | (self.l_reg as u16),
+            interrupt_flags.iter().collect::<String>(),
+            interrupt_enable.iter().collect::<String>(),
+            if self.interrupt_master_enable {
+                '+'
+            } else {
+                '-'
+            }
         )
     }
 }

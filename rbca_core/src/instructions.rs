@@ -12,7 +12,7 @@ pub fn execute_opcode(
     debug: bool,
     get_state: bool,
 ) -> (u32, Option<EmuState>) {
-    let mut emu_state = if get_state {
+    let mut emu_state = if get_state || debug {
         Some(EmuState::new(cpu))
     } else {
         None
@@ -722,60 +722,11 @@ pub fn execute_opcode(
         _ => panic!("Unimplemented opcode {:#02X} at {:#04X}", opcode, cpu.pc),
     };
 
-    if debug {
-        debug_print(cpu, size, cycles, &instruction_string);
-    }
-
     if let Some(ref mut es) = emu_state {
         es.update(size, cycles, instruction_string);
     }
 
     (cycles, emu_state)
-}
-
-fn debug_print(cpu: &Cpu, size: u16, _cycles: u32, instruction_string: &str) {
-    let mut data = format!("{:#04X}", cpu.mmu.read_byte(cpu.pc));
-    if size > 1 {
-        data.push_str(&format!(" {:#04X}", cpu.mmu.read_byte(cpu.pc + 1)));
-    }
-    if size > 2 {
-        data.push_str(&format!(" {:#04X}", cpu.mmu.read_byte(cpu.pc + 2)));
-    }
-
-    let flags: [char; 4] = [
-        if cpu.regs.get_flag(RegFlag::Z) {
-            'Z'
-        } else {
-            '-'
-        },
-        if cpu.regs.get_flag(RegFlag::N) {
-            'N'
-        } else {
-            '-'
-        },
-        if cpu.regs.get_flag(RegFlag::H) {
-            'H'
-        } else {
-            '-'
-        },
-        if cpu.regs.get_flag(RegFlag::C) {
-            'C'
-        } else {
-            '-'
-        },
-    ];
-
-    println!(
-        "{:#06X} | {:<14} | {:<10} | A: {:02X} F: {} BC: {:04X} DE: {:04X} HL: {:04X}",
-        cpu.pc,
-        data,
-        instruction_string,
-        cpu.regs.get_reg(A),
-        flags.iter().collect::<String>(),
-        cpu.regs.get_virt_reg(BC),
-        cpu.regs.get_virt_reg(DE),
-        cpu.regs.get_virt_reg(HL),
-    );
 }
 
 fn cc_print(flag: RegFlag, expected_value: bool) -> String {

@@ -100,13 +100,19 @@ impl<'a> Emulator<'a> {
                 .cycle(self.config.instr_debug(), self.config.breakpoints_enabled());
             cycles += cycles_and_state.0 as u128;
 
-            // Match with breakpoint & add to history
             if let Some(emu_state) = cycles_and_state.1 {
-                step_forward = self.match_breakpoint(&emu_state, &history, step_forward);
-                if history.len() >= self.config.history() {
-                    history.pop_front();
+                // Debug print.
+                if self.config.instr_debug() {
+                    println!("{emu_state}");
+                } else if self.config.breakpoints_enabled() {
+                    // Match with breakpoint & add to history
+
+                    step_forward = self.match_breakpoint(&emu_state, &history, step_forward);
+                    if history.len() >= self.config.history() {
+                        history.pop_front();
+                    }
+                    history.push_back(emu_state);
                 }
-                history.push_back(emu_state);
             }
 
             // Approximately one frame
@@ -157,8 +163,8 @@ impl<'a> Emulator<'a> {
         history: &VecDeque<EmuState>,
         step_forward: bool,
     ) -> bool {
-        let byte_2_compare = ((emu_state.byte_1 as u16) << 8) | (emu_state.byte_0 as u16);
-        let byte_3_compare = ((emu_state.byte_2 as u32) << 8) | (byte_2_compare as u32);
+        let byte_2_compare = ((emu_state.byte_0 as u16) << 8) | (emu_state.byte_1 as u16);
+        let byte_3_compare = (byte_2_compare as u32) | ((emu_state.byte_2 as u32) << 8);
 
         if step_forward
             || self
