@@ -13,6 +13,7 @@ pub enum PresetPalette {
     ClassicGreen,
     WhyHeOurple,
     MalibuBarbara,
+    MintyPie,
 }
 impl PresetPalette {
     /// Retrieve the static [Palette] that corresponds with this palette preset.
@@ -21,6 +22,7 @@ impl PresetPalette {
             Self::ClassicGreen => &CLASSIC_GREEN,
             Self::WhyHeOurple => &WHY_HE_OURPLE,
             Self::MalibuBarbara => &MALIBU_BARBARA,
+            Self::MintyPie => &MINTY_PIE,
         }
     }
 }

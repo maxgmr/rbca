@@ -82,4 +82,31 @@ pub const MALIBU_BARBARA: Palette = Palette {
         a: 0xFF,
     },
 };
+pub const MINTY_PIE: Palette = Palette {
+    lightest: HexColor {
+        r: 0xDA,
+        g: 0xF5,
+        b: 0xEA,
+        a: 0xFF,
+    },
+    light: HexColor {
+        r: 0xAD,
+        g: 0xED,
+        b: 0xD1,
+        a: 0xFF,
+    },
+    dark: HexColor {
+        r: 0xED,
+        g: 0xA8,
+        b: 0xBF,
+        a: 0xFF,
+    },
+    darkest: HexColor {
+        r: 0x24,
+        g: 0x0E,
+        b: 0x01,
+        a: 0xFF,
+    },
+};
+
 // TODO add more preset palettes
